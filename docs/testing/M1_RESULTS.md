@@ -23,3 +23,7 @@ This is the first M1 increment, not complete authentication or all target API mo
 No main merge, production deployment, Nursery change, DNS change, live database migration, purchase, real message or mobile publication was performed. Approved design documents and target contracts remain authoritative.
 
 Strict API evidence: https://github.com/mollanuramin130/NUVIKOZ_Edu/actions/runs/40690571855/job/122824219281 . The final documentation commit triggers fresh checks; inspect PR #1 for its current result.
+
+## Superseding security-review evidence
+
+The subsequent review corrected material boundaries and expanded API coverage to 37 tests / 99 assertions. Safe hosted Flutter dependency resolution, analysis and 3 tests passed; its earlier runtime blocker is resolved only within the mandatory metadata-blocked procedure. See `M1_SECURITY_REVIEW.md`, ADR-020 and the canonical handoff for current evidence and remaining M1 work. Earlier entries above are historical execution evidence, not current blocker status.
