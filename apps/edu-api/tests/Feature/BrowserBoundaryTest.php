@@ -22,6 +22,12 @@ class BrowserBoundaryTest extends TestCase
         $this->postJson('/api/v1/browser/login', [], ['Origin' => 'https://web.edu.test', 'Sec-Fetch-Site' => 'same-origin'])->assertStatus(419)->assertHeader('Access-Control-Allow-Origin', 'https://web.edu.test');
     }
 
+    public function test_missing_session_without_accept_header_is_json_unauthorized(): void
+    {
+        config(['browser.origins' => ['https://web.edu.test']]);
+        $this->get('/api/v1/browser/me', ['Origin' => 'https://web.edu.test'])->assertUnauthorized()->assertJsonPath('error.code', 'UNAUTHENTICATED');
+    }
+
     public function test_preflight_and_cookie_flags_are_explicit(): void
     {
         config(['browser.origins' => ['https://web.edu.test']]);
