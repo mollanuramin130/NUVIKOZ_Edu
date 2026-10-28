@@ -115,3 +115,25 @@ test('production web refuses credential submission from HTTP before contacting A
   await expect(page.getByRole('main').getByRole('alert')).toContainText('HTTPS is required');
   expect(apiRequests).toEqual([]);
 });
+
+test('authorized provisioning hands a single-use activation into secure browser login', async ({ context, page }) => {
+ const adminLogin=await login(context,'A','ADMIN');expect(adminLogin.status()).toBe(200);
+ const admin= (await adminLogin.json()).data;
+ const identifier=`ACT_${Date.now()}`;
+ const provision=await context.request.post(`${api}/accounts`,{headers:{Origin:origin,'X-CSRF-TOKEN':admin.csrf_token,'Idempotency-Key':`activation-${Date.now()}`},data:{name:'Synthetic activation user',login_identifier:identifier,role:'teacher'}});
+ expect(provision.status()).toBe(201);const result=(await provision.json()).data;
+ expect(result.one_time_password).toBeUndefined();const proof=result.local_handover;
+ await context.request.post(`${api}/logout`,{headers:{Origin:origin,'X-CSRF-TOKEN':admin.csrf_token},data:{}});
+ expect((await login(context,'A',identifier,password)).status()).toBe(401);
+ await page.goto('/activate');
+ await page.getByLabel('School code').fill('A');await page.getByLabel('Activation ID').fill(proof.proof_id);await page.getByLabel('Activation secret').fill('0'.repeat(64));
+ await page.getByLabel('New password',{exact:true}).fill(password);await page.getByLabel('Confirm password').fill(password);
+ await page.getByRole('button',{name:'Activate account',exact:true}).click();
+ await expect(page.getByRole('main').getByRole('alert')).toContainText('invalid, expired');
+ await page.getByLabel('Activation secret').fill(proof.secret);await page.getByRole('button',{name:'Activate account',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Account activated',exact:true})).toBeVisible();
+ const token=await bootstrap(context);
+ const replay=await context.request.post(`${api}/activation/consume`,{headers:{Origin:origin,'X-CSRF-TOKEN':token},data:{school_code:'A',proof_id:proof.proof_id,secret:proof.secret,password,password_confirmation:password}});expect(replay.status()).toBe(422);
+ await page.getByRole('link',{name:'Continue to sign in'}).click();await page.getByLabel('School code').fill('A');await page.getByLabel('Account identifier').fill(identifier);await page.getByLabel('Password',{exact:true}).fill(password);await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page).toHaveURL(/dashboard\/teacher/);
+ expect(await page.evaluate(()=>Object.keys(localStorage))).toEqual([]);
+});
