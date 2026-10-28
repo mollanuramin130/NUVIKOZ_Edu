@@ -21,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(web: __DIR__.'/../routes/browser.php', api: __DIR__.'/../routes/api.php', commands: __DIR__.'/../routes/console.php')
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prepend([RequestId::class, BrowserBoundary::class]);
+        $middleware->redirectGuestsTo(fn () => null);
         $middleware->web(replace: [PreventRequestForgery::class => BrowserCsrf::class]);
         $middleware->alias(['identity.active' => ActiveIdentity::class, 'tenant' => TenantContext::class]);
     })
