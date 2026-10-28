@@ -4,6 +4,15 @@ export class AuthError extends Error {
 }
 const base = process.env.NEXT_PUBLIC_EDU_API_BASE_URL;
 let csrf: string | undefined;
+export function onSessionChange(listener: () => void) {
+  const channel = new BroadcastChannel('edu-session');
+  channel.onmessage = () => { csrf = undefined; listener(); };
+  return () => channel.close();
+}
+function announceSessionChange() {
+  const channel = new BroadcastChannel('edu-session');
+  channel.postMessage('changed'); channel.close();
+}
 export async function browserRequest<T>(path: string, body?: unknown): Promise<T> {
   if (!base) throw new Error('The Edu API origin is not configured.');
   if (body !== undefined && !csrf) await bootstrap();
@@ -15,9 +24,14 @@ export async function browserRequest<T>(path: string, body?: unknown): Promise<T
   const result = await response.json();
   if (!response.ok) {
     if (response.status === 401 || response.status === 419) csrf = undefined;
+    if (response.status === 419) {
+      await bootstrap(); // Refresh only the handshake; never replay a state-changing request.
+      throw new AuthError(419, 'SESSION_CHANGED', 'Your session changed or expired. Please retry.');
+    }
     throw new AuthError(response.status, result.error?.code ?? 'API_ERROR', result.error?.message ?? 'Request failed.');
   }
   if (result.data.csrf_token) csrf = result.data.csrf_token;
+  if (path === 'login' || path === 'logout') announceSessionChange();
   return result.data as T;
 }
 export async function bootstrap() { return browserRequest<{ csrf_token: string }>('csrf'); }
