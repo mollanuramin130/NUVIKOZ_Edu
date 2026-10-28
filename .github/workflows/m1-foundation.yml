@@ -45,10 +45,12 @@ jobs:
           tools: composer:v2
           coverage: none
       - run: php -v && composer --version
+      - name: Prepare isolated environment from committed example
+        run: cp .env.example .env
       - run: composer install --no-interaction --prefer-dist --no-progress
       - run: composer check-platform-reqs
       - run: vendor/bin/pint --test
-      - run: php artisan test
+      - run: vendor/bin/phpunit --display-warnings --fail-on-warning
       - name: Verify reversible initial schema on disposable CI database
         run: |
           php artisan migrate:fresh --force
