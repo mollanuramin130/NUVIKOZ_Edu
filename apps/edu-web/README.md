@@ -1,3 +1,3 @@
-# Unified Next.js TypeScript web application
+# Unified Next.js foundation
 
-Reserved application directory. Framework scaffold and dependencies are NOT installed. No build or runtime test is claimed. Read ../../AGENTS.md and ../../docs/milestones/M1_FOUNDATION.md before implementation. Edu credentials/database/origins must be separate from Nursery.
+Six role route shells;no protected records or login UI wired yet. Run npm ci, npm run typecheck and npm run build. API client implements public health only;cookie/CSRF protected integration awaits next increment. Never store tokens in localStorage or pass private data through build-time props.
