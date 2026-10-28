@@ -1,3 +1,15 @@
+# Current checkpoint — AUTH-04 account activation
+
+Branch: `feature/m1-auth04-account-activation`, created from verified main `248917192c9d118c9e2ff3630a9e530a3e1c630a` (PR #2 merged). No concurrent main changes observed before coding. Earlier open-PR #2 statements below are obsolete. Resolve actual remote branch tip and Draft PR checks before continuing.
+
+Implemented School Admin browser staff provisioning/reissue and anonymous proof consumption, 30-minute hashed single-use proofs, locked authority/subject rechecks, permanent invalidation on model security changes, password hashing, audit, pending-account mobile bypass denial and minimal Next.js `/activate` page. One additive migration: `2026_10_28_000003_create_account_activations.php`. No student/parent provisioning or AUTH-05/06 functionality. Existing device API remains compatible for legacy accounts.
+
+Local PHP suite: 58 tests discovered, 57 passed / 222 assertions; one independent MariaDB concurrency test skipped locally because the local test driver is SQLite. Pint and Next.js lint/type/build passed. MariaDB race and HTTPS browser integration must be observed in CI on the committed tip before readiness is claimed. The local synthetic handover adapter only returns a fresh proof to the authorized issuing School Admin in local/testing; production issuance fails closed with full rollback. No external message, plaintext proof persistence or production configuration.
+
+Next safe step: finish actual-head MariaDB/browser/CI evidence and owner review of this AUTH-04-only Draft PR. No merge/deploy authorized. Preserve metadata-blocked Flutter policy and Nursery isolation. Read the activation API subset and migration addendum. Do not add password recovery/MFA in this increment.
+
+Earlier handoff follows as historical evidence.
+
 # Current checkpoint — AUTH-01–03 browser implementation
 
 Updated 2026-10-28. Branch: `feature/m1-browser-auth-account-lifecycle`. Draft PR #2: https://github.com/mollanuramin130/NUVIKOZ_Edu/pull/2 . Tested checkpoint: `3889b292c2af555258f68bdaf214af75203dd5ea`. The subsequent handoff/ADR commits are documentation only; resolve the actual branch tip and its checks before continuing. Repository is PUBLIC. Starting remote HEAD was 370c1836ddf3a832408440bb313e09bf17089e5c; no concurrent changes observed before coding.
