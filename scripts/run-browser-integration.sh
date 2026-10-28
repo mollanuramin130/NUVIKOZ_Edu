@@ -5,6 +5,7 @@ cd "$(dirname "$0")/.."
 export EDU_BROWSER_ORIGINS=https://web.edu.test:3443
 export NEXT_PUBLIC_EDU_API_BASE_URL=https://api.edu.test:8443
 export CACHE_STORE=database
+export EDU_BROWSER_TRUSTED_PROXIES=127.0.0.1
 export EDU_TEST_KEY="$RUNNER_TEMP/edu-test.key"
 export EDU_TEST_CERT="$RUNNER_TEMP/edu-test.crt"
 sudo sh -c 'echo "127.0.0.1 web.edu.test api.edu.test" >> /etc/hosts'
