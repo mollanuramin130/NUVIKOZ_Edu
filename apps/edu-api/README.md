@@ -11,3 +11,5 @@ Central scope checks apply in middleware and provisioning service;school/members
 Not complete:browser cookie/CSRF auth,email/mobile verification,activation/reset delivery,MFA,delegated permission APIs,full onboarding/entitlement ledgers,background job/export/download scopes,Android auth or production hardening. No public signup or production admin bootstrap. Only synthetic users are created in tests. See docs/api/M1_IMPLEMENTED_API.md at repository root.
 
 Origin:officiallaravel/laravel13.x skeleton9ffef3bc4241e3cc333ef267258a404d0d95f194;noNurserycodeorcredentials copied. Framework dependencies retain upstream licenses;this project's private business code is proprietary.
+
+Security review: school device tokens are bound to the login school; platform health requires explicit platform authority. Provisioning services validate independently; audit rows reject database UPDATE/DELETE through an additive migration. Run `vendor/bin/phpunit --display-warnings --fail-on-warning` and `composer audit --locked`. See ADR-020 and M1 security evidence before extending this foundation. Browser/activation/reset/MFA remain pending.
