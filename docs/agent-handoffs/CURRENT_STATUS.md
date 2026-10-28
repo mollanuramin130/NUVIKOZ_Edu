@@ -1,6 +1,6 @@
 # Canonical status — merged foundation and authentication increment
 
-PR #1 was owner-authorized and squash-merged from exact approved HEAD ff0da5a6536e207b1ecd17796f85c800f153b707. Actual merge/main SHA: c4ab7ae8cc4569829eb1556a812859f2b02e6aaf. Seven checks passed; no conflicts or blocking reviews were displayed. Main repository-integrity check passed after merge; full M1 workflow was manually dispatched on main for post-merge verification.
+PR #1 was owner-authorized and squash-merged from exact approved HEAD ff0da5a6536e207b1ecd17796f85c800f153b707. Actual merge/main SHA: c4ab7ae8cc4569829eb1556a812859f2b02e6aaf. Seven checks passed; no conflicts or blocking reviews were displayed. Main repository-integrity check passed after merge; full post-merge M1 CI on main passed API, web and metadata-blocked Flutter at https://github.com/mollanuramin130/NUVIKOZ_Edu/actions/runs/40698176072 .
 
 The next remote branch, feature/m1-browser-auth-account-lifecycle, was created from merged main. Local API verification passed 38 tests / 109 assertions and Pint. Initial work adds a fail-closed exact-origin validator and negative tests for browser CORS/CSRF integration. It is not yet wired into live browser authentication; no new login/session endpoint is claimed. CI push coverage now includes main and this feature branch. Read M1_AUTH_INCREMENT_2.md and its contract before implementing the session handshake, activation, recovery and privileged MFA.
 
