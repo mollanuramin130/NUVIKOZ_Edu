@@ -8,7 +8,7 @@ Repository:https://github.com/mollanuramin130/NUVIKOZ_Edu. Created via owner-aut
 - All7sample PDFs matched manifest bytes/SHA256,locally and in GitHub CI.
 - Local python3 scripts/verify_repository.py passed:39imports,145APIoperations,1451resolvedrefs,10CSVfiles,no checked secret patterns;application tests NOT RUN.
 - GitHub run40680629060 on6937ea1 completed Success;actual step log confirms identical counts. This validates the committed files rather than assuming an upload succeeded.
-- Initial remote workflow warned about Node20checkout and ubuntu-latest migration. Updated checkout to verified node24 official action SHA and fixedubuntu-24.04;final run recorded by subsequent task evidence.
+- Initial remote workflow warned about Node20checkout and ubuntu-latest migration. Updated checkout to verified node24 official action SHA and fixedubuntu-24.04;updated workflow passed on commit e45b02b10cbb4e02bd442dd008c4790da7103f41,Actions run40681533507 (Success).
 - Expected initialized-file checks added to validator;all67paths required.
 
 ## Limitations
