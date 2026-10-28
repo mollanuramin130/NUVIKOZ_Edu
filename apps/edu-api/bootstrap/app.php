@@ -1,0 +1,44 @@
+<?php
+
+use App\Http\Middleware\ActiveIdentity;
+use App\Http\Middleware\RequestId;
+use App\Http\Middleware\TenantContext;
+use App\Support\Api;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Foundation\Application;
+use Illuminate\Foundation\Configuration\Exceptions;
+use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+
+return Application::configure(basePath: dirname(__DIR__))
+    ->withRouting(api: __DIR__.'/../routes/api.php', commands: __DIR__.'/../routes/console.php')
+    ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->prepend(RequestId::class);
+        $middleware->alias(['identity.active' => ActiveIdentity::class, 'tenant' => TenantContext::class]);
+    })
+    ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->shouldRenderJsonWhen(fn (Request $request) => true);
+        $exceptions->render(function (Throwable $e, Request $request) {
+            if ($e instanceof ValidationException) {
+                return Api::error('VALIDATION_FAILED', 'The input was invalid.', 422, $e->errors());
+            }
+            if ($e instanceof AuthenticationException) {
+                return Api::error('UNAUTHENTICATED', 'Authentication required.', 401);
+            }
+            if ($e instanceof AuthorizationException) {
+                return Api::error('FORBIDDEN', 'Access denied.', 403);
+            }
+            if ($e instanceof ModelNotFoundException) {
+                return Api::error('NOT_FOUND', 'Resource not found.', 404);
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                return Api::error('HTTP_'.$e->getStatusCode(), 'The request could not be completed.', $e->getStatusCode());
+            }
+
+            return Api::error('INTERNAL_ERROR', 'The request could not be completed.', 500);
+        });
+    })->create();
