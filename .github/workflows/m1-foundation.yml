@@ -1,0 +1,92 @@
+name: M1 Foundation
+on:
+  push:
+    branches: [feature/m1-tenant-auth-foundation]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: m1-foundation-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  api:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: synthetic-ci-only
+          MARIADB_DATABASE: edu_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    defaults:
+      run:
+        working-directory: apps/edu-api
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: edu_test
+      DB_USERNAME: root
+      DB_PASSWORD: synthetic-ci-only
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@d52fc211a0436f8839a587b3b5b8efddab4744ea
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_mysql, pdo_sqlite, dom, curl
+          tools: composer:v2
+          coverage: none
+      - run: php -v && composer --version
+      - name: Prepare isolated environment from committed example
+        run: cp .env.example .env
+      - run: composer install --no-interaction --prefer-dist --no-progress
+      - run: composer audit --locked --no-interaction
+      - run: composer check-platform-reqs
+      - run: vendor/bin/pint --test
+      - run: vendor/bin/phpunit --display-warnings --fail-on-warning
+      - name: Verify reversible initial schema on disposable CI database
+        run: |
+          php artisan migrate:fresh --force
+          php artisan migrate:rollback --force
+          php artisan migrate --force
+      - name: Validate repository contracts and committed sources
+        working-directory: .
+        run: python3 scripts/verify_repository.py
+  web:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/edu-web
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24'
+      - run: npm ci
+      - run: npm audit --audit-level=high
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run build
+  flutter:
+    # Explicit owner authorization: metadata-blocked, credential-free verification.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - name: Verify Flutter with metadata egress denied and privileges dropped
+        run: bash scripts/verify_flutter_isolated.sh
