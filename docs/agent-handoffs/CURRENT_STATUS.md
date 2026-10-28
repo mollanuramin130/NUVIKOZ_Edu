@@ -1,3 +1,9 @@
+# AUTH-04 policy correction checkpoint
+
+Existing branch `feature/m1-auth04-account-activation`, starting verified HEAD `930ac6387528ddb3cb4ae74d085cdb388681de7f`. ProvisionStaff now atomically creates activation-required identities and issues proofs for every entry point, including legacy POST /api/v1/accounts; AccountActivation.provision delegates to that single service. No temporary password handover remains. Existing activated-account device login/password rotation stays supported. Production delivery failure rolls back both HTTP and direct service provisioning. FoundationTest covers the legacy login/password bypass and positive post-activation compatibility. Local suite: 60 tests discovered, 59 passed / 240 assertions, one independent MariaDB race skipped on SQLite; Pint passed. Verify actual-tip MariaDB/browser CI on Draft PR #3 before owner review. No merge/deploy or AUTH-05/06 work.
+
+Earlier tested checkpoints follow.
+
 # Current checkpoint — AUTH-04 account activation
 
 Draft PR #3: https://github.com/mollanuramin130/NUVIKOZ_Edu/pull/3 . Tested implementation checkpoint: `5d03a41192b94b177df8a1082ebd02c5ab22cdbd`. Subsequent evidence updates are documentation only; resolve their actual branch tip and checks. Branch: `feature/m1-auth04-account-activation`, created from verified main `248917192c9d118c9e2ff3630a9e530a3e1c630a` (PR #2 merged). No concurrent main changes observed before coding. Earlier open-PR #2 statements below are obsolete. Resolve actual remote branch tip and Draft PR checks before continuing.
