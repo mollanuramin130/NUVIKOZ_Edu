@@ -39,19 +39,21 @@ class ProvisionStaff
             if ($prior) {
                 abort_unless(hash_equals($prior->body_hash, $hash), 409);
 
-                return ['membership_id' => $prior->membership_id, 'one_time_password' => null, 'must_change_password' => true, 'replayed' => true];
+                abort_unless(Membership::findOrFail($prior->membership_id)->user->activation_required, 409);
+
+                return ['membership_id' => $prior->membership_id, 'activation_status' => 'pending', 'replayed' => true];
             }
             if (Membership::where('school_id', $actor->school_id)->where('login_identifier', $data['login_identifier'])->exists()) {
                 throw ValidationException::withMessages(['login_identifier' => 'Identifier already in use.']);
             }
             $secret = Str::password(32);
-            $user = User::create(['name' => $data['name'], 'password' => $secret, 'must_change_password' => true]);
+            $user = User::create(['name' => $data['name'], 'password' => $secret, 'must_change_password' => true, 'activation_required' => true]);
             $membership = Membership::create(['school_id' => $actor->school_id, 'user_id' => $user->id, 'login_identifier' => $data['login_identifier'], 'role' => $data['role'], 'status' => 'active']);
             AuditEvent::create(['school_id' => $actor->school_id, 'actor_user_id' => $actor->user_id, 'action' => 'staff.provisioned', 'resource_id' => $membership->id, 'request_id' => $requestId]);
 
             DB::table('idempotency_records')->insert(['id' => (string) Str::ulid(), 'school_id' => $actor->school_id, 'actor_id' => $actor->user_id, 'operation' => 'staff.provision', 'key' => $key, 'body_hash' => $hash, 'membership_id' => $membership->id, 'created_at' => now(), 'updated_at' => now()]);
 
-            return ['membership_id' => $membership->id, 'one_time_password' => $secret, 'must_change_password' => true, 'replayed' => false];
-        });
+            return ['membership_id' => $membership->id, 'activation_status' => 'pending', 'replayed' => false, 'local_handover' => app(AccountActivation::class)->issue($actor, $membership->id, $requestId)];
+        }, 3);
     }
 }

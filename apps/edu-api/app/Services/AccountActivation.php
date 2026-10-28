@@ -16,18 +16,7 @@ class AccountActivation
 {
     public function provision(Membership $actor, array $data, string $requestId, ?string $key): array
     {
-        return DB::transaction(function () use ($actor, $data, $requestId, $key) {
-            $result = app(ProvisionStaff::class)->execute($actor, $data, $requestId, $key);
-            $target = Membership::whereKey($result['membership_id'])->firstOrFail();
-            if ($result['replayed']) {
-                abort_unless($target->user->activation_required, 409);
-
-                return ['membership_id' => $target->id, 'activation_status' => 'pending', 'replayed' => true];
-            }
-            $target->user->update(['activation_required' => true]);
-
-            return ['membership_id' => $target->id, 'activation_status' => 'pending', 'replayed' => false, 'local_handover' => $this->issue($actor, $target->id, $requestId)];
-        }, 3);
+        return app(ProvisionStaff::class)->execute($actor, $data, $requestId, $key);
     }
 
     private function fingerprint(Membership $member): string
