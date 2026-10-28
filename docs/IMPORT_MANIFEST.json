@@ -227,10 +227,10 @@
     {
       "source": "repository-preparation/AGENTS.md",
       "path": "AGENTS.md",
-      "sha256": "51ca4f1059d5475f077bae0099a5185ba0a3ca15da918aef46a398996fd2a8ea",
-      "bytes": 1691,
+      "sha256": "6b0ab6aada75be0ab831f46a4898cbcf2b4ec880d77b58c5ed333232ceceec94",
+      "bytes": 2937,
       "baseline_sha256": "a8ebe7bf16946b4c6d1c15d2cdde027de67f903afded1ce5bb64775c3df767fd",
-      "evolution": "M1 approved development instructions;baseline source hash retained"
+      "evolution": "Owner-authorized M1 development and security review instructions; baseline source hash retained"
     },
     {
       "source": "repository-preparation/CONTRIBUTING.md",
