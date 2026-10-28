@@ -3,7 +3,7 @@
   "info": {
     "title": "NUVIKOZ Edu M1 implemented subset",
     "version": "0.1.0",
-    "description": "Token flow only;approved target contract remains openapi.json. SeeM1_IMPLEMENTED_API.md for payloads/deferred work."
+    "description": "Implemented foundation device-token subset; approved target remains openapi.json. School tokens carry school:<ULID>; exact capability plus active membership/access required. Platform health needs platform:admin and platform identity. Browser/lifecycle flows remain pending."
   },
   "servers": [
     {
@@ -56,7 +56,8 @@
           "403": {
             "description": "Forbidden/disabled;Demo file denial always server enforced"
           }
-        }
+        },
+        "description": "Assigned school identifier login; school-bound opaque token. Suspended/archived schools and platform identities receive generic 401. No browser session or platform token issuance."
       }
     },
     "/me": {
@@ -136,7 +137,8 @@
           "403": {
             "description": "Forbidden/disabled;Demo file denial always server enforced"
           }
-        }
+        },
+        "description": "Requires explicit platform:admin capability, global platform flag and completed password change. School tokens never confer platform authority."
       }
     },
     "/schools/{school}": {
@@ -173,7 +175,8 @@
           "403": {
             "description": "Forbidden/disabled;Demo file denial always server enforced"
           }
-        }
+        },
+        "description": "Requires exact school capability, X-School-ID and current active membership/access. Token school mismatch is 403; foreign resource is 404."
       }
     },
     "/accounts": {
