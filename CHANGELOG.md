@@ -16,3 +16,7 @@ ActualLaravel13.39.0API andinitialtenant/identitymigrations;tokenauth,JSONcontra
 Bound school tokens to the selected tenant; separated platform token authority; denied suspended school login. Added independent provisioning service validation and actor rechecks, database audit UPDATE/DELETE triggers, protocol error headers, and stricter mobile origin validation. API regression suite passed 37 tests / 99 assertions locally and in MariaDB CI. Composer/npm advisory scans found no known vulnerabilities at review time.
 
 Investigated Flutter Azure bot detection and verified the scaffold in a checksum-pinned, metadata-blocked, privilege-dropped hosted CI job: Flutter 3.47.8 / Dart 3.13.7, dependency resolution, analysis and 3 tests passed. No mobile release build claimed. Prepared a separate browser authentication/account lifecycle increment with dependencies and acceptance criteria. No merge or production change.
+
+## M1 AUTH-01–03 browser foundation — 2026-10-28
+
+Added school-scoped database browser sessions, explicit CSRF and exact-origin credentialed CORS, host-only Secure HttpOnly cookies, session rotation/expiry and logout. Added Next.js login, centralized credentialed client, protected role navigation and expiry/denial pages. Added real HTTPS browser/MariaDB CI tests. Account activation, recovery, privileged MFA and device management remain pending. Repository is now public; no production change. See canonical handoff for actual test evidence.
