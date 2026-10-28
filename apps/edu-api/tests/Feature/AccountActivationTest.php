@@ -160,7 +160,7 @@ class AccountActivationTest extends TestCase
     public function test_password_validation_and_unknown_authority_fields_never_change_state(): void
     {
         [$admin,$target,$proof] = $this->pending();
-        foreach ([['password' => 'short', 'password_confirmation' => 'short'], ['password_confirmation' => 'Mismatch'], ['is_platform_admin' => true], ['purpose' => 'recovery']] as $change) {
+        foreach ([['password' => 'short', 'password_confirmation' => 'short'], ['password' => str_repeat('😀', 22), 'password_confirmation' => str_repeat('😀', 22)], ['password_confirmation' => 'Mismatch'], ['is_platform_admin' => true], ['purpose' => 'recovery']] as $change) {
             try {
                 app(AccountActivation::class)->consume(array_merge($this->data($proof), $change), 'invalid');
                 $this->fail('Invalid payload accepted');
