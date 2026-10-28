@@ -4,6 +4,7 @@ import csv
 import hashlib
 import json
 import re
+import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -62,8 +63,10 @@ def main():
         csv_count += 1
     suspect = []
     patterns = [r"gh[pousr]_[A-Za-z0-9]{30,}", r"github_pat_[A-Za-z0-9_]{40,}", r"AKIA[0-9A-Z]{16}", "-----BEGIN " + r"(?:RSA |EC |OPENSSH )?PRIVATE KEY-----"]
-    for path in ROOT.rglob("*"):
-        if not path.is_file() or ".git" in path.parts:
+    tracked = subprocess.check_output(["git", "ls-files", "-z"], cwd=ROOT).decode().split("\0")
+    for relative in filter(None, tracked):
+        path = ROOT / relative
+        if not path.is_file():
             continue
         rel = str(path.relative_to(ROOT))
         require(not (path.name == ".env" or path.suffix in [".pem", ".key", ".jks", ".keystore", ".sql"]), "Sensitive file type: " + rel)
@@ -72,7 +75,7 @@ def main():
             if any(re.search(pattern, content) for pattern in patterns):
                 suspect.append(rel)
     require(not suspect, "Potential secrets: " + ",".join(suspect))
-    print(json.dumps({"initialized_files": len(required_paths), "imported_files": len(imports), "samples": 7, "api_operations": len(operations), "schema_refs": len(refs), "csv_files": csv_count, "obvious_secret_patterns": "none", "application_tests": "NOT RUN"}))
+    print(json.dumps({"initialized_files": len(required_paths), "imported_files": len(imports), "samples": 7, "api_operations": len(operations), "schema_refs": len(refs), "csv_files": csv_count, "obvious_secret_patterns": "none", "application_tests": "not executed by this integrity script"}))
 
 if __name__ == "__main__":
     main()
