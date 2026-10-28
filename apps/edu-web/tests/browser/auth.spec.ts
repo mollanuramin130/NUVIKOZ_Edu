@@ -104,3 +104,14 @@ for (const change of ['disable-identity', 'disable-membership', 'suspend-school'
     expect((await context.request.get(`${api}/me`, { headers: { Origin: origin } })).status()).toBe(401);
   });
 }
+test('production web refuses credential submission from HTTP before contacting API', async ({ page }) => {
+  const apiRequests: string[] = [];
+  page.on('request', request => { if (request.url().startsWith(api)) apiRequests.push(request.url()); });
+  await page.goto('http://web.edu.test:3000/login');
+  await page.getByLabel('School code').fill('A');
+  await page.getByLabel('Account identifier').fill('TEACHER');
+  await page.getByLabel('Password', { exact: true }).fill(password);
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('HTTPS is required');
+  expect(apiRequests).toEqual([]);
+});
