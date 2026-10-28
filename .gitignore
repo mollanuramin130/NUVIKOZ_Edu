@@ -19,3 +19,16 @@ key.properties
 **/.DS_Store
 *.sqlite
 *.sql
+
+# Development tool caches and generated runtime files
+**/.phpunit.cache/
+**/.phpunit.result.cache
+**/.phpunit.cache
+**/bootstrap/cache/*.php
+*.tsbuildinfo
+**/.flutter-plugins-dependencies
+**/.packages
+
+apps/edu-api/storage/**
+!apps/edu-api/storage/README.md
+apps/edu-api/bootstrap/cache/**

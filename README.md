@@ -12,9 +12,9 @@ Private modular monorepo for an Indian school/institute management SaaS. Correct
 
 ## Structure and implementation status
 
-- apps/edu-api: Laravel/PHP REST API, **framework not scaffolded yet**.
-- apps/edu-web: one unified Next.js/TypeScript web app, **not scaffolded**.
-- apps/edu-mobile: Flutter/Dart app, **not scaffolded**.
+- apps/edu-api: Laravel13.39.0/PHP REST foundation;see apps/edu-api/README.md.
+- apps/edu-web: unified Next.js16.4.3/TypeScript six-role scaffold;typecheck/build executed.
+- apps/edu-mobile: minimal Flutter/Dart source scaffold;runtimechecks blocked,Android platform generation pending.
 - packages/contracts: versioned design contract; no running API or generated clients claimed.
 - docs: approved design, governance, task plan and clearly separated historical evidence.
 - assets/demo-samples: seven synthetic shared read-only PDF assets; no real personal data.
@@ -34,7 +34,7 @@ Python3 standard library only:
 python3 scripts/verify_repository.py
 ```
 
-This validates imported document bytes,JSON/contracts references,CSV structure,sample hashes and obvious secret/file hazards. It is **not** an application build, tenant security test, formal OpenAPI validator or exhaustive secret audit. No PHP/Composer/Flutter runtime is currently available in the initialization environment. See M1 for planned Laravel tests and setup gates.
+This validates imported document bytes,JSON/contracts references,CSV structure,sample hashes and obvious secret/file hazards. It is **not** an application build, tenant security test, formal OpenAPI validator or exhaustive secret audit. PHP/Composer were installed in an isolated workspace for M1;Flutter verification remains blocked. See M1 for planned Laravel tests and setup gates.
 
 ## History and authority
 
