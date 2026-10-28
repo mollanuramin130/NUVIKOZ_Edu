@@ -11,7 +11,7 @@ class SchoolAccess
     public function requireAdmin(Membership $membership): void
     {
         $current = Membership::whereKey($membership->id)->where('school_id', $membership->school_id)->where('user_id', $membership->user_id)->with(['school', 'user'])->first();
-        if (! $current || $current->status !== 'active' || $current->user->status !== 'active' || $current->user->must_change_password || $current->user->is_platform_admin || in_array($current->school->access_state, ['suspended', 'archived'], true) || $current->role !== Role::SchoolAdmin) {
+        if (! $current || $current->status !== 'active' || $current->user->status !== 'active' || $current->user->must_change_password || $current->user->activation_required || $current->user->is_platform_admin || in_array($current->school->access_state, ['suspended', 'archived'], true) || $current->role !== Role::SchoolAdmin) {
             throw new AuthorizationException('School Admin required.');
         }
     }
