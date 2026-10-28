@@ -13,6 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use LogicException;
 use Tests\TestCase;
 
@@ -36,7 +37,7 @@ class FoundationTest extends TestCase
     {
         app('auth')->forgetGuards();
 
-        return $this->withHeaders(['Authorization' => 'Bearer '.$m->user->createToken('test', ['*'], now()->addHours(12))->plainTextToken, 'X-School-ID' => $m->school_id, 'Idempotency-Key' => 'synthetic-request-key-0001']);
+        return $this->withHeaders(['Authorization' => 'Bearer '.$m->user->createToken('test', ['school:'.$m->school_id], now()->addHours(12))->plainTextToken, 'X-School-ID' => $m->school_id, 'Idempotency-Key' => 'synthetic-request-key-0001']);
     }
 
     public function test_health_has_standard_contract_and_safe_request_id(): void
@@ -104,7 +105,7 @@ class FoundationTest extends TestCase
         $b = $this->school('B');
         $this->auth($a)->getJson('/api/v1/schools/'.$a->school_id)->assertOk();
         $this->getJson('/api/v1/schools/'.$b->id)->assertNotFound();
-        $this->withHeader('X-School-ID', $b->id)->getJson('/api/v1/schools/'.$b->id)->assertNotFound();
+        $this->withHeader('X-School-ID', $b->id)->getJson('/api/v1/schools/'.$b->id)->assertForbidden();
     }
 
     public function test_inactive_membership_is_rechecked(): void
@@ -125,7 +126,10 @@ class FoundationTest extends TestCase
     {
         $m = $this->member($this->school());
         $m->user->forceFill(['is_platform_admin' => true])->save();
-        $this->auth($m)->getJson('/api/v1/platform/health')->assertOk();
+        $this->auth($m)->getJson('/api/v1/platform/health')->assertForbidden();
+        app('auth')->forgetGuards();
+        $token = $m->user->createToken('platform', ['platform:admin'], now()->addHours(12))->plainTextToken;
+        $this->withToken($token)->getJson('/api/v1/platform/health')->assertOk();
     }
 
     public function test_principal_cannot_provision_accounts(): void
@@ -249,5 +253,69 @@ class FoundationTest extends TestCase
     {
         $m = $this->member($this->school());
         $this->auth($m)->withHeader('Idempotency-Key', '')->postJson('/api/v1/accounts', ['name' => 'Teacher', 'login_identifier' => 'NEW', 'role' => 'teacher'])->assertUnprocessable();
+    }
+
+    public function test_login_token_cannot_switch_to_another_membership_school(): void
+    {
+        $a = $this->member($this->school());
+        $b = $this->school('B');
+        Membership::create(['school_id' => $b->id, 'user_id' => $a->user_id, 'role' => 'school_admin', 'login_identifier' => 'OTHER', 'status' => 'active']);
+        $response = $this->postJson('/api/v1/auth/login', ['school_code' => 'A', 'identifier' => 'TEST', 'password' => 'Synthetic-Test-Password'])->assertOk();
+        $token = $response->json('data.token');
+        app('auth')->forgetGuards();
+        $this->withToken($token)->withHeader('X-School-ID', $a->school_id)->getJson('/api/v1/schools/'.$a->school_id)->assertOk();
+        $this->withHeader('X-School-ID', $b->id)->getJson('/api/v1/schools/'.$b->id)->assertForbidden()->assertJsonPath('error.code', 'TOKEN_SCHOOL_MISMATCH');
+    }
+
+    public function test_suspended_school_cannot_issue_a_login_token(): void
+    {
+        $m = $this->member($this->school());
+        $m->school->update(['access_state' => 'suspended']);
+        $this->postJson('/api/v1/auth/login', ['school_code' => 'A', 'identifier' => 'TEST', 'password' => 'Synthetic-Test-Password'])->assertUnauthorized()->assertJsonPath('error.code', 'INVALID_CREDENTIALS');
+        $this->assertDatabaseCount('personal_access_tokens', 0);
+    }
+
+    public function test_platform_user_cannot_issue_tokens_through_school_login(): void
+    {
+        $m = $this->member($this->school());
+        $m->user->forceFill(['is_platform_admin' => true])->save();
+        $this->postJson('/api/v1/auth/login', ['school_code' => 'A', 'identifier' => 'TEST', 'password' => 'Synthetic-Test-Password'])->assertUnauthorized();
+        $this->assertDatabaseCount('personal_access_tokens', 0);
+    }
+
+    public function test_service_rejects_role_escalation_without_form_request(): void
+    {
+        $m = $this->member($this->school());
+        $this->expectException(ValidationException::class);
+        app(ProvisionStaff::class)->execute($m, ['name' => 'Bad', 'login_identifier' => 'BAD', 'role' => 'school_admin'], 'test', 'synthetic-request-key');
+    }
+
+    public function test_service_rechecks_password_change_requirement(): void
+    {
+        $m = $this->member($this->school());
+        $m->user->update(['must_change_password' => true]);
+        $this->expectException(AuthorizationException::class);
+        app(ProvisionStaff::class)->execute($m, ['name' => 'Teacher', 'login_identifier' => 'NEW', 'role' => 'teacher'], 'test', 'synthetic-request-key');
+    }
+
+    public function test_query_builder_cannot_rewrite_audit_events(): void
+    {
+        $m = $this->member($this->school());
+        $event = AuditEvent::create(['school_id' => $m->school_id, 'actor_user_id' => $m->user_id, 'action' => 'original', 'resource_id' => $m->id, 'request_id' => 'test']);
+        $this->expectException(QueryException::class);
+        DB::table('audit_events')->where('id', $event->id)->update(['action' => 'forged']);
+    }
+
+    public function test_query_builder_cannot_delete_audit_events(): void
+    {
+        $m = $this->member($this->school());
+        $event = AuditEvent::create(['school_id' => $m->school_id, 'actor_user_id' => $m->user_id, 'action' => 'original', 'resource_id' => $m->id, 'request_id' => 'test']);
+        $this->expectException(QueryException::class);
+        DB::table('audit_events')->where('id', $event->id)->delete();
+    }
+
+    public function test_method_error_retains_allow_header(): void
+    {
+        $this->postJson('/api/v1/health')->assertStatus(405)->assertHeader('Allow')->assertJsonPath('error.code', 'HTTP_405');
     }
 }
