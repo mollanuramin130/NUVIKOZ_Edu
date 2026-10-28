@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "total_physical_bytes": 16996,
+  "assets": [
+    {
+      "id": "00000000000000000000000001",
+      "key": "birth-certificate",
+      "label": "Sample Birth Certificate",
+      "revision": 1,
+      "filename": "birth-certificate.pdf",
+      "sha256": "f850b124557f6d541fe1a0330e0842033a5002e0945a6727bb1ec5ebf491c4c1",
+      "size_bytes": 2448,
+      "mime": "application/pdf",
+      "ownership": "platform_shared_read_only",
+      "watermark": "SAMPLE / DEMO",
+      "personal_data": "none"
+    },
+    {
+      "id": "00000000000000000000000002",
+      "key": "admission-document",
+      "label": "Sample Admission Document",
+      "revision": 1,
+      "filename": "admission-document.pdf",
+      "sha256": "2614815655e586d175c06353b1d9a47d576c80d94e52a8796481af81840f2d64",
+      "size_bytes": 2390,
+      "mime": "application/pdf",
+      "ownership": "platform_shared_read_only",
+      "watermark": "SAMPLE / DEMO",
+      "personal_data": "none"
+    },
+    {
+      "id": "00000000000000000000000003",
+      "key": "report-card",
+      "label": "Sample Report Card",
+      "revision": 1,
+      "filename": "report-card.pdf",
+      "sha256": "61bf8f577793197267077bbed73eb2b30948a12fb8ae7fea21b60c9fbc8e4f1a",
+      "size_bytes": 2432,
+      "mime": "application/pdf",
+      "ownership": "platform_shared_read_only",
+      "watermark": "SAMPLE / DEMO",
+      "personal_data": "none"
+    },
+    {
+      "id": "00000000000000000000000004",
+      "key": "assignment",
+      "label": "Sample Assignment",
+      "revision": 1,
+      "filename": "assignment.pdf",
+      "sha256": "8df17e0ac05f0d4a9afd39dc362ab05cf2f568f1e80933f895d41237c032fba8",
+      "size_bytes": 2429,
+      "mime": "application/pdf",
+      "ownership": "platform_shared_read_only",
+      "watermark": "SAMPLE / DEMO",
+      "personal_data": "none"
+    },
+    {
+      "id": "00000000000000000000000005",
+      "key": "payment-receipt",
+      "label": "Sample Payment Receipt",
+      "revision": 1,
+      "filename": "payment-receipt.pdf",
+      "sha256": "1ee924f7b91589ff2d04f93c2e73e6fd558ebb432f175d116b60a5ac93988316",
+      "size_bytes": 2470,
+      "mime": "application/pdf",
+      "ownership": "platform_shared_read_only",
+      "watermark": "SAMPLE / DEMO",
+      "personal_data": "none"
+    },
+    {
+      "id": "00000000000000000000000006",
+      "key": "student-id-card",
+      "label": "Sample Student ID Card",
+      "revision": 1,
+      "filename": "student-id-card.pdf",
+      "sha256": "9879c3dea9a8d232f9d85c0f949d48a09776d9c33cb5f193c6787e8252ee4f30",
+      "size_bytes": 2409,
+      "mime": "application/pdf",
+      "ownership": "platform_shared_read_only",
+      "watermark": "SAMPLE / DEMO",
+      "personal_data": "none"
+    },
+    {
+      "id": "00000000000000000000000007",
+      "key": "transfer-certificate",
+      "label": "Sample Transfer Certificate",
+      "revision": 1,
+      "filename": "transfer-certificate.pdf",
+      "sha256": "582b54c86fdde6bbc8b1e53717dea209ff70f760f734e82031d0099e5e80c36f",
+      "size_bytes": 2418,
+      "mime": "application/pdf",
+      "ownership": "platform_shared_read_only",
+      "watermark": "SAMPLE / DEMO",
+      "personal_data": "none"
+    }
+  ]
+}
