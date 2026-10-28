@@ -63,3 +63,44 @@ test('expired database session and wrong role navigation deny access', async ({ 
   execFileSync('php', [fixture, 'expire']);
   expect((await context.request.get(`${api}/me`, { headers: { Origin: origin } })).status()).toBe(401);
 });
+
+test('multi-tab login change and logout revalidate other protected tabs', async ({ context, page }) => {
+  expect((await login(context)).status()).toBe(200);
+  await page.goto('/dashboard/teacher');
+  await expect(page.getByRole('heading', { name: 'teacher dashboard' })).toBeVisible();
+  const other = await context.newPage();
+  await other.goto('/login');
+  await other.getByLabel('School code').fill('B');
+  await other.getByLabel('Account identifier').fill('TEACHER');
+  await other.getByLabel('Password', { exact: true }).fill(password);
+  await other.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await expect(other).toHaveURL(/dashboard\/teacher/);
+  const identity = (await (await context.request.get(`${api}/me`, { headers: { Origin: origin } })).json()).data;
+  await expect(page.getByText(`School context: ${identity.school_id}`, { exact: true })).toBeVisible();
+  await other.getByRole('button', { name: 'Sign out' }).click();
+  await expect(page).toHaveURL(/session-expired/);
+});
+test('stale CSRF refreshes handshake without automatically replaying logout', async ({ page, context }) => {
+  await page.goto('/login');
+  await page.getByLabel('School code').fill('A');
+  await page.getByLabel('Account identifier').fill('TEACHER');
+  await page.getByLabel('Password', { exact: true }).fill(password);
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await expect(page).toHaveURL(/dashboard\/teacher/);
+  // Another client sharing cookies rotates the session without a broadcast notification.
+  const other = await context.newPage();
+  await other.goto('/login');
+  expect((await login(context)).status()).toBe(200);
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  await expect(page.getByRole('alert')).toContainText('Please retry');
+  expect((await context.request.get(`${api}/me`, { headers: { Origin: origin } })).status()).toBe(200);
+  await page.getByRole('button', { name: 'Retry sign out' }).click();
+  await expect(page).toHaveURL(/\/login$/);
+});
+for (const change of ['disable-identity', 'disable-membership', 'suspend-school']) {
+  test(`existing browser session is revoked after ${change}`, async ({ context }) => {
+    expect((await login(context)).status()).toBe(200);
+    execFileSync('php', [fixture, change]);
+    expect((await context.request.get(`${api}/me`, { headers: { Origin: origin } })).status()).toBe(401);
+  });
+}
