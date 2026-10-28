@@ -42,7 +42,7 @@ sudo setpriv --no-new-privs --bounding-set=-all --inh-caps=-all --ambient-caps=-
     test "$(awk "/^CapEff:/ {print \$2}" /proc/self/status)" = 0000000000000000
     cd "$1/apps/edu-mobile"
     flutter --version
-    flutter pub get
+    flutter pub get --enforce-lockfile
     flutter analyze --no-pub
     flutter test --no-pub
   ' isolated-flutter "$GITHUB_WORKSPACE"
