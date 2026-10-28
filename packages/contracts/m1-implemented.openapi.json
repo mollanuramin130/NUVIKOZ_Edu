@@ -1,0 +1,380 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "NUVIKOZ Edu M1 implemented subset",
+    "version": "0.1.0",
+    "description": "Token flow only;approved target contract remains openapi.json. SeeM1_IMPLEMENTED_API.md for payloads/deferred work."
+  },
+  "servers": [
+    {
+      "url": "/api/v1"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "get_health",
+        "x-authorization": "public",
+        "parameters": [],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Foundation envelope or current command result"
+          },
+          "403": {
+            "description": "Forbidden/disabled;Demo file denial always server enforced"
+          }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "operationId": "get_health_ready",
+        "x-authorization": "public",
+        "parameters": [],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Foundation envelope or current command result"
+          },
+          "403": {
+            "description": "Forbidden/disabled;Demo file denial always server enforced"
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "operationId": "post_auth_login",
+        "x-authorization": "public",
+        "parameters": [],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Foundation envelope or current command result"
+          },
+          "403": {
+            "description": "Forbidden/disabled;Demo file denial always server enforced"
+          }
+        }
+      }
+    },
+    "/me": {
+      "get": {
+        "operationId": "get_me",
+        "x-authorization": "identity",
+        "parameters": [],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Foundation envelope or current command result"
+          },
+          "403": {
+            "description": "Forbidden/disabled;Demo file denial always server enforced"
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "post_auth_logout",
+        "x-authorization": "identity",
+        "parameters": [],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Foundation envelope or current command result"
+          },
+          "403": {
+            "description": "Forbidden/disabled;Demo file denial always server enforced"
+          }
+        }
+      }
+    },
+    "/auth/password": {
+      "post": {
+        "operationId": "post_auth_password",
+        "x-authorization": "identity",
+        "parameters": [],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Foundation envelope or current command result"
+          },
+          "403": {
+            "description": "Forbidden/disabled;Demo file denial always server enforced"
+          }
+        }
+      }
+    },
+    "/platform/health": {
+      "get": {
+        "operationId": "get_platform_health",
+        "x-authorization": "platform_super_admin",
+        "parameters": [],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Foundation envelope or current command result"
+          },
+          "403": {
+            "description": "Forbidden/disabled;Demo file denial always server enforced"
+          }
+        }
+      }
+    },
+    "/schools/{school}": {
+      "get": {
+        "operationId": "get_schools_school",
+        "x-authorization": "tenant_membership",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "school",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-School-ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Foundation envelope or current command result"
+          },
+          "403": {
+            "description": "Forbidden/disabled;Demo file denial always server enforced"
+          }
+        }
+      }
+    },
+    "/accounts": {
+      "post": {
+        "operationId": "post_accounts",
+        "x-authorization": "school_admin",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-School-ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 160
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Foundation envelope or current command result"
+          },
+          "403": {
+            "description": "Forbidden/disabled;Demo file denial always server enforced"
+          }
+        }
+      }
+    },
+    "/storage/reservations": {
+      "post": {
+        "operationId": "post_storage_reservations",
+        "x-authorization": "tenant_disabled_file",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-School-ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Foundation envelope or current command result"
+          },
+          "403": {
+            "description": "Forbidden/disabled;Demo file denial always server enforced"
+          }
+        }
+      }
+    },
+    "/homework/{homework}/attachments": {
+      "post": {
+        "operationId": "post_homework_homework_attachments",
+        "x-authorization": "tenant_disabled_file",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "homework",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-School-ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Foundation envelope or current command result"
+          },
+          "403": {
+            "description": "Forbidden/disabled;Demo file denial always server enforced"
+          }
+        }
+      }
+    },
+    "/imports/files": {
+      "post": {
+        "operationId": "post_imports_files",
+        "x-authorization": "tenant_disabled_file",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-School-ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Foundation envelope or current command result"
+          },
+          "403": {
+            "description": "Forbidden/disabled;Demo file denial always server enforced"
+          }
+        }
+      }
+    },
+    "/ingestion/remote": {
+      "post": {
+        "operationId": "post_ingestion_remote",
+        "x-authorization": "tenant_disabled_file",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-School-ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Foundation envelope or current command result"
+          },
+          "403": {
+            "description": "Forbidden/disabled;Demo file denial always server enforced"
+          }
+        }
+      }
+    },
+    "/ingestion/base64": {
+      "post": {
+        "operationId": "post_ingestion_base",
+        "x-authorization": "tenant_disabled_file",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-School-ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Foundation envelope or current command result"
+          },
+          "403": {
+            "description": "Forbidden/disabled;Demo file denial always server enforced"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}
