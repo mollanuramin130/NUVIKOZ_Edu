@@ -7,12 +7,22 @@ use App\Models\Concerns\ImmutableIdentity;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\DB;
 
 class Membership extends Model
 {
     use HasUlids, ImmutableIdentity;
 
     protected $fillable = ['school_id', 'user_id', 'role', 'login_identifier', 'status'];
+
+    protected static function booted(): void
+    {
+        static::updating(function (self $member): void {
+            if ($member->isDirty(['role', 'status', 'login_identifier'])) {
+                DB::table('account_activations')->where('school_id', $member->school_id)->whereNull('consumed_at')->whereNull('invalidated_at')->where(fn ($query) => $query->where('membership_id', $member->id)->orWhere('issuer_membership_id', $member->id))->update(['invalidated_at' => now(), 'updated_at' => now()]);
+            }
+        });
+    }
 
     protected function casts(): array
     {
