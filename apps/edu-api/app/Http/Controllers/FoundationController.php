@@ -23,14 +23,14 @@ class FoundationController extends Controller
         $data = $request->validated();
         $school = School::where('code', $data['school_code'])->first();
         $membership = $school ? Membership::where('school_id', $school->id)->where('login_identifier', $data['identifier'])->where('status', 'active')->with('user')->first() : null;
-        if (! $membership || in_array($school->access_state, ['suspended', 'archived'], true) || $membership->user->is_platform_admin || $membership->user->status !== 'active' || ! Hash::check($data['password'], $membership->user->password)) {
+        if (! $membership || in_array($school->access_state, ['suspended', 'archived'], true) || $membership->user->is_platform_admin || $membership->user->status !== 'active' || $membership->user->activation_required || ! Hash::check($data['password'], $membership->user->password)) {
             return Api::error('INVALID_CREDENTIALS', 'Credentials could not be verified.', 401);
         }
 
         return DB::transaction(function () use ($membership, $data) {
             $user = User::whereKey($membership->user_id)->lockForUpdate()->firstOrFail();
             $current = Membership::whereKey($membership->id)->where('status', 'active')->first();
-            if (! $current || $user->is_platform_admin || in_array(School::whereKey($current->school_id)->value('access_state'), ['suspended', 'archived'], true) || $user->status !== 'active' || ! Hash::check($data['password'], $user->password)) {
+            if (! $current || $user->is_platform_admin || $user->activation_required || in_array(School::whereKey($current->school_id)->value('access_state'), ['suspended', 'archived'], true) || $user->status !== 'active' || ! Hash::check($data['password'], $user->password)) {
                 return Api::error('INVALID_CREDENTIALS', 'Credentials could not be verified.', 401);
             }
             $expiry = in_array($current->role, [Role::Student, Role::Parent], true) ? now()->addDays(7) : now()->addHours(12);
@@ -54,11 +54,13 @@ class FoundationController extends Controller
 
     public function password(PasswordRequest $request)
     {
+        abort_if($request->user()->activation_required, 403);
         if (! Hash::check($request->validated('current_password'), $request->user()->password)) {
             return Api::error('INVALID_CREDENTIALS', 'Credentials could not be verified.', 401);
         }
         DB::transaction(function () use ($request): void {
             $user = User::whereKey($request->user()->id)->lockForUpdate()->firstOrFail();
+            abort_if($user->activation_required, 403);
             abort_unless(Hash::check($request->validated('current_password'), $user->password), 401);
             $user->password = $request->validated('password');
             $user->must_change_password = false;
