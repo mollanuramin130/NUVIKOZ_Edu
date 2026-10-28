@@ -12,6 +12,9 @@ def require(condition, message):
         raise AssertionError(message)
 
 def main():
+    required_paths = ['.editorconfig', '.gitattributes', '.github/workflows/repository-integrity.yml', '.gitignore', 'AGENTS.md', 'CHANGELOG.md', 'CONTRIBUTING.md', 'CURRENT_STATUS.md', 'README.md', 'apps/edu-api/README.md', 'apps/edu-mobile/README.md', 'apps/edu-web/README.md', 'assets/demo-samples/README.md', 'assets/demo-samples/admission-document.pdf', 'assets/demo-samples/assignment.pdf', 'assets/demo-samples/birth-certificate.pdf', 'assets/demo-samples/manifest.json', 'assets/demo-samples/payment-receipt.pdf', 'assets/demo-samples/report-card.pdf', 'assets/demo-samples/student-id-card.pdf', 'assets/demo-samples/transfer-certificate.pdf', 'docs/IMPORT_MANIFEST.json', 'docs/README.md', 'docs/agent-handoffs/CURRENT_STATUS.md', 'docs/api/API_STANDARDS.md', 'docs/api/ENDPOINT_CATALOG.csv', 'docs/architecture/ARCHITECTURE_v1.1.md', 'docs/architecture/MODULE_BOUNDARIES.md', 'docs/database/04_DATA_DICTIONARY.csv', 'docs/database/09_RELATIONSHIPS.csv', 'docs/database/09_RELATIONSHIPS_AND_FLOWS.md', 'docs/database/MIGRATION_GUIDELINES.md', 'docs/decisions/ARCHITECTURE_CHANGELOG.md', 'docs/decisions/GATE3_APPROVAL.md', 'docs/deployment/BRANCH_AND_CI_PLAN.md', 'docs/deployment/HOSTING_RESOURCE_IMPACT.md', 'docs/historical/00_OWNER_MASTER_PROMPT.txt', 'docs/historical/01_ARCHITECTURE.md', 'docs/historical/02_REQUIREMENTS_COVERAGE.csv', 'docs/historical/03_FEATURE_CONTRACTS.csv', 'docs/historical/04_DATA_DICTIONARY.csv', 'docs/historical/05_OPENAPI.json', 'docs/historical/06_TEST_MATRIX.csv', 'docs/historical/08_REVIEW_AND_VALIDATION.md', 'docs/historical/09_RELATIONSHIPS_AND_FLOWS.md', 'docs/historical/README.md', 'docs/historical/gate2_07_CURRENT_STATUS.md', 'docs/historical/gate2_14_REPOSITORY_CREATION_READINESS.md', 'docs/historical/gate2_16_CHANGE_SUMMARY_AND_APPROVAL.md', 'docs/historical/gate2_NUVIKOZ_Edu_Architecture_Review.html', 'docs/milestones/M1_FOUNDATION.md', 'docs/requirements/00_OWNER_CORRECTION_INSTRUCTIONS.txt', 'docs/requirements/02_REQUIREMENTS_COVERAGE.csv', 'docs/requirements/03_FEATURE_CONTRACTS.csv', 'docs/requirements/15_OWNER_CONFIRMED_REQUIREMENTS.md', 'docs/security/SECURITY_BASELINE.md', 'docs/security/STORAGE_POLICY_v1.1.md', 'docs/testing/06_TEST_MATRIX.csv', 'docs/testing/08_REVIEW_AND_VALIDATION.md', 'docs/testing/INITIALIZATION_REPORT.md', 'docs/testing/TESTING.md', 'docs/ui-ux/ROLE_FLOWS.md', 'packages/contracts/README.md', 'packages/contracts/openapi.json', 'packages/contracts/storage-policy-baseline.json', 'scripts/verify_repository.py', 'tests/README.md']
+    for relative in required_paths:
+        require((ROOT / relative).is_file(), "Missing initialized file: " + relative)
     imports = json.loads((ROOT / "docs/IMPORT_MANIFEST.json").read_text())["files"]
     for item in imports:
         path = ROOT / item["path"]
@@ -69,7 +72,7 @@ def main():
             if any(re.search(pattern, content) for pattern in patterns):
                 suspect.append(rel)
     require(not suspect, "Potential secrets: " + ",".join(suspect))
-    print(json.dumps({"imported_files": len(imports), "samples": 7, "api_operations": len(operations), "schema_refs": len(refs), "csv_files": csv_count, "obvious_secret_patterns": "none", "application_tests": "NOT RUN"}))
+    print(json.dumps({"initialized_files": len(required_paths), "imported_files": len(imports), "samples": 7, "api_operations": len(operations), "schema_refs": len(refs), "csv_files": csv_count, "obvious_secret_patterns": "none", "application_tests": "NOT RUN"}))
 
 if __name__ == "__main__":
     main()
