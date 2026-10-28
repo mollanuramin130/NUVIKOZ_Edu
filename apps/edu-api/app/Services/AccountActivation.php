@@ -71,7 +71,11 @@ class AccountActivation
 
     public function consume(array $data, string $requestId, ?string $signedInUser = null): array
     {
-        Validator::make($data, ['school_code' => ['required', 'string', 'max:32'], 'proof_id' => ['required', 'ulid'], 'secret' => ['required', 'string', 'size:64', 'regex:/\A[a-f0-9]+\z/'], 'password' => ['required', 'string', 'min:12', 'max:72', 'confirmed'], 'password_confirmation' => ['required', 'string', 'max:72']])->validate();
+        Validator::make($data, ['school_code' => ['required', 'string', 'max:32'], 'proof_id' => ['required', 'ulid'], 'secret' => ['required', 'string', 'size:64', 'regex:/\A[a-f0-9]+\z/'], 'password' => ['required', 'string', 'min:12', 'max:72', 'confirmed', function ($attribute, $value, $fail): void {
+            if (strlen($value) > 72) {
+                $fail('Password must not exceed 72 bytes.');
+            }
+        }], 'password_confirmation' => ['required', 'string', 'max:72']])->validate();
         if (array_diff(array_keys($data), ['school_code', 'proof_id', 'secret', 'password', 'password_confirmation'])) {
             throw ValidationException::withMessages(['payload' => 'Unknown activation field.']);
         }
