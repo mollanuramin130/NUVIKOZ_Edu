@@ -15,6 +15,13 @@ function announceSessionChange() {
 }
 export async function browserRequest<T>(path: string, body?: unknown): Promise<T> {
   if (!base) throw new Error('The Edu API origin is not configured.');
+  const target = new URL(base);
+  const loopback = (host: string) => ['localhost', '127.0.0.1'].includes(host);
+  const localHttp = process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_EDU_ALLOW_LOCAL_HTTP === 'true'
+    && loopback(target.hostname) && loopback(window.location.hostname);
+  if (!localHttp && (target.protocol !== 'https:' || window.location.protocol !== 'https:')) {
+    throw new Error('HTTPS is required to sign in securely.');
+  }
   if (body !== undefined && !csrf) await bootstrap();
   const response = await fetch(new URL(`/api/v1/browser/${path}`, base), {
     method: body === undefined ? 'GET' : 'POST', credentials: 'include', cache: 'no-store',
