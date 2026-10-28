@@ -12,7 +12,7 @@ concurrency:
 jobs:
   api:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     services:
       mariadb:
         image: mariadb:10.11
@@ -60,9 +60,15 @@ jobs:
       - name: Validate repository contracts and committed sources
         working-directory: .
         run: python3 scripts/verify_repository.py
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24'
+      - name: Real HTTPS Next.js to Laravel browser authentication
+        working-directory: .
+        run: bash scripts/run-browser-integration.sh
   web:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: apps/edu-web
