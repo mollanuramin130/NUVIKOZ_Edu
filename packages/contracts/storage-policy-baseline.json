@@ -1,0 +1,22 @@
+{
+  "architecture_version": "1.1",
+  "units": "decimal_bytes",
+  "demo": {
+    "days": 30,
+    "user_upload_bytes": 0,
+    "user_file_count": 0,
+    "sample_access": "shared_read_only"
+  },
+  "free_live": {
+    "max_pdf_bytes": 5000000,
+    "max_active_uploaded_pdfs": 50,
+    "daily_pdf_uploads": 10,
+    "total_bytes": 500000000,
+    "warning_percent": 80,
+    "upload_block_percent": 100
+  },
+  "paid_live": {
+    "limits": "psa_versioned_plan_or_school_override"
+  },
+  "student_homework_uploads": false
+}
