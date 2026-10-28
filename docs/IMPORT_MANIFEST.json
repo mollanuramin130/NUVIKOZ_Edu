@@ -1,0 +1,240 @@
+{
+  "baseline": "1.1",
+  "mode": "byte_identical_imports;generatedgovernancedocsexcluded",
+  "files": [
+    {
+      "source": "02_REQUIREMENTS_COVERAGE.csv",
+      "path": "docs/requirements/02_REQUIREMENTS_COVERAGE.csv",
+      "sha256": "540625b04ca0838df178f2408a5e3f6e973b8ead7d1cb3aaacaf03430293a68f",
+      "bytes": 100642
+    },
+    {
+      "source": "03_FEATURE_CONTRACTS.csv",
+      "path": "docs/requirements/03_FEATURE_CONTRACTS.csv",
+      "sha256": "f3cbd5ccc53f87b044d1b9fd1f63bc7953e90c5ddb8cd83105b881dc50d833b5",
+      "bytes": 22215
+    },
+    {
+      "source": "15_OWNER_CONFIRMED_REQUIREMENTS.md",
+      "path": "docs/requirements/15_OWNER_CONFIRMED_REQUIREMENTS.md",
+      "sha256": "4c2b2823511f5be415d9b07a845d86ec59b2567cfc2cc753a9330d9038a53609",
+      "bytes": 2202
+    },
+    {
+      "source": "00_OWNER_CORRECTION_INSTRUCTIONS.txt",
+      "path": "docs/requirements/00_OWNER_CORRECTION_INSTRUCTIONS.txt",
+      "sha256": "d6733803865e9ae28d3f2f5776590a25fccac54043ad9ad35ac37eb6f82790ce",
+      "bytes": 19978
+    },
+    {
+      "source": "01_ARCHITECTURE.md",
+      "path": "docs/architecture/ARCHITECTURE_v1.1.md",
+      "sha256": "a94c9e52b69609867cdd414db5cf13d5844bc513d6065c36651cd55e109e6df1",
+      "bytes": 67095
+    },
+    {
+      "source": "04_DATA_DICTIONARY.csv",
+      "path": "docs/database/04_DATA_DICTIONARY.csv",
+      "sha256": "0fccf762bced6e5e94b45837fb687142b65c17a0034767d5884d24c8917698da",
+      "bytes": 33395
+    },
+    {
+      "source": "09_RELATIONSHIPS.csv",
+      "path": "docs/database/09_RELATIONSHIPS.csv",
+      "sha256": "d3d56421514cd7e8c7694181dd0bebb7b6dd3a8170567b036151a9eb7da346e2",
+      "bytes": 11787
+    },
+    {
+      "source": "09_RELATIONSHIPS_AND_FLOWS.md",
+      "path": "docs/database/09_RELATIONSHIPS_AND_FLOWS.md",
+      "sha256": "61619f21d07be7d6755c1f75b05b2c2c9bb098e97de356632caab12c5aa45561",
+      "bytes": 4187
+    },
+    {
+      "source": "05_OPENAPI.json",
+      "path": "packages/contracts/openapi.json",
+      "sha256": "d0a00fcca1ac61d8e958c6358a2286e841c1ce403bf87f3c78b4771d239ee7d5",
+      "bytes": 732214
+    },
+    {
+      "source": "05_ENDPOINT_CATALOG.csv",
+      "path": "docs/api/ENDPOINT_CATALOG.csv",
+      "sha256": "3c30f876bb439f05f6661c5804aa022eebbaace75daf35b770b7298387d2ecbd",
+      "bytes": 17989
+    },
+    {
+      "source": "06_TEST_MATRIX.csv",
+      "path": "docs/testing/06_TEST_MATRIX.csv",
+      "sha256": "cdccebaed23b8f25487d86388cce58023076e52f8b0ead32c321840937b45661",
+      "bytes": 30284
+    },
+    {
+      "source": "08_REVIEW_AND_VALIDATION.md",
+      "path": "docs/testing/08_REVIEW_AND_VALIDATION.md",
+      "sha256": "9a7eb8f9bf7d5a23eb923ed65aec469cb3c4f41ed5cf235ae2ed6dd07a87bd30",
+      "bytes": 4328
+    },
+    {
+      "source": "11_OWNER_CONFIRMED_STORAGE_POLICY.md",
+      "path": "docs/security/STORAGE_POLICY_v1.1.md",
+      "sha256": "756305f965679e0d9963bdf44596c1dcbb8404c3da2fdb9a3c60c50e0928d299",
+      "bytes": 12925
+    },
+    {
+      "source": "13_HOSTING_RESOURCE_IMPACT.md",
+      "path": "docs/deployment/HOSTING_RESOURCE_IMPACT.md",
+      "sha256": "24fba7104e52300a57e3732d074e99b78a8fe111ca32b0cd1687b1b40780ed91",
+      "bytes": 2499
+    },
+    {
+      "source": "12_ARCHITECTURE_CHANGELOG.md",
+      "path": "docs/decisions/ARCHITECTURE_CHANGELOG.md",
+      "sha256": "cbf7cfb02b2a3970d06302f44fc4b51e9c32b536da9d423b6975557426bc4d5e",
+      "bytes": 2446
+    },
+    {
+      "source": "historical/00_OWNER_MASTER_PROMPT.txt",
+      "path": "docs/historical/00_OWNER_MASTER_PROMPT.txt",
+      "sha256": "642ed483c0a30328bccf2ba824b87d228e24ae424603f9074e9d04ec9129a96a",
+      "bytes": 64104
+    },
+    {
+      "source": "historical/01_ARCHITECTURE.md",
+      "path": "docs/historical/01_ARCHITECTURE.md",
+      "sha256": "96a6ad60891dd59f400d624cf32db394b6bb7b46feccbb92060e23eefa81c9ad",
+      "bytes": 65281
+    },
+    {
+      "source": "historical/02_REQUIREMENTS_COVERAGE.csv",
+      "path": "docs/historical/02_REQUIREMENTS_COVERAGE.csv",
+      "sha256": "134b9de24732717a3ee8e1d5afe942ddbd0ba715f2db1ba326bb567d7629d853",
+      "bytes": 88983
+    },
+    {
+      "source": "historical/03_FEATURE_CONTRACTS.csv",
+      "path": "docs/historical/03_FEATURE_CONTRACTS.csv",
+      "sha256": "b9ed509ccfab477e7a5b65f9e96d5d6c9a083c6a15df58244c9699441a2c48d2",
+      "bytes": 19026
+    },
+    {
+      "source": "historical/04_DATA_DICTIONARY.csv",
+      "path": "docs/historical/04_DATA_DICTIONARY.csv",
+      "sha256": "110c16b91fce910e3440a1b8745cff33d6d20de3f189965ba0bb9b5ac54dd0dd",
+      "bytes": 30842
+    },
+    {
+      "source": "historical/05_OPENAPI.json",
+      "path": "docs/historical/05_OPENAPI.json",
+      "sha256": "06124fb97bb3c236fa9dd96e20b1b94035c6236c42263274fd86e4c13d92e7fd",
+      "bytes": 688796
+    },
+    {
+      "source": "historical/06_TEST_MATRIX.csv",
+      "path": "docs/historical/06_TEST_MATRIX.csv",
+      "sha256": "17f9b64b4ad8e62418edde8a7685b1f94f1f4bfdcd0de39f82ac4551ef5347bf",
+      "bytes": 15280
+    },
+    {
+      "source": "historical/08_REVIEW_AND_VALIDATION.md",
+      "path": "docs/historical/08_REVIEW_AND_VALIDATION.md",
+      "sha256": "9f17917d43e874e75d28bc023c9bbf61d5c59e1e43d8fe18558e1251f1dc9c05",
+      "bytes": 2460
+    },
+    {
+      "source": "historical/09_RELATIONSHIPS_AND_FLOWS.md",
+      "path": "docs/historical/09_RELATIONSHIPS_AND_FLOWS.md",
+      "sha256": "71b31294268936002e08ca4be56e46147e529da1a5e09d2d9120abd5c39deb55",
+      "bytes": 3598
+    },
+    {
+      "source": "07_CURRENT_STATUS.md",
+      "path": "docs/historical/gate2_07_CURRENT_STATUS.md",
+      "sha256": "5e467a414b2bdea130ed66a26c4ef5e667fe2fa41d9ac1b942020d4a1ed988b9",
+      "bytes": 1159
+    },
+    {
+      "source": "14_REPOSITORY_CREATION_READINESS.md",
+      "path": "docs/historical/gate2_14_REPOSITORY_CREATION_READINESS.md",
+      "sha256": "81f5baa28c826dc09d9aa7095e23eba573dfd9baa078919c39cf694dcd754763",
+      "bytes": 4535
+    },
+    {
+      "source": "16_CHANGE_SUMMARY_AND_APPROVAL.md",
+      "path": "docs/historical/gate2_16_CHANGE_SUMMARY_AND_APPROVAL.md",
+      "sha256": "518cc5d3ad1c0573fdf00c14cd30e2a4c3676a3eef5f6c2fbc5b3ba05486d43d",
+      "bytes": 1056
+    },
+    {
+      "source": "NUVIKOZ_Edu_Architecture_Review.html",
+      "path": "docs/historical/gate2_NUVIKOZ_Edu_Architecture_Review.html",
+      "sha256": "2a1fc5f38e4464bc4c94e3188dfba499c97afbd95631ac62b7ac3dd8c6643eda",
+      "bytes": 108186
+    },
+    {
+      "source": "sample-library/README.md",
+      "path": "assets/demo-samples/README.md",
+      "sha256": "8fddc5f6a3d27c0196c4044723eda4c5518d7877235c853f650437022654a13d",
+      "bytes": 377
+    },
+    {
+      "source": "sample-library/admission-document.pdf",
+      "path": "assets/demo-samples/admission-document.pdf",
+      "sha256": "2614815655e586d175c06353b1d9a47d576c80d94e52a8796481af81840f2d64",
+      "bytes": 2390
+    },
+    {
+      "source": "sample-library/assignment.pdf",
+      "path": "assets/demo-samples/assignment.pdf",
+      "sha256": "8df17e0ac05f0d4a9afd39dc362ab05cf2f568f1e80933f895d41237c032fba8",
+      "bytes": 2429
+    },
+    {
+      "source": "sample-library/birth-certificate.pdf",
+      "path": "assets/demo-samples/birth-certificate.pdf",
+      "sha256": "f850b124557f6d541fe1a0330e0842033a5002e0945a6727bb1ec5ebf491c4c1",
+      "bytes": 2448
+    },
+    {
+      "source": "sample-library/manifest.json",
+      "path": "assets/demo-samples/manifest.json",
+      "sha256": "5c4b15776a2010ebba253fc2809f9fc66e935a66dc5b54c81903c7319e735822",
+      "bytes": 3201
+    },
+    {
+      "source": "sample-library/payment-receipt.pdf",
+      "path": "assets/demo-samples/payment-receipt.pdf",
+      "sha256": "1ee924f7b91589ff2d04f93c2e73e6fd558ebb432f175d116b60a5ac93988316",
+      "bytes": 2470
+    },
+    {
+      "source": "sample-library/report-card.pdf",
+      "path": "assets/demo-samples/report-card.pdf",
+      "sha256": "61bf8f577793197267077bbed73eb2b30948a12fb8ae7fea21b60c9fbc8e4f1a",
+      "bytes": 2432
+    },
+    {
+      "source": "sample-library/student-id-card.pdf",
+      "path": "assets/demo-samples/student-id-card.pdf",
+      "sha256": "9879c3dea9a8d232f9d85c0f949d48a09776d9c33cb5f193c6787e8252ee4f30",
+      "bytes": 2409
+    },
+    {
+      "source": "sample-library/transfer-certificate.pdf",
+      "path": "assets/demo-samples/transfer-certificate.pdf",
+      "sha256": "582b54c86fdde6bbc8b1e53717dea209ff70f760f734e82031d0099e5e80c36f",
+      "bytes": 2418
+    },
+    {
+      "source": "repository-preparation/AGENTS.md",
+      "path": "AGENTS.md",
+      "sha256": "a8ebe7bf16946b4c6d1c15d2cdde027de67f903afded1ce5bb64775c3df767fd",
+      "bytes": 1162
+    },
+    {
+      "source": "repository-preparation/CONTRIBUTING.md",
+      "path": "CONTRIBUTING.md",
+      "sha256": "2a2856c47c2893222c7e4ac1dc14cb209f81c569f55c5f405876e5e8df9e1988",
+      "bytes": 580
+    }
+  ]
+}
