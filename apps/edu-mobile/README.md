@@ -1,3 +1,5 @@
-# Flutter/Dart Android application
+# Flutter foundation
 
-Reserved application directory. Framework scaffold and dependencies are NOT installed. No build or runtime test is claimed. Read ../../AGENTS.md and ../../docs/milestones/M1_FOUNDATION.md before implementation. Edu credentials/database/origins must be separate from Nursery.
+Minimal Flutter package:six role shells and public Laravel health client.No authenticated client,secure token store or Android platform project is claimed complete.Widget test written but NOT RUN.No lock/build/analyze result claimed.
+
+Automatic approval review blocked local Flutter verification after attempted access to169.254.169.254.Do not retry or bypass.A vetted isolated approach preventing metadata access needs approval.Android platform generation remains pending.
