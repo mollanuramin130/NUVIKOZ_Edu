@@ -3,7 +3,7 @@ description: NUVIKOZ Edu non-production client foundation
 publish_to: none
 version: 0.1.0+1
 environment:
-  sdk: '>=3.10.9 <4.0.0'
+  sdk: '>=3.13.7 <4.0.0'
 dependencies:
   flutter:
     sdk: flutter

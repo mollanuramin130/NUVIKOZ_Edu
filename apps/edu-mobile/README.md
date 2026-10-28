@@ -1,5 +1,5 @@
 # Flutter foundation
 
-Minimal Flutter package:six role shells and public Laravel health client.No authenticated client,secure token store or Android platform project is claimed complete.Widget test written but NOT RUN.No lock/build/analyze result claimed.
+Non-production Dart/Flutter shell and public health client. Official Flutter 3.47.8 / Dart 3.13.7 were checksum-verified in metadata-blocked hosted CI. Dependency resolution, static analysis and three widget/client tests passed. No Android/iOS platform project, emulator test, release build or store publication is claimed.
 
-Automatic approval review blocked local Flutter verification after attempted access to169.254.169.254.Do not retry or bypass.A vetted isolated approach preventing metadata access needs approval.Android platform generation remains pending.
+Do not execute the old unrestricted local SDK command. Follow `scripts/verify_flutter_isolated.sh` and the metadata investigation document. Network denial must precede SDK execution and remain in force. The client accepts HTTPS, explicit local HTTP development hosts and no URL credentials. Protected mobile auth/OS secure storage integration is a later increment.
