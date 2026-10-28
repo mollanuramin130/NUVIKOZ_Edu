@@ -22,5 +22,5 @@ export default function Login() {
       <label>Account identifier<input name="identifier" required maxLength={80} autoComplete="username" /></label>
       <label>Password<input name="password" type="password" required maxLength={72} autoComplete="current-password" /></label>
       {error && <p role="alert">{error}</p>}<button disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
-    </form><p>Account activation and recovery are not available in this development increment. Contact your School Admin.</p></main>;
+    </form><p>Have a School Admin activation proof? <a href="/activate">Activate your account</a>. Password recovery is not available in this increment.</p></main>;
 }
