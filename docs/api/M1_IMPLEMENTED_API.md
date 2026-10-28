@@ -13,3 +13,9 @@ All paths below start/api/v1. Canonical target remains packages/contracts/openap
 - POST/storage/reservations,/imports/files,/ingestion/remote,/ingestion/base64,/homework/{homework}/attachments:authenticatedtenant context,Demo403DEMO_UPLOAD_FORBIDDEN;Live403FEATURE_DISABLED. No file ingestion,generation or URL fetch implemented.
 
 Envelope:data+meta.request_id;errors:error{code,message,fields}+meta.request_id. RequestID propagated or regenerated after validation;responsesno-store. Unknown body fields422. BackendnotUIenforcesguardrails. Scopedpermissions table exists;delegation API and operation-level academic capabilities remain unimplemented. Browsercookie/CSRF,activation/reset/MFA,externalmessages and protected frontend integration are next increments,not assertedworking.
+
+## Security review corrections
+
+School login issues only `school:<school ULID>` capability; tenant middleware requires that exact capability plus current active membership/access. A multi-school user must separately authorize the other school; mismatch returns 403 `TOKEN_SCHOOL_MISMATCH`. Unknown/foreign resource IDs in an authorized tenant remain 404. Suspended/archived schools and global platform users receive generic 401 credential denial from school login. Platform health requires explicit `platform:admin`, platform identity and no forced password change; no public platform token issuance exists yet. Discard previous development wildcard tokens.
+
+Provisioning revalidates the teacher/principal allowlist and unknown fields in its service, independent of HTTP validation. HTTP JSON exception responses preserve Allow/Retry-After headers. No new lifecycle endpoint is claimed; the pending contract is `M1_AUTH_INCREMENT_2_CONTRACT.md`.

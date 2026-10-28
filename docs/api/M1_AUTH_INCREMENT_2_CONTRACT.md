@@ -1,0 +1,13 @@
+# Authentication increment 2 — implementation contract addendum
+
+This is a pending implementation addendum to the approved target `packages/contracts/openapi.json`, not a claim of new running endpoints. The only running subset is `m1-implemented.openapi.json`. Confirm existing operation IDs/request schemas before adding routes; adapt the subset explicitly rather than inventing duplicate authentication APIs.
+
+Browser sessions use Sanctum stateful authentication, an Edu-only host-only API cookie, exact credentialed CORS and verified CSRF. Return a CSRF token only to a trusted origin where host-only cross-subdomain cookies cannot be read. Never widen the cookie domain to include Nursery. Missing/untrusted Origin and missing/invalid CSRF fail closed on browser mutations. Browser session rotation and logout revoke server-side state. Next.js must not infer school authority from its route name or accept tokens in URLs/localStorage.
+
+Device school login now issues only `school:<school ULID>` capability. Tenant requests also require `X-School-ID`, current membership/role, school access and resource scope. A token issued for school A cannot be reused for school B even by a multi-school user; login/context authorization for B is separate. `TOKEN_SCHOOL_MISMATCH` is 403. Foreign resource IDs within an authorized context remain 404. Platform health requires an explicitly provisioned `platform:admin` capability, global platform identity and no forced password change. School login cannot issue platform tokens. No public platform token issuer exists in this increment.
+
+Activation/recovery proofs must bind subject, school/membership, purpose, expiry and single-use state. All proof consumption is atomic; secrets are hashed at rest, never returned in account lists or logged. Recovery responses must not reveal contact existence or resolve a shared phone to the wrong identity. Student login remains possible without email. A Principal may create an admission profile but cannot provision or activate a login.
+
+Successful password reset or identifier change revokes sessions, device tokens and outstanding lifecycle proofs. Logout and account security operations are narrow security exceptions to school read-only entitlement, with explicit authorization. MFA challenge completion precedes privileged authority. All responses retain request ID, generic error envelope and no-store; exception responses retain required protocol headers such as Allow and Retry-After.
+
+Synthetic transport adapters and fake mail are sufficient for implementation tests. Real delivery, paid SMS and production origins/secrets are not authorized. The task dependency and acceptance matrix is in `docs/milestones/M1_AUTH_INCREMENT_2.md`.
