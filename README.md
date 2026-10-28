@@ -1,6 +1,6 @@
 # NUVIKOZ Edu
 
-Private modular monorepo for an Indian school/institute management SaaS. Corrected architecture baseline **v1.1 is owner-approved**. Repository creation and initialization are authorized; production deployment remains unauthorized.
+Public modular monorepo for an Indian school/institute management SaaS. Corrected architecture baseline **v1.1 is owner-approved**. Repository creation and initialization are authorized; production deployment remains unauthorized.
 
 ## Start here
 

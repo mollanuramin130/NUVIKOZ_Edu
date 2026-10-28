@@ -1,6 +1,6 @@
 # M1 increment 2 — Browser authentication and account lifecycle
 
-Prepared after the PR #1 foundation review. Recommended branch: `feature/m1-browser-auth-account-lifecycle`. Create it from approved main after PR #1 is merged with owner authorization; if parallel work is explicitly requested first, branch from its verified final head and declare that dependency. Do not merge PR #1 automatically.
+PR #1 is merged. AUTH-01–03 implementation is in Draft PR #2; integration acceptance is tracked in the canonical handoff. AUTH-04 onward remain pending. Existing branch: `feature/m1-browser-auth-account-lifecycle`. Do not recreate this branch. Do not merge PR #2 without separate owner authorization.
 
 The first increment has health/token/tenant/provisioning foundations. This separate increment implements the following bounded work, in dependency order. All records and notification transports used in tests are synthetic/local. No paid SMS, production email or new infrastructure is required.
 
