@@ -11,3 +11,11 @@ Activation/recovery proofs must bind subject, school/membership, purpose, expiry
 Successful password reset or identifier change revokes sessions, device tokens and outstanding lifecycle proofs. Logout and account security operations are narrow security exceptions to school read-only entitlement, with explicit authorization. MFA challenge completion precedes privileged authority. All responses retain request ID, generic error envelope and no-store; exception responses retain required protocol headers such as Allow and Retry-After.
 
 Synthetic transport adapters and fake mail are sufficient for implementation tests. Real delivery, paid SMS and production origins/secrets are not authorized. The task dependency and acceptance matrix is in `docs/milestones/M1_AUTH_INCREMENT_2.md`.
+
+## AUTH-01–03 implementation checkpoint
+
+Browser routes use `/api/v1/browser`: GET `/csrf` returns a session-bound CSRF token only to an exact configured Origin; POST `/login` accepts school_code, identifier, password; GET `/me` resolves the authenticated role/school; POST `/logout` invalidates the session. Sanctum authenticates the browser web guard; device endpoints remain separate. Browser routes reject Authorization headers and require exact Origin even for reads. Cookies are encrypted, host-only, Secure, HttpOnly and SameSite=Lax. Only explicitly configured same-site Edu web/API HTTPS origins are supported; third-party cross-site hosting is not supported.
+
+Use `EDU_BROWSER_ORIGINS` on the API and `NEXT_PUBLIC_EDU_API_BASE_URL` on web. Empty origin configuration denies access. CSRF is required even with same-origin fetch metadata. Login rotates session ID/token; staff idle expiry is 30 minutes, family 8 hours, absolute expiry 12 hours. Current membership, school access and credential hash are rechecked on every current-user request. Platform login and forced-password-change accounts are denied pending activation/MFA flows. No new account lifecycle flow is claimed.
+
+The Next.js client uses in-memory CSRF and credentialed fetch; no authentication material in localStorage. Protected role shells wait for `/me`; academic records remain unconnected. Real HTTPS browser tests run against MariaDB CI using web.edu.test and api.edu.test, synthetic fixtures, and transient test certificates. No production TLS bypass is configured.
