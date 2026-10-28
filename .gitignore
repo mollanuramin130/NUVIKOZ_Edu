@@ -1,0 +1,21 @@
+# Secrets and runtime files
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+key.properties
+**/vendor/
+**/node_modules/
+**/.next/
+**/build/
+**/.dart_tool/
+**/coverage/
+**/storage/logs/*
+**/.DS_Store
+*.sqlite
+*.sql
