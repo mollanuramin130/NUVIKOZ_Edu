@@ -36,7 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return Api::error('NOT_FOUND', 'Resource not found.', 404);
             }
             if ($e instanceof HttpExceptionInterface) {
-                return Api::error('HTTP_'.$e->getStatusCode(), 'The request could not be completed.', $e->getStatusCode());
+                return Api::error('HTTP_'.$e->getStatusCode(), 'The request could not be completed.', $e->getStatusCode())->withHeaders($e->getHeaders());
             }
 
             return Api::error('INTERNAL_ERROR', 'The request could not be completed.', 500);
