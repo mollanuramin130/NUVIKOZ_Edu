@@ -1,6 +1,6 @@
 {
   "baseline": "1.1",
-  "mode": "byte_identical_imports;generatedgovernancedocsexcluded",
+  "mode": "baseline import provenance;explicit evolved entries retain baseline_sha256",
   "files": [
     {
       "source": "02_REQUIREMENTS_COVERAGE.csv",
@@ -227,8 +227,10 @@
     {
       "source": "repository-preparation/AGENTS.md",
       "path": "AGENTS.md",
-      "sha256": "a8ebe7bf16946b4c6d1c15d2cdde027de67f903afded1ce5bb64775c3df767fd",
-      "bytes": 1162
+      "sha256": "51ca4f1059d5475f077bae0099a5185ba0a3ca15da918aef46a398996fd2a8ea",
+      "bytes": 1691,
+      "baseline_sha256": "a8ebe7bf16946b4c6d1c15d2cdde027de67f903afded1ce5bb64775c3df767fd",
+      "evolution": "M1 approved development instructions;baseline source hash retained"
     },
     {
       "source": "repository-preparation/CONTRIBUTING.md",
