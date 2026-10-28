@@ -1,6 +1,6 @@
 # Authentication increment 2 — implementation contract addendum
 
-This is a pending implementation addendum to the approved target `packages/contracts/openapi.json`, not a claim of new running endpoints. The only running subset is `m1-implemented.openapi.json`. Confirm existing operation IDs/request schemas before adding routes; adapt the subset explicitly rather than inventing duplicate authentication APIs.
+This addendum records the implemented AUTH-01–03 browser subset below and the pending lifecycle requirements. The approved target remains `packages/contracts/openapi.json`; `m1-implemented.openapi.json` records the earlier device/tenant foundation. Activation, recovery and MFA are not running endpoints.
 
 Browser sessions use Sanctum stateful authentication, an Edu-only host-only API cookie, exact credentialed CORS and verified CSRF. Return a CSRF token only to a trusted origin where host-only cross-subdomain cookies cannot be read. Never widen the cookie domain to include Nursery. Missing/untrusted Origin and missing/invalid CSRF fail closed on browser mutations. Browser session rotation and logout revoke server-side state. Next.js must not infer school authority from its route name or accept tokens in URLs/localStorage.
 
