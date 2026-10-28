@@ -90,10 +90,3 @@ jobs:
           persist-credentials: false
       - name: Verify Flutter with metadata egress denied and privileges dropped
         run: bash scripts/verify_flutter_isolated.sh
-      - name: Preserve resolved Flutter lock for review
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: flutter-dependency-lock
-          path: apps/edu-mobile/pubspec.lock
-          retention-days: 3
-          if-no-files-found: error
