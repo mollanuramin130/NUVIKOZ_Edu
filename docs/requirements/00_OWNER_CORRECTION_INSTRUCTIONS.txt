@@ -1,0 +1,643 @@
+# NUVIKOZ EDU — GATE 2 CORRECTION & GATE 3 REPOSITORY PREPARATION
+
+## CONTINUE THE EXISTING PROJECT — DO NOT RESTART
+
+You are continuing the existing **NUVIKOZ Edu School Management SaaS** architecture and development planning project.
+
+The previous task produced the NUVIKOZ Edu Architecture Review Package, including an 18-section HTML architecture report, proposed database design, feature contracts, REST API specifications, security architecture, testing strategy, and GitHub repository plan.
+
+**Your immediate objective is to correct the existing architecture using the new Owner-Confirmed Requirements, conduct a complete consistency audit, finalize the corrected architecture baseline, and proceed toward GitHub repository creation.**
+
+Do not restart requirements discovery.
+
+Do not repeatedly ask the owner to confirm routine technical decisions.
+
+Act as a coordinated team of Senior Software Architect, Laravel Developer, Next.js Developer, Flutter Developer, Database Architect, Cybersecurity Engineer, DevOps Engineer, Senior UI/UX Designer, QA Engineer, and Technical Documentation Lead.
+
+---
+
+## PHASE 1 — READ AND AUDIT EXISTING PROJECT ARTIFACTS
+
+Read the existing project artifacts before making changes.
+
+Use the previous architecture review and Final Audited Master Prompt v3.0 as reference sources.
+
+Locate and inspect, where available:
+
+- NUVIKOZ Edu Architecture Review HTML
+- Final Audited Master Prompt v3.0
+- Software Requirements Specification
+- Requirements Coverage Register
+- Feature Contracts
+- Database Dictionary and ERD
+- OpenAPI Specification
+- Test Matrix
+- Architecture Decisions
+- Development Roadmap
+- Repository Preparation Plan
+
+The previous report references files such as:
+
+- `02_REQUIREMENTS_COVERAGE.csv`
+- `03_FEATURE_CONTRACTS.csv`
+- `04_DATA_DICTIONARY.csv`
+- `05_OPENAPI.json`
+- `06_TEST_MATRIX.csv`
+- `08_REVIEW_AND_VALIDATION.md`
+- `09_RELATIONSHIPS_AND_FLOWS.md`
+
+Inspect these files if they are accessible.
+
+If any artifact is missing, explicitly identify it and reconstruct the required content from verified source documents rather than claiming it was inspected.
+
+Preserve all previously confirmed requirements except where the owner has explicitly updated them.
+
+---
+
+## PHASE 2 — APPLY NEW OWNER-CONFIRMED DEMO POLICY
+
+### 2.1 Zero File Uploads in Demo Mode
+
+This is a mandatory and non-negotiable requirement.
+
+**DEMO USER FILE UPLOAD LIMIT = ZERO.**
+
+All Demo School accounts must be prevented from uploading user-supplied files.
+
+This includes:
+
+- Student photographs
+- Admission documents
+- Birth certificates
+- Transfer certificates
+- Homework attachments
+- Assignment submissions
+- School logos
+- Teacher documents
+- Images
+- PDF files
+- CSV or Excel files
+- Payment screenshots
+- Any other user-provided file
+
+Do not create exceptions for privileged Demo users.
+
+The rule applies to every interface:
+
+- Next.js web application
+- Flutter mobile application
+- Laravel REST API
+- Background jobs
+- Import endpoints
+- Any future client application
+
+A disabled Upload button alone is insufficient.
+
+Implement server-side authorization and upload restrictions.
+
+The backend must reject unauthorized file uploads even when a user bypasses the frontend and sends requests directly to the API.
+
+Apply restrictions to multipart uploads, file imports, base64 file payloads, remote-file ingestion, and equivalent attachment mechanisms.
+
+### 2.2 Keep Demo Fully Interactive for Non-File Activities
+
+Demo users must still be able to explore the software and create ordinary application records.
+
+Allow authorized Demo operations such as:
+
+- Student profile creation
+- Class and section management
+- Academic sessions
+- Subject management
+- Attendance entry
+- Homework creation
+- Homework Done marking
+- Examination and marks entry
+- Notice creation and approval simulation
+- Timetable creation
+- Teacher assignment
+- Reports and dashboards
+- Fee-record demonstrations
+
+Use realistic workflows without requiring file uploads.
+
+Apply configurable limits to Demo-created records, requests, report generation, and database consumption to prevent abuse.
+
+Do not confuse zero file uploads with zero database usage.
+
+### 2.3 Shared Read-Only Sample Document Library
+
+Create a reusable library of preloaded demonstration documents.
+
+Provide examples such as:
+
+- Sample Birth Certificate
+- Sample Admission Document
+- Sample Report Card
+- Sample Assignment
+- Sample Payment Receipt
+- Sample Student ID Card
+- Sample Transfer Certificate
+
+The documents must be clearly marked **SAMPLE / DEMO**.
+
+Demo users may preview authorized sample documents, but cannot replace, modify, or upload new versions.
+
+Avoid creating duplicate physical copies of identical sample files for every Demo tenant.
+
+Use shared, controlled, read-only sample assets with safe URLs and access policies.
+
+Avoid generating a new physical PDF for every preview when a shared static template or lightweight preview can meet the requirement.
+
+### 2.4 Update Demo Storage Policy
+
+Replace the previous Demo upload allocation of 1 GB.
+
+The updated policy is:
+
+- Demo Duration: 30 days
+- Demo User Upload Allowance: 0 bytes
+- Demo User File Count: 0
+- Demo Sample Library: Shared, read-only
+- Demo Database Records: Allowed within controlled limits
+- Demo Runtime Usage: Rate-limited
+- Demo Notification Services: No uncontrolled external spending
+
+Do not retain the previous 1 GB Demo Upload Quota anywhere in the active design.
+
+Preserve obsolete values only in clearly marked historical decision records.
+
+### 2.5 Demo-to-Live Conversion
+
+Preserve the previously approved Demo-to-Live conversion workflow.
+
+When a school becomes approved, authorized School Admin users may review and transfer valid user-created Demo records to the Live School environment.
+
+Requirements:
+
+- Preserve valid student and academic records.
+- Prevent duplicate records.
+- Preserve internal identifiers and relationships.
+- Maintain school-level isolation.
+- Exclude preloaded sample records unless explicitly converted into valid school-owned records.
+- Never transfer shared sample PDF files into private school ownership automatically.
+- Perform preview, validation, conflict detection, and confirmation.
+- Preserve audit history.
+- Ensure conversion is safely retryable.
+
+After successful conversion, the school receives its applicable Live subscription and storage policy.
+
+---
+
+## PHASE 3 — FINALIZE FREE LIVE PDF AND FILE POLICIES
+
+### 3.1 Free Live School — Confirmed Limits
+
+Use these exact initial defaults:
+
+- Maximum PDF size: **5 MB per PDF**
+- Maximum active uploaded PDFs: **50 per school**
+- Maximum new PDF uploads: **10 per school per day**
+- Total school file storage: **500 MB**
+- Storage warning threshold: **80%**
+- New uploads blocked at: **100%**
+
+All limits must apply together.
+
+If a school reaches any applicable limit, further uploads must be rejected.
+
+Preserve previously uploaded documents and authorized read access.
+
+For quota enforcement, count retained physical file versions until they are actually removed under an approved retention policy.
+
+Define active-file count separately from physical retained-version storage so deletion, replacement, or versioning cannot silently bypass storage restrictions.
+
+Use server-derived school-local dates for daily limits.
+
+Prevent concurrent requests from exceeding quotas through transactional reservations and safe accounting.
+
+### 3.2 Paid Live School — Configurable Limits
+
+Paid School limits must be adjustable through Super Admin settings.
+
+Support:
+
+- Maximum PDF size
+- Maximum PDF count
+- Daily PDF upload allowance
+- Total storage quota
+- School-specific overrides
+- Versioned policies
+- Audit logs
+- Storage usage reports
+
+Do not hardcode paid storage allowances or require a paid third-party storage service.
+
+Super Admin must be able to configure the plan or an individual school without changing application source code.
+
+### 3.3 Feature-Specific Restrictions
+
+Student homework file uploads remain disabled in the initial release, including Paid Live schools.
+
+Students may view homework and mark it Done according to existing policy.
+
+Teacher-created assignments and other permitted document workflows must obey their respective feature permissions, entitlement rules, and upload limits.
+
+The new Free Live PDF policy does not automatically enable previously disabled upload features.
+
+### 3.4 PDF Preview, Sharing, and Downloads
+
+Apply authorization to all private PDF downloads and previews.
+
+Use:
+
+- Tenant-aware authorization
+- Resource ownership checks
+- Appropriate download rate limits
+- Non-public document storage
+- Safe content-disposition headers
+- Audit logging for sensitive operations
+- Storage and bandwidth monitoring
+
+Prevent one school from accessing another school's documents.
+
+Do not expose private student documents through public file URLs.
+
+### 3.5 System-Generated PDFs
+
+Separately control:
+
+- Report card generation
+- Receipts
+- Student ID cards
+- Certificates
+- Other generated PDFs
+
+A system-generated document must not automatically consume the user-upload PDF count.
+
+However, every physically stored generated document must still be accounted for in the global physical storage budget.
+
+Use cached templates, bounded generation, and on-demand rendering where appropriate.
+
+Avoid uncontrolled PDF-generation loops.
+
+---
+
+## PHASE 4 — UPDATE THE COMPLETE ARCHITECTURE
+
+Apply the corrected policies throughout the entire project specification.
+
+Update every affected section and associated contract, including:
+
+1. Software Requirements Specification
+2. Owner-Confirmed Requirements Register
+3. Feature Contracts
+4. Demo Registration and Lifecycle
+5. Subscription Entitlements
+6. State Machines
+7. Database Schema
+8. File Metadata and Storage Accounting
+9. Laravel API Specification
+10. Next.js UI and Role-Based Dashboards
+11. Flutter Application Workflows
+12. Storage Quota Management
+13. Security and Authorization
+14. Testing and Acceptance Criteria
+15. Hostinger Capacity Planning
+16. Development Roadmap
+17. Architecture Decision Register
+
+Ensure that no contradictory 1 GB Demo Upload Rule remains active anywhere.
+
+Do not redesign unaffected modules unnecessarily.
+
+Keep the previously confirmed school, academic, attendance, teacher, examination, subscription, fees, login, notification, and reporting policies intact.
+
+---
+
+## PHASE 5 — TECHNICAL ARCHITECTURE REQUIREMENTS
+
+Preserve the existing NUVIKOZ Nursery Management technology families.
+
+Use:
+
+**Backend:** Laravel / PHP REST API
+
+**Web:** Next.js with TypeScript
+
+**Mobile:** Flutter / Dart
+
+**Database:** MySQL-compatible MariaDB
+
+**Repository:** GitHub monorepo
+
+**Hosting:** Existing Hostinger Unlimited Web Hosting, subject to compatibility verification.
+
+The new NUVIKOZ Edu system must remain completely isolated from the existing Nursery Management production project.
+
+### Preferred Deployment Architecture
+
+Evaluate and prefer, if compatible:
+
+- One Laravel REST API deployment
+- One unified Next.js web application deployment
+- One Flutter mobile application using the same API
+
+Provide separate role-based dashboards within the unified web app.
+
+Avoid unnecessary separate Node.js deployments for Student, Parent, Teacher, Principal, School Admin, and Super Admin.
+
+Minimize idle memory, background processes, duplicate dependencies, unnecessary database connections, and storage use.
+
+Do not assume that the hosting account has five unused Node.js deployment slots merely because a public plan page describes a five-website allowance.
+
+Verify actual account resources before deployment.
+
+Do not make Docker, Redis, Supervisor, persistent WebSocket servers, or a VPS mandatory for the initial release.
+
+---
+
+## PHASE 6 — DATABASE AND SECURITY REVIEW
+
+Review the database architecture from a Senior Database Architect and Cybersecurity Engineer perspective.
+
+Ensure:
+
+- Immutable internal IDs
+- Strict school-level tenant isolation
+- Proper foreign keys and constraints
+- Versioned business rules
+- Indexed queries
+- Data retention rules
+- Safe migrations
+- Secure document references
+- File size and count accounting
+- Transaction-safe quota updates
+- No unauthorized cross-school access
+- No destructive Demo-to-Live conversion
+
+Do not store PDF binary content unnecessarily inside MySQL.
+
+Maintain secure metadata and private file paths.
+
+Review the impact of zero-upload Demo accounts on storage tables, file reservations, document bindings, entitlement checks, and conversion logic.
+
+Avoid unnecessary tables or infrastructure if a simpler design provides equivalent guarantees.
+
+---
+
+## PHASE 7 — EXTEND QA AND ACCEPTANCE TESTS
+
+Add mandatory tests for:
+
+**Demo Mode**
+
+- PDF upload rejected.
+- Image upload rejected.
+- CSV/Excel import rejected.
+- Base64 file upload rejected.
+- Remote-file ingestion rejected.
+- Direct API upload rejected.
+- Unauthorized background file creation rejected.
+- Student creation allowed within Demo quotas.
+- Attendance entry allowed.
+- Sample PDF preview works.
+- Shared sample documents are not physically duplicated per tenant.
+- Demo-to-Live conversion preserves valid records.
+- Shared sample files are excluded from private school conversion.
+
+**Free Live Mode**
+
+- 5 MB PDF accepted when otherwise valid.
+- PDF larger than 5 MB rejected.
+- Fifty active uploaded PDFs allowed within quotas.
+- Fifty-first PDF rejected.
+- Eleventh daily PDF upload rejected.
+- Total 500 MB quota enforced.
+- Warning generated at 80%.
+- Existing authorized files remain readable at full quota.
+- Concurrent uploads cannot bypass quotas.
+- File replacement and retained versions are accounted for.
+
+**Paid Live Mode**
+
+- Super Admin changes school-specific limits.
+- Updated limits apply without code changes.
+- School Admin cannot modify protected quota settings.
+- Audit history records all changes.
+
+**Security**
+
+- School A cannot access School B documents.
+- Expired permissions are enforced.
+- Student homework upload remains disabled.
+- Malicious file content is rejected or quarantined.
+- Direct API attempts cannot bypass feature restrictions.
+
+Clearly distinguish designed tests from tests actually implemented and executed.
+
+Never report unexecuted tests as passed.
+
+---
+
+## PHASE 8 — CROSS-DISCIPLINE FINAL AUDIT
+
+Conduct a structured final architecture review from these perspectives:
+
+- Senior Software Architect
+- Senior Laravel Developer
+- Senior Next.js Developer
+- Senior Flutter Developer
+- Senior Database Architect
+- Cybersecurity Engineer
+- DevOps Engineer
+- Senior UI/UX Designer
+- Senior Quality Assurance Engineer
+
+Identify and resolve:
+
+- Contradictory requirements
+- Missing dependencies
+- Permission conflicts
+- Demo/Live state conflicts
+- Incorrect quota accounting
+- Storage exhaustion risks
+- Database integrity risks
+- Hostinger deployment incompatibilities
+- Incorrect API assumptions
+- UI/API behavior inconsistencies
+- Missing negative test cases
+- Unnecessary architectural complexity
+
+Document the actual checks performed.
+
+Do not claim independent human reviews or completed runtime tests when those have not occurred.
+
+Preserve future configurability and modular development.
+
+---
+
+## PHASE 9 — PREPARE GITHUB REPOSITORY CREATION
+
+After completing the corrected Architecture Review, prepare the project for GitHub repository creation.
+
+Preferred repository name:
+
+`NUVIKOZ_Edu`
+
+Preferred visibility:
+
+Private
+
+Use the GitHub account or organization explicitly authorized by the owner.
+
+Recommended monorepo structure:
+
+```text
+NUVIKOZ_Edu/
+├── apps/
+│   ├── edu-api/
+│   ├── edu-web/
+│   └── edu-mobile/
+├── packages/
+│   └── contracts/
+├── docs/
+│   ├── requirements/
+│   ├── architecture/
+│   ├── database/
+│   ├── api/
+│   ├── security/
+│   ├── ui-ux/
+│   ├── testing/
+│   ├── deployment/
+│   ├── decisions/
+│   └── agent-handoffs/
+├── scripts/
+├── tests/
+├── .github/
+│   └── workflows/
+├── AGENTS.md
+├── README.md
+├── CONTRIBUTING.md
+├── CHANGELOG.md
+└── CURRENT_STATUS.md
+```
+
+Optimize the final structure according to the architecture review.
+
+### Multi-Agent Development Compatibility
+
+The repository must be easy to understand and maintain using:
+
+- ChatGPT Work
+- Cursor
+- Gemini
+- Other capable coding agents
+- Human developers
+
+Maintain:
+
+- Architecture documentation
+- API contracts
+- Database migration documentation
+- Environment examples
+- Branch strategy
+- Coding standards
+- Testing instructions
+- Development progress records
+- Current milestone
+- Pending tasks
+- Agent handoff notes
+
+Every agent must be able to resume work from repository documentation without relying on previous conversations.
+
+Avoid secrets, production credentials, or real student data in the repository.
+
+---
+
+## PHASE 10 — EXECUTION AND APPROVAL GATES
+
+Proceed autonomously through architecture correction, documentation updates, consistency checks, and repository preparation.
+
+Do not request approval for every minor engineering decision.
+
+**Gate 2 — Architecture Correction**
+
+Complete:
+
+- Corrected Architecture Review
+- Updated Requirements Register
+- Updated Database and API Contracts
+- Updated Storage Policies
+- Updated Security Rules
+- Updated Test Matrix
+- Updated Architecture Decision Register
+- Updated Development Roadmap
+
+Then deliver a concise Change Summary identifying what changed and why.
+
+**Gate 3 — GitHub Repository Creation**
+
+After the corrected architecture baseline is complete, verify:
+
+- GitHub connection and repository write permissions
+- Repository owner/organization
+- Repository name availability
+- Private repository visibility
+- Initial branch configuration
+
+Present the final repository creation plan and request one explicit owner approval before creating the repository.
+
+Do not claim that permission for architecture correction automatically authorizes repository creation.
+
+Once the owner approves, create the repository, add the approved documentation and project scaffold, and report the actual repository URL and commit reference.
+
+Do not modify the existing Nursery Management repository.
+
+**Gate 4 — Development**
+
+Begin implementation in small, documented milestones only after the repository and implementation plan are approved.
+
+Build the architecture foundation before adding complex business modules.
+
+Maintain testing and documentation with every milestone.
+
+**Gate 5 — Deployment**
+
+Do not deploy to Hostinger production, modify existing websites or databases, spend money, register additional services, or publish the mobile application without separate authorization.
+
+---
+
+## REQUIRED OUTPUT FOR THIS TURN
+
+Complete the architecture corrections first.
+
+Provide:
+
+1. Updated NUVIKOZ Edu Architecture Review
+2. Owner-Confirmed Storage and PDF Policy
+3. Architecture Change Log
+4. Revised Database and API Contracts
+5. Updated Testing and Acceptance Matrix
+6. Hosting Resource Impact Assessment
+7. Final GitHub Repository Structure
+8. Repository Creation Readiness Report
+9. Outstanding High-Impact Approval Items
+
+Preserve the updated artifacts in the working project and provide accessible links.
+
+If GitHub tools are already connected, verify repository creation capability without making changes prematurely.
+
+At the end, request explicit approval to create the new private GitHub repository.
+
+**DO NOT STOP AT ANOTHER GENERAL ARCHITECTURE EXPLANATION.**
+
+Carry out the document corrections, verify consistency, prepare the repository creation plan, and advance the project to the next approval gate.
+
+Do not invent completed actions, tests, commits, or repository URLs.
+
+### FINAL OBJECTIVE
+
+Produce a corrected, consistent, secure, resource-efficient, multi-tenant NUVIKOZ Edu architecture and prepare a clean, maintainable, AI-agent-friendly GitHub repository for the next development phase.
+
+The existing Nursery Management Project must remain unchanged.
