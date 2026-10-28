@@ -3,6 +3,7 @@
 use App\Http\Middleware\ActiveIdentity;
 use App\Http\Middleware\BrowserBoundary;
 use App\Http\Middleware\BrowserCsrf;
+use App\Http\Middleware\EduTrustProxies;
 use App\Http\Middleware\RequestId;
 use App\Http\Middleware\TenantContext;
 use App\Support\Api;
@@ -13,6 +14,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
+use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -20,7 +22,8 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(web: __DIR__.'/../routes/browser.php', api: __DIR__.'/../routes/api.php', commands: __DIR__.'/../routes/console.php')
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->prepend([RequestId::class, BrowserBoundary::class]);
+        $middleware->remove(TrustProxies::class);
+        $middleware->prepend([RequestId::class, EduTrustProxies::class, BrowserBoundary::class]);
         $middleware->redirectGuestsTo(fn () => null);
         $middleware->web(replace: [PreventRequestForgery::class => BrowserCsrf::class]);
         $middleware->alias(['identity.active' => ActiveIdentity::class, 'tenant' => TenantContext::class]);
