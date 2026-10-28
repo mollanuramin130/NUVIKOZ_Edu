@@ -1,0 +1,22 @@
+name: Repository Integrity
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: repository-integrity-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  repository-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout reviewed source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Validate architecture contracts and shared assets
+        run: python3 scripts/verify_repository.py
