@@ -1,10 +1,20 @@
+# Current checkpoint — AUTH-01–03 browser implementation
+
+Branch: feature/m1-browser-auth-account-lifecycle. Remote starting HEAD verified as 370c1836ddf3a832408440bb313e09bf17089e5c; no concurrent changes observed before coding. Repository is PUBLIC.
+
+Implemented dedicated browser session/CSRF/origin boundary, Sanctum web-guard authentication, database/encrypted host-only secure cookies, session rotation, current-user school checks/expiry, login/logout, and Next.js credentialed login/protected shells/expiry/denial screens. Added negative PHP tests and real cross-origin HTTPS Playwright integration in existing MariaDB API CI. Local PHPUnit:41 tests/124 assertions passed. Web lint/type/build and real browser CI must be checked on the actual committed head before declaring readiness.
+
+Activation/recovery/MFA remain pending; platform and forced-password-change login is denied. Do not start those secondary workflows until browser integration passes. Follow M1_AUTH_INCREMENT_2_CONTRACT.md for routes/configuration. No production/Hostinger/Nursery changes. Flutter policy unchanged.
+
+Earlier handoff below is historical evidence and does not override this checkpoint.
+
 # Canonical status — merged foundation and authentication increment
 
 PR #1 was owner-authorized and squash-merged from exact approved HEAD ff0da5a6536e207b1ecd17796f85c800f153b707. Actual merge/main SHA: c4ab7ae8cc4569829eb1556a812859f2b02e6aaf. Seven checks passed; no conflicts or blocking reviews were displayed. Main repository-integrity check passed after merge; full post-merge M1 CI on main passed API, web and metadata-blocked Flutter at https://github.com/mollanuramin130/NUVIKOZ_Edu/actions/runs/40698176072 .
 
 The next remote branch, feature/m1-browser-auth-account-lifecycle, was created from merged main. Local API verification passed 38 tests / 109 assertions and Pint. Initial work adds a fail-closed exact-origin validator and negative tests for browser CORS/CSRF integration. It is not yet wired into live browser authentication; no new login/session endpoint is claimed. CI push coverage now includes main and this feature branch. Read M1_AUTH_INCREMENT_2.md and its contract before implementing the session handshake, activation, recovery and privileged MFA.
 
-GitHub reports that branch protection will not be enforced on this private repository until the account/repository meets its plan requirements. No plan purchase or account migration was performed. Continue manual exact-HEAD, green-check and explicit merge-approval gates. Required check proposal: api, web, flutter and repository-integrity.
+GitHub reports that branch protection will not be enforced on the then-private repository until the account/repository meets its plan requirements. No plan purchase or account migration was performed. Continue manual exact-HEAD, green-check and explicit merge-approval gates. Required check proposal: api, web, flutter and repository-integrity.
 
 No production/Hostinger/DNS/Nursery changes. Activation/recovery/MFA/browser integration remain incomplete and unverified. Flutter must use the existing metadata-blocked, privilege-dropped CI procedure. Earlier review details follow as historical evidence; this opening section supersedes their pending-merge status.
 
