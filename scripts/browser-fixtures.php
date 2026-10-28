@@ -1,0 +1,30 @@
+<?php
+
+use App\Models\Membership;
+use App\Models\School;
+use App\Models\User;
+use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+
+// Disposable synthetic integration database only. Never invoke against real data.
+require __DIR__.'/../apps/edu-api/vendor/autoload.php';
+$app = require __DIR__.'/../apps/edu-api/bootstrap/app.php';
+$app->make(Kernel::class)->bootstrap();
+if (! app()->environment('testing') || config('database.connections.'.config('database.default').'.database') !== 'edu_test') {
+    throw new RuntimeException('Requires isolated edu_test database and APP_ENV=testing.');
+}
+Cache::flush();
+if (($argv[1] ?? '') === 'expire') {
+    DB::table('sessions')->update(['last_activity' => time() - 30000]);
+    exit;
+}
+foreach (['A' => 'live_enabled', 'B' => 'live_enabled', 'S' => 'suspended'] as $code => $state) {
+    $school = School::firstOrCreate(['code' => $code], ['name' => 'Synthetic '.$code, 'data_stage' => 'live', 'access_state' => $state, 'entitlement_ends_at' => now()->addDays(30)]);
+    if (! Membership::where('school_id', $school->id)->exists()) {
+        $user = User::create(['name' => 'Synthetic browser fixture', 'password' => 'Synthetic-Browser-Only-Password']);
+        Membership::create(['school_id' => $school->id, 'user_id' => $user->id, 'role' => 'teacher', 'login_identifier' => 'TEACHER', 'status' => 'active']);
+        $inactive = User::create(['name' => 'Synthetic inactive fixture', 'password' => 'Synthetic-Browser-Only-Password']);
+        Membership::create(['school_id' => $school->id, 'user_id' => $inactive->id, 'role' => 'student', 'login_identifier' => 'INACTIVE', 'status' => 'inactive']);
+    }
+}
