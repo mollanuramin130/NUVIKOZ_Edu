@@ -1,0 +1,67 @@
+table,column,references_table,scope_guard,on_delete,validation
+school_code_history,school_id,schools,platform relation with explicit authorization,RESTRICT historical records,Tenant/session/role/effective policy checks also required
+registration_reviews,registration_id,registration_requests,platform relation with explicit authorization,RESTRICT historical records,Tenant/session/role/effective policy checks also required
+registration_reviews,actor_id,users,platform relation with explicit authorization,RESTRICT historical records,Tenant/session/role/effective policy checks also required
+identifiers,user_id,users,platform relation with explicit authorization,RESTRICT historical records,Tenant/session/role/effective policy checks also required
+activation_tokens,user_id,users,platform relation with explicit authorization,RESTRICT historical records,Tenant/session/role/effective policy checks also required
+activation_tokens,created_by,users,platform relation with explicit authorization,RESTRICT historical records,Tenant/session/role/effective policy checks also required
+auth_sessions,user_id,users,platform relation with explicit authorization,RESTRICT historical records,Tenant/session/role/effective policy checks also required
+support_sessions,school_id,schools,platform relation with explicit authorization,RESTRICT historical records,Tenant/session/role/effective policy checks also required
+support_sessions,actor_id,users,platform relation with explicit authorization,RESTRICT historical records,Tenant/session/role/effective policy checks also required
+platform_terms,school_id,schools,platform relation with explicit authorization,RESTRICT historical records,Tenant/session/role/effective policy checks also required
+entitlements,school_id,schools,platform relation with explicit authorization,RESTRICT historical records,Tenant/session/role/effective policy checks also required
+demo_grants,school_id,schools,platform relation with explicit authorization,RESTRICT historical records,Tenant/session/role/effective policy checks also required
+platform_payments,school_id,schools,platform relation with explicit authorization,RESTRICT historical records,Tenant/session/role/effective policy checks also required
+platform_payments,receiving_account_id,receiving_accounts,platform relation with explicit authorization,RESTRICT historical records,Tenant/session/role/effective policy checks also required
+platform_receipts,payment_id,platform_payments,platform relation with explicit authorization,RESTRICT historical records,Tenant/session/role/effective policy checks also required
+platform_payment_adjustments,payment_id,platform_payments,platform relation with explicit authorization,RESTRICT historical records,Tenant/session/role/effective policy checks also required
+memberships,user_id,users,platform relation with explicit authorization,RESTRICT historical records,Tenant/session/role/effective policy checks also required
+membership_permissions,membership_id,memberships,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+session_change_requests,session_id,academic_sessions,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+class_offerings,session_id,academic_sessions,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+class_offerings,class_id,classes,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+sections,class_offering_id,class_offerings,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+subject_offerings,class_offering_id,class_offerings,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+subject_offerings,subject_id,subjects,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+student_identifier_history,student_id,students,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+guardian_student_links,guardian_id,guardians,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+guardian_student_links,student_id,students,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+contact_change_requests,guardian_id,guardians,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+enrollments,student_id,students,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+enrollments,session_id,academic_sessions,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+enrollments,section_id,sections,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+teacher_assignments,membership_id,memberships,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+teacher_assignments,section_id,sections,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+attendance_submissions,section_id,sections,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+attendance_records,submission_id,attendance_submissions,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+attendance_records,enrollment_id,enrollments,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+attendance_events,record_id,attendance_records,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+attendance_corrections,record_id,attendance_records,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+notice_revisions,notice_id,notices,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+notice_approvals,notice_id,notices,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+notice_publications,notice_id,notices,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+homework,section_id,sections,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+homework_completions,homework_id,homework,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+homework_completions,enrollment_id,enrollments,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+exams,session_id,academic_sessions,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+exam_subjects,exam_id,exams,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+marks_versions,exam_subject_id,exam_subjects,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+marks_versions,enrollment_id,enrollments,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+result_versions,exam_id,exams,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+result_versions,enrollment_id,enrollments,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+result_approvals,result_version_id,result_versions,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+fee_obligations,enrollment_id,enrollments,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+fee_events,enrollment_id,enrollments,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+fee_allocations,event_id,fee_events,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+fee_allocations,obligation_id,fee_obligations,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+school_receipts,event_id,fee_events,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+timetable_versions,session_id,academic_sessions,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+timetable_slots,timetable_version_id,timetable_versions,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+substitutions,slot_id,timetable_slots,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+document_versions,document_id,documents,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+document_issuances,document_id,documents,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+storage_quotas,effective_policy_version_id,storage_policy_versions,platform relation with explicit authorization,RESTRICT historical records,Tenant/session/role/effective policy checks also required
+upload_reservations,policy_version_id,storage_policy_versions,platform relation with explicit authorization,RESTRICT historical records,Tenant/session/role/effective policy checks also required
+notification_recipients,event_id,notification_events,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+outbox,event_id,notification_events,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
+notification_deliveries,event_id,notification_events,"composite(school_id,foreign_id)->(school_id,id)",RESTRICT historical records,Tenant/session/role/effective policy checks also required
