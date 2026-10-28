@@ -6,6 +6,7 @@ use App\Models\AuditEvent;
 use App\Models\Membership;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -13,6 +14,15 @@ class ProvisionStaff
 {
     public function execute(Membership $actor, array $data, string $requestId, ?string $key = null): array
     {
+        app(SchoolAccess::class)->requireAdmin($actor);
+        Validator::make($data, [
+            'name' => ['required', 'string', 'max:160'],
+            'login_identifier' => ['required', 'string', 'max:80', 'regex:/\A[A-Za-z0-9_-]+\z/'],
+            'role' => ['required', 'in:teacher,principal'],
+        ])->validate();
+        if (array_diff(array_keys($data), ['name', 'login_identifier', 'role'])) {
+            throw ValidationException::withMessages(['payload' => 'Unknown provisioning field.']);
+        }
         app(SchoolAccess::class)->requireAdmin($actor);
         abort_unless(app(SchoolAccess::class)->canWrite($actor), 403, 'School is read-only.');
 
