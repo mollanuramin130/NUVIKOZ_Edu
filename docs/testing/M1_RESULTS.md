@@ -1,0 +1,19 @@
+# M1 increment1 — actual evidence and limits
+
+Base main71047d68d04f85c4b41ec28a85bb9a39367e7578;feature/m1-tenant-auth-foundation. Repository/private/main/branch verified in authorized Cloud Browser;connector remains404. No concurrent remote commit observed beforecoding. Localmirrorwasnotagitcheckout;isolatedgitbaselinecreated fordiff only,notreported asremoteSHA.
+
+PHP8.4.1CLI,Composer2.10.3,Laravel13.39.0 resolved. LocalSQLite suite passed29tests/82assertions beforefinalcredentialtransactionrefinement;finalcommands/resultsareaddedafterexecution. Pintformattedchanges;final--testrequired. Next16.4.3/React19.2.8/Node24.22.1:typecheck andproductionbuildpassed;typecheckscriptnowaddsnexttypegenforcleanCIbuilds.
+
+MariaDB10.11.14preparedanddatadirinitializedoutsidegit;serverbindfailedUNIXsocketOperationnotpermitted. NoMariaDBlocalpass. GitHubCIservicewillrunthesamefeaturetestsplusfresh/rollback/migrate;resultmustbeobserved. NoDockerrequirementforHostinger.
+
+Flutterverificationautomaticallyrejectedbecauseitcontacted169.254.169.254(cloudmetadata,riskofinstancecredentials). NoFlutteranalyze/test/buildorAndroidplatformgeneration/lockclaimed;manualminimalsourceonly.Noindirectretryperformed.
+
+ApprovedtargetAPI/dictionary/storagepoliciesunchanged;implementedsubsetandmigrationdeltaadded. Studenthomeworkuploadsclosed,Demoallfile/ingestionroutesdenied;Liveupload/quotaimplementationnotclaimed.SAprovisioninglimitedteacher/principal;child/guardianprovisioningandbrowserCSRF/reset/MFAdeferred.Norealminorrecordsorcredentialsintests.
+
+PRisintendeddraft,nomainmerge.NoHostinger/DNS/liveDB/Nurserychanges,paidservices,realmessagesorapppublicationauthorized/executed.
+
+Final local execution:29tests/82assertions passed after credential-lock/audit refinement;Pint --test passed;Composercheck-platform-reqspassedPHP8.4.1/extensions.Nexttypecheckincludingnexttypegen rerun;webproductionbuildpassedearlierwithsameUIcode. RuntimeFlutterblocked;MariaDBCIpendingremoteobservation.
+
+Removed the inherited assert-true example;finalsuite contains29meaningful feature tests/82assertions. Composercheck-platform-reqsandPint--testpassed.
+
+WebESLintpassedafteraddingeslint-config-next16.4.3;clean-nexttypegen+tsctypecheckpassed.
