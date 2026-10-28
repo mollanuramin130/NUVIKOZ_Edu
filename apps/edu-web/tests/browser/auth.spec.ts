@@ -92,7 +92,7 @@ test('stale CSRF refreshes handshake without automatically replaying logout', as
   await other.goto('/login');
   expect((await login(context)).status()).toBe(200);
   await page.getByRole('button', { name: 'Sign out' }).click();
-  await expect(page.getByRole('alert')).toContainText('Please retry');
+  await expect(page.getByRole('main').getByRole('alert')).toContainText('Please retry');
   expect((await context.request.get(`${api}/me`, { headers: { Origin: origin } })).status()).toBe(200);
   await page.getByRole('button', { name: 'Retry sign out' }).click();
   await expect(page).toHaveURL(/\/login$/);
@@ -112,6 +112,6 @@ test('production web refuses credential submission from HTTP before contacting A
   await page.getByLabel('Account identifier').fill('TEACHER');
   await page.getByLabel('Password', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('HTTPS is required');
+  await expect(page.getByRole('main').getByRole('alert')).toContainText('HTTPS is required');
   expect(apiRequests).toEqual([]);
 });
