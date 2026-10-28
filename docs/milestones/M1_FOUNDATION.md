@@ -1,6 +1,6 @@
 # M1 — Multi-Tenant Foundation, Authentication, RBAC, Laravel API Foundation and CI
 
-Status: **Ready for implementation**. Gate3 repository initialization is complete. Application implementation has not started; this is an implementation-ready task plan,not a completion claim. Planning effort:3–5engineering weeks,subject to runtime access and review.
+Status: **In progress — first foundation increment implemented and security reviewed in PR #1**. The task table remains the full M1 acceptance plan; it does not claim that every row is complete. Current evidence is in `docs/testing/M1_SECURITY_REVIEW.md`. Browser auth, lifecycle, MFA and delegated permissions remain incomplete.
 
 ## Ordered tasks and acceptance gates
 
@@ -28,6 +28,8 @@ Synthetic SchoolA/B;a multi-school user;SA/P/T/S/G;inactive staff;revoked guardi
 
 M1 is complete only after runnable API,committed dependency locks and executed unit/integration/contract checks support the tenant/auth/RBAC claims. Web/mobile builds need their own scaffolds and evidence. No production migration,deployment,DNS,purchase,real message or app-store publication is authorized.
 
-## Next bounded task
+## Next bounded increment
 
-**M1-01**: establish isolated PHP/Composer/MariaDB runtime and record compatible versions. Then implement M1-02 Laravel health/error foundation. The initialization environment currently has Node/Python but lacks PHP,Composer and Flutter;do not substitute an untestable handwritten Laravel shell.
+Continue with [M1 authentication increment 2](M1_AUTH_INCREMENT_2.md) after owner-approved review/merge of PR #1. Its dependency and acceptance matrix covers Sanctum browser cookies, exact CORS/CSRF, Next.js integration, activation/recovery, privileged MFA, revocation, school-specific authority, negative tests and mobile integration preparation. Recommended branch: `feature/m1-browser-auth-account-lifecycle`.
+
+Completed evidence supports API bootstrap, initial identity schema, explicit tenant/token boundary, basic staff provisioning, audit row protection and isolated CI. Full operation capabilities, last-SA mutations, browser/mobile lifecycle authentication and production compatibility are still pending. Do not restart the scaffold or report all M1 tasks complete.
