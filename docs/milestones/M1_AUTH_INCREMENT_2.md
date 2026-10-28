@@ -1,6 +1,6 @@
 # M1 increment 2 — Browser authentication and account lifecycle
 
-PR #1 is merged. AUTH-01–03 implementation is in Draft PR #2; integration acceptance is tracked in the canonical handoff. AUTH-04 onward remain pending. Existing branch: `feature/m1-browser-auth-account-lifecycle`. Do not recreate this branch. Do not merge PR #2 without separate owner authorization.
+PR #2 is merged at `248917192c9d118c9e2ff3630a9e530a3e1c630a`. AUTH-04 is implemented on `feature/m1-auth04-account-activation`; test/CI evidence is in the canonical handoff. AUTH-05 onward remain pending. Do not reuse the former browser branch or merge this increment without owner authorization.
 
 The first increment has health/token/tenant/provisioning foundations. This separate increment implements the following bounded work, in dependency order. All records and notification transports used in tests are synthetic/local. No paid SMS, production email or new infrastructure is required.
 
