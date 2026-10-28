@@ -1,7 +1,7 @@
 name: M1 Foundation
 on:
   push:
-    branches: [main, feature/m1-tenant-auth-foundation, feature/m1-browser-auth-account-lifecycle]
+    branches: [main, feature/m1-tenant-auth-foundation, feature/m1-browser-auth-account-lifecycle, feature/m1-auth04-account-activation]
   pull_request:
   workflow_dispatch:
 permissions:
