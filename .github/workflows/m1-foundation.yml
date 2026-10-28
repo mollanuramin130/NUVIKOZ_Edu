@@ -48,6 +48,7 @@ jobs:
       - name: Prepare isolated environment from committed example
         run: cp .env.example .env
       - run: composer install --no-interaction --prefer-dist --no-progress
+      - run: composer audit --locked --no-interaction
       - run: composer check-platform-reqs
       - run: vendor/bin/pint --test
       - run: vendor/bin/phpunit --display-warnings --fail-on-warning
@@ -75,8 +76,17 @@ jobs:
         with:
           node-version: '24'
       - run: npm ci
+      - run: npm audit --audit-level=high
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run build
-# Flutter runtime verification is deliberately absent:local execution was blocked
-# by automatic approval review for cloud metadata access. No indirect retry.
+  flutter:
+    # Explicit owner authorization: metadata-blocked, credential-free verification.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - name: Verify Flutter with metadata egress denied and privileges dropped
+        run: bash scripts/verify_flutter_isolated.sh
