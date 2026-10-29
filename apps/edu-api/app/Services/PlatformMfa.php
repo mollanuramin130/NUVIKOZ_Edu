@@ -14,7 +14,7 @@ use Illuminate\Support\Str;
 /** Synthetic-only internal flow; HTTP/public issuer is not enabled. */
 class PlatformMfa
 {
-    private function current(Request $r): User
+    public function pendingIdentity(Request $r): User
     {
         abort_unless(app()->environment('testing') && config('platform.synthetic_auth') === true && $r->hasSession() && ! $r->hasHeader('Authorization') && ! $r->hasHeader('X-School-ID'), 403);
         $s = $r->session();
@@ -34,14 +34,14 @@ class PlatformMfa
 
     private function mutate(Request $r, string $password, callable $action): array
     {
-        $u = $this->current($r);
+        $u = $this->pendingIdentity($r);
         $key = 'platform-mfa:'.$u->id;
         abort_if(RateLimiter::tooManyAttempts($key, 10), 429);
         RateLimiter::hit($key, 300);
 
         return DB::transaction(function () use ($u, $r, $password, $action) {
             User::whereKey($u->id)->lockForUpdate()->firstOrFail();
-            $u = $this->current($r);
+            $u = $this->pendingIdentity($r);
             abort_unless(strlen($password) <= 72 && Hash::check($password, $u->password), 422);
 
             return $action($u);
