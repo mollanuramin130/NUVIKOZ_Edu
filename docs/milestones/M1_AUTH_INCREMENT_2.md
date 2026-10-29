@@ -1,3 +1,7 @@
+# Advanced batch continuation
+
+AUTH-01–05 are merged through `42405d34ce5a6a6b812c38c7e2a6c4a80f4e44df`. Resume `feature/m1-advanced-auth-security` for AUTH-06→07→08→09→10 in one Draft PR. Current actual feature/test evidence and per-phase status are in the canonical handoff; earlier branch/PR statuses below are historical. Platform login/reset and real verified-contact delivery remain unavailable.
+
 # M1 increment 2 — Browser authentication and account lifecycle
 
 PR #2 is merged at `248917192c9d118c9e2ff3630a9e530a3e1c630a`. AUTH-04 is implemented on `feature/m1-auth04-account-activation`; test/CI evidence is in the canonical handoff. AUTH-05 onward remain pending. Do not reuse the former browser branch or merge this increment without owner authorization.
