@@ -100,9 +100,13 @@ class SecureTokenVault(context: Context) {
     }
 
     @Synchronized fun clear() {
-        // Delete the key first: any interrupted clear leaves ciphertext unusable.
-        try { keys().deleteEntry(alias) } catch (_: Exception) {}
+        // Enforce fail-closed key deletion first, then file deletion.
+        val store = keys()
+        if (store.containsAlias(alias)) {
+            store.deleteEntry(alias)
+            check(!store.containsAlias(alias)) { "KeyStore entry deletion failed" }
+        }
         file.delete()
-        check(!file.baseFile.exists()) { "Secure storage deletion failed" }
+        check(!file.baseFile.exists()) { "Secure storage file deletion failed" }
     }
 }

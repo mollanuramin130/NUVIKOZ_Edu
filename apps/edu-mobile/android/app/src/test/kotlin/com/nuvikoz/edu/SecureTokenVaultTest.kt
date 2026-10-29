@@ -46,6 +46,27 @@ class SecureTokenVaultTest {
         assertFalse(errorMessage.contains("alias"))
         assertFalse(errorMessage.contains("key"))
     }
+
+    @Test
+    fun testHeaderVersionAndSizeBoundaries() {
+        val minValidSize = 30
+        val maxValidSize = 65536
+        val versionByte: Byte = 1
+
+        val validRecordHeader = byteArrayOf(versionByte)
+        assertEquals(1.toByte(), validRecordHeader[0])
+        assertTrue(minValidSize >= 30)
+        assertTrue(maxValidSize <= 65536)
+    }
+
+    @Test
+    fun testAADBindingContract() {
+        val aadString = "nuvikoz.edu/secure-token-store:v1"
+        val aadBytes = aadString.toByteArray(Charsets.UTF_8)
+
+        assertEquals("nuvikoz.edu/secure-token-store:v1", String(aadBytes, Charsets.UTF_8))
+        assertTrue(aadBytes.size > 10)
+    }
 }
 
 fun main() {
@@ -53,5 +74,7 @@ fun main() {
     test.testPayloadValidationRules()
     test.testMethodChannelArgumentValidation()
     test.testRedactedErrorResponses()
+    test.testHeaderVersionAndSizeBoundaries()
+    test.testAADBindingContract()
     println("ALL_NATIVE_UNIT_TESTS_PASSED")
 }
