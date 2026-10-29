@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Http\Middleware\BrowserSession;
+use App\Http\Middleware\PlatformBrowser;
 use App\Models\Membership;
 use App\Models\School;
 use App\Models\User;
@@ -60,6 +61,14 @@ class BrowserBoundaryTest extends TestCase
                 continue;
             }
             $protected++;
+            if (str_starts_with($route->uri(), 'api/v1/browser/platform/')) {
+                $this->assertContains(PlatformBrowser::class, $route->gatherMiddleware());
+                if (! in_array($route->getActionMethod(), ['login', 'logout'], true)) {
+                    $this->assertContains('auth:sanctum', $route->gatherMiddleware());
+                }
+
+                continue;
+            }
             $this->assertContains('auth:sanctum', $route->gatherMiddleware());
             $this->assertContains(BrowserSession::class, $route->gatherMiddleware());
         }

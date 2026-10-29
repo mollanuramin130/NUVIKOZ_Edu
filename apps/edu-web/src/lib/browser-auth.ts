@@ -4,14 +4,16 @@ export class AuthError extends Error {
 }
 const base = process.env.NEXT_PUBLIC_EDU_API_BASE_URL;
 let csrf: string | undefined;
+// Insecure pages must still render the HTTPS-required error before any credential request.
+const sessionSender = globalThis.isSecureContext ? crypto.randomUUID() : undefined;
 export function onSessionChange(listener: () => void) {
   const channel = new BroadcastChannel('edu-session');
-  channel.onmessage = () => { csrf = undefined; listener(); };
+  channel.onmessage = event => { if (event.data?.source === sessionSender) return; csrf = undefined; listener(); };
   return () => channel.close();
 }
 function announceSessionChange() {
   const channel = new BroadcastChannel('edu-session');
-  channel.postMessage('changed'); channel.close();
+  channel.postMessage({ source: sessionSender }); channel.close();
 }
 export async function browserRequest<T>(path: string, body?: unknown): Promise<T> {
   if (!base) throw new Error('The Edu API origin is not configured.');
@@ -39,7 +41,7 @@ export async function browserRequest<T>(path: string, body?: unknown): Promise<T
   }
   if (result.data.csrf_token) csrf = result.data.csrf_token;
   if ((path === 'activation/consume' || path === 'recovery/consume')) csrf = undefined;
-  if ((path.startsWith('security/sessions/') && path.endsWith('/revoke')) || (path.startsWith('security/mfa/') && result.data.verified) || path === 'login' || path === 'logout' || (path === 'activation/consume' || path === 'recovery/consume')) announceSessionChange();
+  if (result.data.reauthentication_required || path === 'platform/login' || path === 'platform/logout' || (path.startsWith('platform/mfa/') && result.data.verified) || (path.startsWith('security/sessions/') && path.endsWith('/revoke')) || (path.startsWith('security/mfa/') && result.data.verified) || path === 'login' || path === 'logout' || (path === 'activation/consume' || path === 'recovery/consume')) announceSessionChange();
   return result.data as T;
 }
 export async function bootstrap() { return browserRequest<{ csrf_token: string }>('csrf'); }
