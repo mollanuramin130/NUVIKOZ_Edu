@@ -4,9 +4,11 @@ use App\Http\Controllers\ActivationController;
 use App\Http\Controllers\BrowserAuthController as Browser;
 use App\Http\Controllers\CapabilityController;
 use App\Http\Controllers\MfaController;
+use App\Http\Controllers\PlatformBrowserController;
 use App\Http\Controllers\RecoveryController;
 use App\Http\Controllers\SecurityInventoryController;
 use App\Http\Middleware\BrowserSession;
+use App\Http\Middleware\PlatformBrowser;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('api/v1/browser')->group(function (): void {
@@ -50,4 +52,17 @@ Route::prefix('api/v1/browser/security')->middleware(['auth:sanctum', BrowserSes
     Route::get('/permissions', [CapabilityController::class, 'index']);
     Route::post('/permissions/{membership}', [CapabilityController::class, 'assign'])->middleware('throttle:10,1,permission-change:');
     Route::get('/capabilities/{capability}/probe', [CapabilityController::class, 'probe']);
+});
+
+Route::prefix('api/v1/browser/platform')->middleware(PlatformBrowser::class)->group(function (): void {
+    Route::post('/login', [PlatformBrowserController::class, 'login'])->middleware('throttle:5,1,platform-login:');
+    Route::post('/logout', [PlatformBrowserController::class, 'logout']);
+    Route::middleware('auth:sanctum')->group(function (): void {
+        Route::get('/status', [PlatformBrowserController::class, 'status']);
+        Route::get('/identity', [PlatformBrowserController::class, 'identity']);
+        Route::post('/mfa/enrollment', [PlatformBrowserController::class, 'enroll']);
+        Route::post('/mfa/confirm', [PlatformBrowserController::class, 'confirm']);
+        Route::post('/mfa/challenge', [PlatformBrowserController::class, 'challenge']);
+        Route::post('/mfa/recovery', [PlatformBrowserController::class, 'recovery']);
+    });
 });
