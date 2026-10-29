@@ -3,6 +3,7 @@
 namespace Tests;
 
 use App\Models\Membership;
+use App\Models\User;
 use App\Services\PrivilegedMfa;
 use App\Services\Totp;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
@@ -13,6 +14,12 @@ use Illuminate\Support\Str;
 
 abstract class TestCase extends BaseTestCase
 {
+    protected function backupAdminFixture(Membership $member): void
+    {
+        $user = User::create(['name' => 'Synthetic eligible backup admin', 'password' => 'Synthetic-Backup-Password']);
+        Membership::create(['school_id' => $member->school_id, 'user_id' => $user->id, 'role' => 'school_admin', 'login_identifier' => 'BACKUP_'.$user->id, 'status' => 'active']);
+    }
+
     // Existing strongly authenticated session fixture for non-MFA-focused service tests.
     // No production bypass/token issuer; MFA acceptance tests exercise real enrollment/challenges.
     protected function mfaFixture(Membership $member): void
