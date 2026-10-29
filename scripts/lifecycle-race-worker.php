@@ -27,6 +27,7 @@ try {
    $req=Illuminate\Http\Request::create('/api/v1/auth/login','POST',['school_code'=>$m->school->code,'identifier'=>$m->login_identifier,'password'=>'Synthetic-Race-Old-Password']);
    $req->headers->set('Accept','application/json');
    $response=app(Illuminate\Contracts\Http\Kernel::class)->handle($req);
+   if(!in_array($response->getStatusCode(),[200,401,403],true))exit(6);
    echo $response->getStatusCode()===200?'issued':'denied'; break;
  case 'password':
    $u=User::findOrFail($m->user_id);$u->password='Synthetic-Race-New-Password';$u->save();echo 'changed';break;
