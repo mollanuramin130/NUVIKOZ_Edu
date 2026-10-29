@@ -1,9 +1,9 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "NUVIKOZ Edu implemented MFA and session/device checkpoint",
-    "version": "0.1.0",
-    "description": "AUTH-06/07 implemented subset only. No public platform issuer/native privileged-device MFA/reset, delegation or full mobile integration. Read ADR-022 and canonical handoff."
+    "title": "NUVIKOZ Edu implemented browser security and permission subset",
+    "version": "0.2.0",
+    "description": "AUTH-06\u201308 supported browser subset. Platform/native privileged MFA and independently verified MFA reset remain unavailable. Capability probes are synthetic, not academic modules. See ADR-022/023 and canonical handoff."
   },
   "paths": {
     "/api/v1/browser/security/mfa/status": {
@@ -833,6 +833,208 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v1/browser/security/permissions": {
+      "get": {
+        "description": "Current same-school School Admin plus MFA: school_id, delegable registry, membership id/role/status/version/assignments/effective. No proof or token output.",
+        "security": [
+          {
+            "browserCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Standard success envelope; sensitive enrollment/recovery output is no-store and displayed once."
+          },
+          "401": {
+            "description": "Authentication/session expired."
+          },
+          "403": {
+            "description": "Identity, school, role, transport, origin or MFA denied."
+          },
+          "404": {
+            "description": "Owned resource not found."
+          },
+          "419": {
+            "description": "CSRF mismatch on browser mutation."
+          },
+          "422": {
+            "description": "Invalid password/code/input; no partial security mutation."
+          },
+          "429": {
+            "description": "Rate limited."
+          },
+          "500": {
+            "description": "Storage/encryption failure; fail closed."
+          }
+        }
+      }
+    },
+    "/api/v1/browser/security/permissions/{membership}": {
+      "post": {
+        "description": "Current same-school School Admin plus MFA and write entitlement. Atomic version-conflict-controlled grant/revoke, fixed role ceilings, no self-grant, immutable audit details.",
+        "security": [
+          {
+            "browserCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          {
+            "name": "membership",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Standard success envelope; sensitive enrollment/recovery output is no-store and displayed once."
+          },
+          "401": {
+            "description": "Authentication/session expired."
+          },
+          "403": {
+            "description": "Identity, school, role, transport, origin or MFA denied."
+          },
+          "404": {
+            "description": "Owned resource not found."
+          },
+          "419": {
+            "description": "CSRF mismatch on browser mutation."
+          },
+          "422": {
+            "description": "Invalid password/code/input; no partial security mutation."
+          },
+          "429": {
+            "description": "Rate limited."
+          },
+          "500": {
+            "description": "Storage/encryption failure; fail closed."
+          },
+          "409": {
+            "description": "Stale membership permission version; reload and explicitly confirm again."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "capability",
+                  "allowed",
+                  "version"
+                ],
+                "properties": {
+                  "capability": {
+                    "type": "string",
+                    "enum": [
+                      "admission.profile.manage",
+                      "financial.export",
+                      "certificate.issue",
+                      "marks.enter"
+                    ]
+                  },
+                  "allowed": {
+                    "type": "boolean"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/browser/security/capabilities/{capability}/probe": {
+      "get": {
+        "description": "Current scoped membership and live capability evaluation. Returns authorized:true, synthetic:true, domain_implemented:false. This is not an academic/financial operation.",
+        "security": [
+          {
+            "browserCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          {
+            "name": "capability",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Standard success envelope; sensitive enrollment/recovery output is no-store and displayed once."
+          },
+          "401": {
+            "description": "Authentication/session expired."
+          },
+          "403": {
+            "description": "Identity, school, role, transport, origin or MFA denied."
+          },
+          "404": {
+            "description": "Owned resource not found."
+          },
+          "419": {
+            "description": "CSRF mismatch on browser mutation."
+          },
+          "422": {
+            "description": "Invalid password/code/input; no partial security mutation."
+          },
+          "429": {
+            "description": "Rate limited."
+          },
+          "500": {
+            "description": "Storage/encryption failure; fail closed."
           }
         }
       }
