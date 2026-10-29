@@ -1,3 +1,15 @@
+# Advanced batch continuation — AUTH-07 checkpoint
+
+Same branch `feature/m1-advanced-auth-security`, Draft PR5 https://github.com/mollanuramin130/NUVIKOZ_Edu/pull/5 . Verified AUTH-06 checkpoint `3f701e8feab2e881946f4ff0bdb0c7bd61669f47`: CI run40797487540 passed 80 MariaDB tests/409 assertions, four independent lifecycle/MFA races and15 HTTPS browser tests; web, metadata-blocked Flutter and Integrity40797487541 passed. Baseline main42405d34ce5a6a6b812c38c7e2a6c4a80f4e44df remains untouched.
+
+AUTH-07 adds real sessions/Sanctum inventories, owner/school-scoped opaque references, password-confirmed revocation, audit, session resurrection tombstones, identity/membership security revocation hooks, seven-day ordinary/twelve-hour privileged device expiry, and `/profile/sessions`. Browser inventory is identity-wide; membership security changes conservatively revoke that identity's browser sessions because school metadata is not indexed. No raw cookie/token/payload is exposed. One additive session_revocations migration. See contract and migration addenda. Actual final-head hosted evidence must be checked after publishing this checkpoint.
+
+Phase status: AUTH-06 PARTIAL (School Admin browser implementation tested; platform issuer/native privileged-device/reset dependencies explicitly closed); AUTH-07 PARTIAL (functional inventory/revocation, remaining multi-process issuance/revocation/complete acceptance matrix pending); AUTH-08 NOT STARTED; AUTH-09 NOT STARTED; AUTH-10 PARTIAL (existing regression extended). Do not claim all five tasks complete. No MFA bypass, real delivery, deploy, merge or Nursery changes.
+
+NEXT SAFE TASK: verify current-tip MariaDB/HTTPS CI, finish AUTH-07 concurrency/expiration acceptance, commit that phase, then AUTH-08 capability registry/role ceilings and last-active-SA serialized mutation service. Only then extend Flutter authentication using the same API and existing metadata-blocked verification. Resume this branch/PR, not a new one. Guardian/contact infrastructure remains absent; do not fabricate it.
+
+Prior checkpoints follow as history.
+
 # Advanced M1 coordinated batch — AUTH-06 checkpoint
 
 Branch `feature/m1-advanced-auth-security`, baseline main `42405d34ce5a6a6b812c38c7e2a6c4a80f4e44df` (AUTH-05 merged). Main post-merge M1 run40794264739 and Integrity run40794264734 passed. Old open-PR4/pending-AUTH05 text below is historical.
