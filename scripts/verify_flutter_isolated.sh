@@ -22,7 +22,7 @@ done
 
 sdk_root="$RUNNER_TEMP/edu-flutter-sdk"
 verify_home="$RUNNER_TEMP/edu-flutter-home"
-mkdir -p "$sdk_root" "$verify_home"
+mkdir -p "$sdk_root" "$verify_home" "$verify_home/.android"
 curl --fail --location --retry 2 --proto '=https' \
   https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.47.8-stable.tar.xz \
   -o "$sdk_root/sdk.tar.xz"
@@ -36,8 +36,8 @@ java_home="${JAVA_HOME:-/usr/lib/jvm/temurin-17-jdk-amd64}"
 # CI/BOT also short-circuit Flutter's Azure bot detector, independent of the firewall.
 sudo setpriv --no-new-privs --bounding-set=-all --inh-caps=-all --ambient-caps=-all \
   --reuid="$(id -u)" --regid="$(id -g)" --init-groups \
-  env -i HOME="$verify_home" PATH="$sdk_root/flutter/bin:$java_home/bin:/usr/bin:/bin" \
-  ANDROID_HOME="$android_home" JAVA_HOME="$java_home" \
+  env -i HOME="$verify_home" PATH="$sdk_root/flutter/bin:$java_home/bin:/usr/local/bin:/usr/bin:/bin" \
+  ANDROID_HOME="$android_home" ANDROID_USER_HOME="$verify_home/.android" JAVA_HOME="$java_home" \
   CI=true BOT=true GITHUB_ACTIONS=true FLUTTER_SUPPRESS_ANALYTICS=true \
   PUB_ENVIRONMENT=github-actions PUB_CACHE="$verify_home/pub-cache" \
   bash -euo pipefail -c '
