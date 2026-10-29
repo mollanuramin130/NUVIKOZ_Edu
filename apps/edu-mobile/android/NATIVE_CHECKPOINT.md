@@ -23,6 +23,7 @@ SEC-01 Android Native Secure Storage is published on `feature/m1-security-comple
 - **Kotlin compilation:** VERIFIED (`MAIN_ACTIVITY_KOTLIN_COMPILATION_SUCCESS` via `kotlinc` against Android 37 and Flutter Engine JARs)
 - **JVM unit tests:** VERIFIED (`ALL_NATIVE_UNIT_TESTS_PASSED` via `SecureTokenVaultTest.kt` validation suite)
 - **Gradle configuration & dependency resolution:** VERIFIED (AGP 8.6.0, Platform 35, Build-Tools 34 downloaded & initialized)
-- **CI Static Analysis, Dart Tests & Debug APK Assembly:** Executed in GitHub Actions runner via `scripts/verify_flutter_isolated.sh` (`flutter pub get --enforce-lockfile`, `flutter analyze --no-pub`, `flutter test --no-pub`, `flutter build apk --debug --no-pub`).
+- **CI Static Analysis & Dart Tests:** PASSED in GitHub Actions (`scripts/verify_flutter_isolated.sh` executed `flutter analyze` and `flutter test`)
+- **Debug APK Assembly (`flutter build apk` / `assembleDebug`):** BLOCKED / NO APK PRODUCED (Local environment `/Users/nuraminmolla/opt/flutter-3.38.10` has Dart 3.10.9 vs `pubspec.yaml` requirement `>=3.13.7 <4.0.0`; official CI uses Flutter 3.47.8 / Dart 3.13.7 but `scripts/verify_flutter_isolated.sh` executes static analysis and Dart unit tests without an APK assembly step). No APK binary artifact generated.
 - **Keystore OS Instrumentation:** NOT RUN (No active emulator/device connected; OS-backed Keystore hardware/emulator runtime not executed)
 - **Physical Device Tests:** NOT RUN
