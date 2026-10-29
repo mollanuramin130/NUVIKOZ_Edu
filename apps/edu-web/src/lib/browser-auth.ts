@@ -38,7 +38,8 @@ export async function browserRequest<T>(path: string, body?: unknown): Promise<T
     throw new AuthError(response.status, result.error?.code ?? 'API_ERROR', result.error?.message ?? 'Request failed.');
   }
   if (result.data.csrf_token) csrf = result.data.csrf_token;
-  if (path === 'login' || path === 'logout') announceSessionChange();
+  if (path === 'activation/consume') csrf = undefined;
+  if (path === 'login' || path === 'logout' || path === 'activation/consume') announceSessionChange();
   return result.data as T;
 }
 export async function bootstrap() { return browserRequest<{ csrf_token: string }>('csrf'); }

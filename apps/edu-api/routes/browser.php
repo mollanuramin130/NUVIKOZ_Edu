@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ActivationController;
 use App\Http\Controllers\BrowserAuthController as Browser;
 use App\Http\Middleware\BrowserSession;
 use Illuminate\Support\Facades\Route;
@@ -9,4 +10,12 @@ Route::prefix('api/v1/browser')->group(function (): void {
     Route::post('/login', [Browser::class, 'login'])->middleware('throttle:5,1,browser-login:');
     Route::post('/logout', [Browser::class, 'logout']);
     Route::get('/me', [Browser::class, 'me'])->middleware(['auth:sanctum', BrowserSession::class]);
+});
+
+Route::prefix('api/v1/browser')->group(function (): void {
+    Route::post('/activation/consume', [ActivationController::class, 'consume'])->middleware('throttle:5,1,activation-consume:');
+    Route::middleware(['auth:sanctum', BrowserSession::class])->group(function (): void {
+        Route::post('/accounts', [ActivationController::class, 'provision']);
+        Route::post('/accounts/{membership}/activation/reissue', [ActivationController::class, 'reissue'])->middleware('throttle:5,1,activation-reissue:');
+    });
 });

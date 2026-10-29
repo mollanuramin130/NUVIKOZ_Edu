@@ -1,7 +1,7 @@
 name: M1 Foundation
 on:
   push:
-    branches: [main, feature/m1-tenant-auth-foundation, feature/m1-browser-auth-account-lifecycle]
+    branches: [main, feature/m1-tenant-auth-foundation, feature/m1-browser-auth-account-lifecycle, feature/m1-auth04-account-activation]
   pull_request:
   workflow_dispatch:
 permissions:
@@ -48,7 +48,6 @@ jobs:
       - name: Prepare isolated environment from committed example
         run: cp .env.example .env
       - run: composer install --no-interaction --prefer-dist --no-progress
-      - run: composer audit --locked --no-interaction
       - run: composer check-platform-reqs
       - run: vendor/bin/pint --test
       - run: vendor/bin/phpunit --display-warnings --fail-on-warning
@@ -66,6 +65,8 @@ jobs:
       - name: Real HTTPS Next.js to Laravel browser authentication
         working-directory: .
         run: bash scripts/run-browser-integration.sh
+      - name: Blocking dependency audit after test evidence
+        run: composer audit --locked --no-interaction
   web:
     runs-on: ubuntu-24.04
     timeout-minutes: 20

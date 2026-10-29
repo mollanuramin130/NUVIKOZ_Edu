@@ -43,7 +43,7 @@ class BrowserBoundary
         $response->headers->set('Access-Control-Allow-Origin', $origin);
         $response->headers->set('Access-Control-Allow-Credentials', 'true');
         $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-        $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, X-CSRF-TOKEN, X-School-ID, Accept');
+        $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, X-CSRF-TOKEN, X-School-ID, Idempotency-Key, Accept');
         $response->setVary('Origin', false);
         $response->headers->set('Cache-Control', 'private, no-store');
 

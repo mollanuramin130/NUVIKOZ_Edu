@@ -29,7 +29,7 @@ class BrowserAuthController extends Controller
         if (! $user || $user->status !== 'active' || $user->is_platform_admin || ! Hash::check($data['password'], $user->password)) {
             return Api::error('INVALID_CREDENTIALS', 'Credentials could not be verified.', 401);
         }
-        if ($user->must_change_password) {
+        if ($user->activation_required || $user->must_change_password) {
             return Api::error('PASSWORD_CHANGE_REQUIRED', 'Complete account activation first.', 403);
         }
 
@@ -37,7 +37,7 @@ class BrowserAuthController extends Controller
         return DB::transaction(function () use ($request, $data, $membership) {
             $user = User::whereKey($membership->user_id)->lockForUpdate()->firstOrFail();
             $current = $membership->fresh(['school']);
-            if (! $current || $current->status !== 'active' || in_array($current->school->access_state, ['suspended', 'archived'], true) || $user->status !== 'active' || $user->is_platform_admin || $user->must_change_password || ! Hash::check($data['password'], $user->password)) {
+            if (! $current || $current->status !== 'active' || in_array($current->school->access_state, ['suspended', 'archived'], true) || $user->status !== 'active' || $user->is_platform_admin || $user->activation_required || $user->must_change_password || ! Hash::check($data['password'], $user->password)) {
                 return Api::error('INVALID_CREDENTIALS', 'Credentials could not be verified.', 401);
             }
             Auth::guard('web')->login($user);

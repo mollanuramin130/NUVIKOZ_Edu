@@ -28,7 +28,7 @@ class BrowserSession
         if ($context && $context !== $membership->school_id) {
             return Api::error('TENANT_CONTEXT_MISMATCH', 'School context does not match this session.', 403);
         }
-        if ($user->must_change_password) {
+        if ($user->activation_required || $user->must_change_password) {
             return Api::error('PASSWORD_CHANGE_REQUIRED', 'Complete account activation first.', 403);
         }
         $session->put('seen_at', time());

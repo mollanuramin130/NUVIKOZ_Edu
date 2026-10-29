@@ -48,3 +48,9 @@ foreach (['A' => 'live_enabled', 'B' => 'live_enabled', 'S' => 'suspended'] as $
         Membership::create(['school_id' => $school->id, 'user_id' => $inactive->id, 'role' => 'student', 'login_identifier' => 'INACTIVE', 'status' => 'inactive']);
     }
 }
+
+$school = School::where('code', 'A')->first();
+if (! Membership::where('school_id', $school->id)->where('login_identifier', 'ADMIN')->exists()) {
+    $admin = User::create(['name' => 'Synthetic activation admin', 'password' => 'Synthetic-Browser-Only-Password']);
+    Membership::create(['school_id' => $school->id, 'user_id' => $admin->id, 'role' => 'school_admin', 'login_identifier' => 'ADMIN', 'status' => 'active']);
+}

@@ -1,0 +1,280 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "NUVIKOZ Edu AUTH-04 implemented subset",
+    "version": "0.1.0",
+    "description": "Same-site HTTPS first-party browser flow. Synthetic local handover only; production issuance disabled. No recovery or MFA."
+  },
+  "paths": {
+    "/api/v1/browser/activation/consume": {
+      "post": {
+        "operationId": "consumeAccountActivation",
+        "security": [],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "school_code",
+                  "proof_id",
+                  "secret",
+                  "password",
+                  "password_confirmation"
+                ],
+                "properties": {
+                  "school_code": {
+                    "type": "string",
+                    "maxLength": 32
+                  },
+                  "proof_id": {
+                    "type": "string",
+                    "minLength": 26,
+                    "maxLength": 26
+                  },
+                  "secret": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$",
+                    "writeOnly": true
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 12,
+                    "maxLength": 72,
+                    "writeOnly": true
+                  },
+                  "password_confirmation": {
+                    "type": "string",
+                    "maxLength": 72,
+                    "writeOnly": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success envelope; consume returns activated and login_required. Authorized local issuance alone returns local_handover."
+          },
+          "401": {
+            "description": "Missing browser session"
+          },
+          "403": {
+            "description": "Origin/transport/tenant/authority denied"
+          },
+          "419": {
+            "description": "CSRF mismatch"
+          },
+          "422": {
+            "description": "Invalid input or generic unavailable activation"
+          },
+          "429": {
+            "description": "Throttled"
+          },
+          "503": {
+            "description": "Production delivery not configured; issuance rolled back"
+          }
+        }
+      }
+    },
+    "/api/v1/browser/accounts": {
+      "post": {
+        "operationId": "provisionBrowserStaffActivation",
+        "security": [
+          {
+            "browserCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 160,
+              "pattern": "^[A-Za-z0-9_-]+$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name",
+                  "login_identifier",
+                  "role"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 160
+                  },
+                  "login_identifier": {
+                    "type": "string",
+                    "maxLength": 80,
+                    "pattern": "^[A-Za-z0-9_-]+$"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "teacher",
+                      "principal"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "401": {
+            "description": "Missing browser session"
+          },
+          "403": {
+            "description": "Origin/transport/tenant/authority denied"
+          },
+          "419": {
+            "description": "CSRF mismatch"
+          },
+          "422": {
+            "description": "Invalid input or generic unavailable activation"
+          },
+          "429": {
+            "description": "Throttled"
+          },
+          "503": {
+            "description": "Production delivery not configured; issuance rolled back"
+          },
+          "201": {
+            "description": "Success envelope; consume returns activated and login_required. Authorized local issuance alone returns local_handover."
+          }
+        }
+      }
+    },
+    "/api/v1/browser/accounts/{membership}/activation/reissue": {
+      "post": {
+        "operationId": "reissueAccountActivation",
+        "security": [
+          {
+            "browserCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "membership",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success envelope; consume returns activated and login_required. Authorized local issuance alone returns local_handover."
+          },
+          "401": {
+            "description": "Missing browser session"
+          },
+          "403": {
+            "description": "Origin/transport/tenant/authority denied"
+          },
+          "419": {
+            "description": "CSRF mismatch"
+          },
+          "422": {
+            "description": "Invalid input or generic unavailable activation"
+          },
+          "429": {
+            "description": "Throttled"
+          },
+          "503": {
+            "description": "Production delivery not configured; issuance rolled back"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "browserCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "edu_browser_session"
+      }
+    }
+  }
+}
