@@ -1,3 +1,17 @@
+# Current checkpoint — M2 Slice B backend implementation
+
+Updated2026-10-29. Existing branch `feature/m2-academic-setup`, Draft PR9 https://github.com/mollanuramin130/NUVIKOZ_Edu/pull/9 . Remote Slice A baseline verified `2885e3dcd469797e7155c15b4579001b8810d069`, all four checks passed (run40922439724/Integrity40922439652). Local history is a content-identical source mirror; checkpoint/m2-slice-a-local-f223bd2 preserves its starting commits. Resolve actual remote HEAD before any future publication; use its exact parent/lease, never force-push or overwrite newer changes.
+
+Slice B implements school/session class offerings, sections, subject definitions and class/session-specific required/optional subject offerings. Four additional GET/POST browser kinds share School Admin+current MFA/tenant/session/origin/CSRF/entitlement guards. One additive000008 migration adds composite tenant FKs/domain uniqueness/RESTRICT history; no source rows or prior migrations replaced. Reuse atomic audit/idempotency receipts and school→identity→membership locks. Child session/class comes only from class offering, not client state. Future/session/start date and unarchived masters rechecked, including retries. Per-school Demo caps bounded. See API0.2.0, M2 contract/dictionary/ADR and milestone for exact supported behavior.
+
+Teacher reference remains null/deferred: membership role alone does not establish effective-dated staff/academic assignment. No placeholder account, student count, enrollment, grading or UI introduced. Optional teacher assignment waits for staff scope. Current API requires no phone APK/download. SEC-01 MethodChannel physical acceptance remains DEVICE TEST PENDING onPR7; native8 execution results are owner-reported, not evidence of Flutter-engine PASS. No Flutter files, SDK/locks, isolation script, PR6/7/8 or main modified. Production platform issuance, privileged mobile MFA, independent lost-factor reset and real delivery remain disabled/deferred.
+
+Local executed results:149 PHP discovered,125 passed/817 assertions;24 MariaDB-only skipped (14 existing +10 new). Pint, Composer strict validation/audit and Next lint/typecheck/build passed. Two new HTTPS journeys plus existing18 require hosted execution; do not infer PASS from compilation. Publish coherent Slice B checkpoint and verify actual-head API/Web/Flutter/Integrity. Canonical evidence successor must verify its own head too.
+
+NEXT SAFE TASK: inspect hosted MariaDB/concurrency and complete20-journey HTTPS results at the new branch HEAD; fix actual failures narrowly. Update exact evidence. Then Slice C UI data contracts are ready for the owner's still-pending visual direction; do not apply a platform-wide redesign without approval. No merge/deploy/production/Nursery changes authorized.
+
+# Historical evidence — M2 Slice A
+
 # Current checkpoint — milestone strategy / M2 academic setup slice A
 
 Updated2026-10-29. Sole developer: ChatGPT Work; Gemini no longer owns tasks. Owner approved milestone batches with continuous automated CI and periodic physical-device acceptance, preserving all prior rules and SDK versions.

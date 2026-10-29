@@ -13,11 +13,82 @@ use Illuminate\Support\Str;
 
 class AcademicCatalog
 {
+    public const KINDS = ['sessions', 'classes', 'class-offerings', 'sections', 'subjects', 'subject-offerings'];
+
     private function table(string $kind): string
     {
-        abort_unless(in_array($kind, ['sessions', 'classes'], true), 404);
+        abort_unless(in_array($kind, self::KINDS, true), 404);
 
-        return $kind === 'sessions' ? 'academic_sessions' : 'classes';
+        return ['sessions' => 'academic_sessions', 'classes' => 'classes', 'class-offerings' => 'class_offerings', 'sections' => 'sections', 'subjects' => 'subjects', 'subject-offerings' => 'subject_offerings'][$kind];
+    }
+
+    private function rules(string $kind): array
+    {
+        return match ($kind) {
+            'sessions' => ['name' => ['required', 'string', 'max:60'], 'starts_on' => ['required', 'date_format:Y-m-d'], 'ends_on' => ['required', 'date_format:Y-m-d', 'after_or_equal:starts_on']],
+            'classes' => ['name' => ['required', 'string', 'max:80'], 'grade_label' => ['sometimes', 'nullable', 'string', 'max:32'], 'sort_order' => ['required', 'integer', 'min:0', 'max:2147483647']],
+            'class-offerings' => ['session_id' => ['required', 'ulid'], 'class_id' => ['required', 'ulid']],
+            'sections' => ['class_offering_id' => ['required', 'ulid'], 'name' => ['required', 'string', 'max:40'], 'class_teacher_membership_id' => ['nullable', 'prohibited']],
+            'subjects' => ['code' => ['required', 'string', 'max:32'], 'name' => ['required', 'string', 'max:100']],
+            'subject-offerings' => ['class_offering_id' => ['required', 'ulid'], 'subject_id' => ['required', 'ulid'], 'compulsory' => ['required', 'boolean', function ($attribute, $value, $fail) {
+                if (! is_bool($value)) {
+                    $fail('Use a JSON boolean.');
+                }
+            }]],
+        };
+    }
+
+    private function filters(string $kind): array
+    {
+        return match ($kind) {
+            'class-offerings' => ['session_id' => 'academic_sessions', 'class_id' => 'classes'],
+            'sections' => ['class_offering_id' => 'class_offerings'],
+            'subject-offerings' => ['class_offering_id' => 'class_offerings', 'subject_id' => 'subjects'],
+            default => [],
+        };
+    }
+
+    private function owned(string $table, Membership $actor, string $id): object
+    {
+        $row = DB::table($table)->where('school_id', $actor->school_id)->where('id', $id)->first();
+        abort_unless($row, 404);
+
+        return $row;
+    }
+
+    private function futureSession(Membership $actor, string $id): void
+    {
+        $session = $this->owned('academic_sessions', $actor, $id);
+        $zone = $actor->school->settings['timezone'] ?? null;
+        abort_unless(is_string($zone) && in_array($zone, timezone_identifiers_list(), true), 403);
+        abort_unless($session->state === 'future' && $session->starts_on > CarbonImmutable::now($zone)->toDateString(), 409);
+    }
+
+    private function relations(Membership $actor, string $kind, array $data): void
+    {
+        if ($kind === 'class-offerings') {
+            $this->futureSession($actor, $data['session_id']);
+            abort_if($this->owned('classes', $actor, $data['class_id'])->archived_at !== null, 409);
+        }
+        if (in_array($kind, ['sections', 'subject-offerings'], true)) {
+            $offering = $this->owned('class_offerings', $actor, $data['class_offering_id']);
+            $this->futureSession($actor, $offering->session_id);
+            abort_if($this->owned('classes', $actor, $offering->class_id)->archived_at !== null, 409);
+        }
+        if ($kind === 'subject-offerings') {
+            abort_if($this->owned('subjects', $actor, $data['subject_id'])->archived_at !== null, 409);
+        }
+    }
+
+    private function duplicateFields(string $kind): array
+    {
+        return match ($kind) {
+            'class-offerings' => ['session_id', 'class_id'],
+            'sections' => ['class_offering_id', 'name'],
+            'subjects' => ['code'],
+            'subject-offerings' => ['class_offering_id', 'subject_id'],
+            default => ['name'],
+        };
     }
 
     private function current(Membership $actor): Membership
@@ -31,9 +102,20 @@ class AcademicCatalog
     public function listing(Membership $actor, string $kind, array $query): array
     {
         $actor = $this->current($actor);
-        Validator::make($query, ['cursor' => ['sometimes', 'ulid']])->validate();
-        abort_unless(array_diff(array_keys($query), ['cursor']) === [], 422);
+        $filters = $this->filters($kind);
+        $rules = ['cursor' => ['sometimes', 'ulid']];
+        foreach ($filters as $field => $table) {
+            $rules[$field] = ['sometimes', 'ulid'];
+        }
+        Validator::make($query, $rules)->validate();
+        abort_unless(array_diff(array_keys($query), array_keys($rules)) === [], 422);
+        foreach ($filters as $field => $table) {
+            if (isset($query[$field])) {
+                $this->owned($table, $actor, $query[$field]);
+            }
+        }
         $rows = DB::table($this->table($kind))->where('school_id', $actor->school_id)
+            ->where(array_intersect_key($query, $filters))
             ->when(isset($query['cursor']), fn ($q) => $q->where('id', '>', $query['cursor']))
             ->orderBy('id')->limit(26)->get();
         $more = $rows->count() > 25;
@@ -44,7 +126,17 @@ class AcademicCatalog
 
     private function projection(object $row, string $kind): array
     {
-        $fields = $kind === 'sessions' ? ['id', 'name', 'starts_on', 'ends_on', 'state', 'version'] : ['id', 'name', 'grade_label', 'sort_order', 'version'];
+        $fields = match ($kind) {
+            'sessions' => ['id', 'name', 'starts_on', 'ends_on', 'state', 'version'],
+            'classes' => ['id', 'name', 'grade_label', 'sort_order', 'version'],
+            'class-offerings' => ['id', 'session_id', 'class_id', 'version'],
+            'sections' => ['id', 'class_offering_id', 'name', 'class_teacher_membership_id', 'version'],
+            'subjects' => ['id', 'code', 'name', 'version'],
+            'subject-offerings' => ['id', 'class_offering_id', 'subject_id', 'compulsory', 'version'],
+        };
+        if ($kind === 'subject-offerings') {
+            $row->compulsory = (bool) $row->compulsory;
+        }
 
         return array_intersect_key((array) $row, array_flip($fields));
     }
@@ -53,13 +145,14 @@ class AcademicCatalog
     {
         $table = $this->table($kind);
         $this->current($actor);
-        $rules = $kind === 'sessions'
-            ? ['name' => ['required', 'string', 'max:60'], 'starts_on' => ['required', 'date_format:Y-m-d'], 'ends_on' => ['required', 'date_format:Y-m-d', 'after_or_equal:starts_on']]
-            : ['name' => ['required', 'string', 'max:80'], 'grade_label' => ['sometimes', 'nullable', 'string', 'max:32'], 'sort_order' => ['required', 'integer', 'min:0', 'max:2147483647']];
-        foreach (['name', 'grade_label'] as $field) {
+        $rules = $this->rules($kind);
+        foreach (['name', 'grade_label', 'code'] as $field) {
             if (isset($data[$field]) && is_string($data[$field])) {
                 $data[$field] = trim($data[$field]);
             }
+        }
+        if ($kind === 'sections' && array_key_exists('class_teacher_membership_id', $data)) {
+            abort_unless($data['class_teacher_membership_id'] === null, 422);
         }
         Validator::make($data, $rules)->validate();
         abort_unless(array_diff(array_keys($data), array_keys($rules)) === [], 422);
@@ -79,13 +172,16 @@ class AcademicCatalog
             $receipt = DB::table('academic_command_receipts')->where($scope)->lockForUpdate()->first();
             if ($receipt) {
                 abort_unless(hash_equals($receipt->body_hash, $hash), 409);
+                $this->relations($actor, $kind, $data);
                 $row = DB::table($table)->where('school_id', $actor->school_id)->where('id', $receipt->resource_id)->firstOrFail();
 
                 return ['resource' => $this->projection($row, $kind), 'replayed' => true];
             }
-            abort_if(DB::table($table)->where('school_id', $actor->school_id)->where('name', $data['name'])->lockForUpdate()->first(), 409);
+            $this->relations($actor, $kind, $data);
+            $unique = array_intersect_key($data, array_flip($this->duplicateFields($kind)));
+            abort_if(DB::table($table)->where('school_id', $actor->school_id)->where($unique)->lockForUpdate()->first(), 409);
             if ($actor->school->data_stage === 'demo') {
-                $limit = config('academic.'.($kind === 'sessions' ? 'demo_session_limit' : 'demo_class_limit'));
+                $limit = config('academic.demo_limits.'.$kind);
                 abort_unless(is_int($limit) && $limit > 0, 403);
                 abort_if(DB::table($table)->where('school_id', $actor->school_id)->lockForUpdate()->get(['id'])->count() >= $limit, 409);
             }

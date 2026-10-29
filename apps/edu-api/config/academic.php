@@ -2,6 +2,12 @@
 
 return [
     // Controlled non-file Demo records. Enforcement is serialized by the school lock.
-    'demo_session_limit' => 10,
-    'demo_class_limit' => 50,
+    'demo_limits' => [
+        'sessions' => 10,
+        'classes' => 50,
+        'class-offerings' => 100,
+        'sections' => 200,
+        'subjects' => 100,
+        'subject-offerings' => 500,
+    ],
 ];

@@ -192,7 +192,7 @@ class AcademicCatalogTest extends TestCase
     {
         $m = $this->member();
         $m->school->update(['data_stage' => 'demo', 'access_state' => 'provisional', 'demo_ends_at' => now()->addDay()]);
-        config(['academic.demo_class_limit' => 1]);
+        config(['academic.demo_limits.classes' => 1]);
         $this->mfaFixture($m);
         $this->create($m, 'classes', ['name' => 'Demo class', 'sort_order' => 0]);
         $this->denied(fn () => $this->create($m, 'classes', ['name' => 'Second', 'sort_order' => 1]), 409);

@@ -8,6 +8,7 @@ use App\Http\Controllers\MfaController;
 use App\Http\Controllers\RecoveryController;
 use App\Http\Controllers\SecurityInventoryController;
 use App\Http\Middleware\BrowserSession;
+use App\Services\AcademicCatalog;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('api/v1/browser')->group(function (): void {
@@ -55,6 +56,6 @@ Route::prefix('api/v1/browser/security')->middleware(['auth:sanctum', BrowserSes
 
 // Browser-only academic setup; existing boundary/session middleware and service MFA both apply.
 Route::prefix('api/v1/browser/academic')->middleware(['auth:sanctum', BrowserSession::class])->group(function (): void {
-    Route::get('/{kind}', [AcademicCatalogController::class, 'index'])->whereIn('kind', ['sessions', 'classes']);
-    Route::post('/{kind}', [AcademicCatalogController::class, 'store'])->whereIn('kind', ['sessions', 'classes'])->middleware('throttle:20,1,academic-create:');
+    Route::get('/{kind}', [AcademicCatalogController::class, 'index'])->whereIn('kind', AcademicCatalog::KINDS);
+    Route::post('/{kind}', [AcademicCatalogController::class, 'store'])->whereIn('kind', AcademicCatalog::KINDS)->middleware('throttle:20,1,academic-create:');
 });

@@ -53,15 +53,16 @@ foreach (['A' => 'live_enabled', 'B' => 'live_enabled', 'S' => 'suspended'] as $
     }
 }
 
-$school = School::where('code', 'A')->first();
-if (! Membership::where('school_id', $school->id)->where('login_identifier', 'ADMIN')->exists()) {
-    $admin = User::create(['name' => 'Synthetic activation admin', 'password' => 'Synthetic-Browser-Only-Password']);
-    Membership::create(['school_id' => $school->id, 'user_id' => $admin->id, 'role' => 'school_admin', 'login_identifier' => 'ADMIN', 'status' => 'active']);
-}
-
-// Reset only the synthetic admin MFA fixture between integration tests.
-if ($command === '') {
-    $adminMember = Membership::where('school_id', $school->id)->where('login_identifier', 'ADMIN')->firstOrFail();
-    DB::table('mfa_recovery_codes')->where('user_id', $adminMember->user_id)->delete();
-    DB::table('mfa_credentials')->where('user_id', $adminMember->user_id)->delete();
+// Synthetic admins in two schools enable real cross-tenant academic integration tests.
+foreach (['A', 'B'] as $code) {
+    $school = School::where('code', $code)->firstOrFail();
+    if (! Membership::where('school_id', $school->id)->where('login_identifier', 'ADMIN')->exists()) {
+        $admin = User::create(['name' => 'Synthetic activation admin', 'password' => 'Synthetic-Browser-Only-Password']);
+        Membership::create(['school_id' => $school->id, 'user_id' => $admin->id, 'role' => 'school_admin', 'login_identifier' => 'ADMIN', 'status' => 'active']);
+    }
+    if ($command === '') {
+        $adminMember = Membership::where('school_id', $school->id)->where('login_identifier', 'ADMIN')->firstOrFail();
+        DB::table('mfa_recovery_codes')->where('user_id', $adminMember->user_id)->delete();
+        DB::table('mfa_credentials')->where('user_id', $adminMember->user_id)->delete();
+    }
 }

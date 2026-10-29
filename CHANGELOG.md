@@ -1,5 +1,10 @@
 # Change log
 
+## Unreleased — M2 Slice B
+
+- Add same-school future class offerings, sections, subject catalogs and required/optional subject offerings with composite FKs, idempotency, audit, bounded Demo caps and scoped cursor filters.
+- Defer actual teacher assignment; extend negative/security, independent MariaDB race and HTTPS browser coverage.
+
 ## Unreleased — M2 academic setup checkpoint
 
 - Browser future-session/class catalog, serialized tenant/MFA/entitlement checks, idempotent commands and audit rollback; no academic UI acceptance claimed.

@@ -289,3 +289,79 @@ test('academic setup enforces actual HTTPS cookies, MFA, CSRF, idempotency and t
     expect((await teacher.request.get(`${api}/academic/classes`, {headers: {Origin: origin}})).status()).toBe(403);
   } finally { await teacher.close(); }
 });
+
+test('future academic graph integrates real browser fetch with scoped sections and compulsory subjects', async ({context, page}) => {
+  expect((await login(context, 'A', 'ADMIN')).status()).toBe(200);
+  const csrf = await bootstrap(context);
+  await page.goto('/dashboard/school_admin');
+  const graph = await page.evaluate(async ({api, csrf}) => {
+    let sequence = 0;
+    async function create(kind: string, data: object, key?: string) {
+      const r = await fetch(`${api}/academic/${kind}`, {method: 'POST', credentials: 'include', headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Idempotency-Key': key ?? `synthetic-offering-browser-${++sequence}`}, body: JSON.stringify(data)});
+      return {status: r.status, data: (await r.json()).data};
+    }
+    const session = await create('sessions', {name: 'Browser offering year', starts_on: '2050-04-01', ends_on: '2051-03-31'});
+    const schoolClass = await create('classes', {name: 'Browser offering class', sort_order: 10});
+    const body = {session_id: session.data.resource.id, class_id: schoolClass.data.resource.id};
+    const offering = await create('class-offerings', body, 'synthetic-offering-replay');
+    const replay = await create('class-offerings', body, 'synthetic-offering-replay');
+    const sectionBody = {class_offering_id: offering.data.resource.id, name: 'A', class_teacher_membership_id: null};
+    const section = await create('sections', sectionBody);
+    const duplicate = await create('sections', sectionBody);
+    const subject = await create('subjects', {code: 'BROWSER_MATH', name: 'Synthetic mathematics'});
+    const assigned = await create('subject-offerings', {class_offering_id: offering.data.resource.id, subject_id: subject.data.resource.id, compulsory: false});
+    const list = await fetch(`${api}/academic/subject-offerings?class_offering_id=${offering.data.resource.id}`, {credentials: 'include'});
+    const sections = await fetch(`${api}/academic/sections?class_offering_id=${offering.data.resource.id}`, {credentials: 'include'});
+    return {session, schoolClass, offering, replay, section, duplicate, subject, assigned, listStatus: list.status, list: await list.json(), sections: await sections.json()};
+  }, {api, csrf});
+  for (const r of [graph.session, graph.schoolClass, graph.offering, graph.replay, graph.section, graph.subject, graph.assigned]) expect(r.status).toBe(200);
+  expect(graph.replay.data.replayed).toBe(true);
+  expect(graph.replay.data.resource.id).toBe(graph.offering.data.resource.id);
+  expect(graph.duplicate.status).toBe(409);
+  expect(graph.section.data.resource.class_teacher_membership_id).toBeNull();
+  expect(graph.listStatus).toBe(200);
+  expect(graph.list.data.items).toHaveLength(1);
+  expect(graph.list.data.items[0].compulsory).toBe(false);
+  expect(graph.sections.data.items).toHaveLength(1);
+  expect(graph.sections.data.items[0].student_count).toBeUndefined();
+});
+
+test('academic relationship APIs deny cross-school references and retain browser security guards', async ({context, browser}) => {
+  expect((await login(context, 'A', 'ADMIN')).status()).toBe(200);
+  const csrf = await bootstrap(context);
+  async function create(kind: string, data: object, key: string) {
+    return context.request.post(`${api}/academic/${kind}`, {headers: {Origin: origin, 'X-CSRF-TOKEN': csrf, 'Idempotency-Key': key}, data});
+  }
+  const session = await create('sessions', {name: 'Foreign-reference year', starts_on: '2052-04-01', ends_on: '2053-03-31'}, 'synthetic-foreign-session');
+  expect(session.status()).toBe(200);
+  const schoolClass = await create('classes', {name: 'Foreign-reference class', sort_order: 2}, 'synthetic-foreign-class');
+  expect(schoolClass.status()).toBe(200);
+  const s = (await session.json()).data.resource;
+  const c = (await schoolClass.json()).data.resource;
+  const offering = await create('class-offerings', {session_id: s.id, class_id: c.id}, 'synthetic-foreign-offering');
+  expect(offering.status()).toBe(200);
+  const o = (await offering.json()).data.resource;
+  const subject = await create('subjects', {code: 'FOREIGN_TEST', name: 'Synthetic'}, 'synthetic-foreign-subject');
+  expect(subject.status()).toBe(200);
+  const sub = (await subject.json()).data.resource;
+  const other = await browser.newContext({ignoreHTTPSErrors: true});
+  try {
+    expect((await login(other, 'B', 'ADMIN')).status()).toBe(200);
+    const otherCsrf = await bootstrap(other);
+    for (const [kind, data] of Object.entries({'class-offerings': {session_id: s.id, class_id: c.id}, sections: {class_offering_id: o.id, name: 'Foreign'}, 'subject-offerings': {class_offering_id: o.id, subject_id: sub.id, compulsory: true}})) {
+      const r = await other.request.post(`${api}/academic/${kind}`, {headers: {Origin: origin, 'X-CSRF-TOKEN': otherCsrf, 'Idempotency-Key': `synthetic-foreign-${kind}`}, data});
+      expect(r.status()).toBe(404);
+    }
+    const deniedFilter = await other.request.get(`${api}/academic/sections?class_offering_id=${o.id}`, {headers: {Origin: origin}});
+    expect(deniedFilter.status()).toBe(404);
+    const subjects = await other.request.get(`${api}/academic/subjects`, {headers: {Origin: origin}});
+    expect(subjects.status()).toBe(200);
+    expect((await subjects.json()).data.items.some((row: {id: string}) => row.id === sub.id)).toBe(false);
+  } finally { await other.close(); }
+  for (const kind of ['class-offerings', 'sections', 'subjects', 'subject-offerings']) {
+    expect((await context.request.post(`${api}/academic/${kind}`, {headers: {Origin: origin}, data: {}})).status()).toBe(419);
+    expect((await context.request.get(`${api}/academic/${kind}`, {headers: {Origin: 'https://hostile.invalid'}})).status()).toBe(403);
+  }
+  expect((await create('sections', {class_offering_id: o.id, name: 'Mixed', session_id: s.id}, 'synthetic-mixed-session')).status()).toBe(422);
+  expect((await create('sections', {class_offering_id: o.id, name: 'Teacher', class_teacher_membership_id: '01ARZ3NDEKTSV4RRFFQ69G5FAV'}, 'synthetic-teacher-deferred')).status()).toBe(422);
+});
