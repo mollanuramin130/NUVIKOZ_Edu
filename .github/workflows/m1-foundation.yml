@@ -97,3 +97,20 @@ jobs:
           persist-credentials: false
       - name: Verify Flutter with metadata egress denied and privileges dropped
         run: bash scripts/verify_flutter_isolated.sh
+      - name: Preserve debug APKs for disposable device testing
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: edu-android-debug-${{ github.sha }}
+          retention-days: 7
+          if-no-files-found: error
+          path: |
+            apps/edu-mobile/build/app/outputs/flutter-apk/app-debug.apk
+            apps/edu-mobile/build/app/outputs/flutter-apk/app-debug.apk.sha256
+            apps/edu-mobile/build/app/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+      - name: Preserve offline MethodChannel runtime harness
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: sec01-channel-runtime-${{ github.sha }}
+          retention-days: 7
+          if-no-files-found: error
+          path: apps/edu-mobile/build/sec01-channel-runtime/

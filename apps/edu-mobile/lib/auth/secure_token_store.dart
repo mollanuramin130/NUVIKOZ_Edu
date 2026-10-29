@@ -9,8 +9,8 @@ abstract class SecureTokenStore {
   Future<void> write(String value);
   Future<void> clear();
 }
-// Fail-closed adapter boundary. A reviewed native Keystore/Keychain plugin/handler is
-// not installed in the existing source-only scaffold. No preferences/file fallback.
+// Android supplies a Keystore-backed handler. Other platforms still fail closed
+// without an approved native handler. No preferences/file fallback.
 class PlatformSecureTokenStore implements SecureTokenStore {
   static const _channel = MethodChannel('nuvikoz.edu/secure-token-store');
   @override

@@ -1,3 +1,59 @@
+# SEC-01 real Flutter MethodChannel device harness — current checkpoint
+
+Owner-reported physical evidence: Vivo1951, Android11/API30; actual-vault instrumentation OK(6 tests), persistence write OK(1 test), process force-stop, persistence read OK(1 test). Eight successful native test executions were reported by the owner; this is distinct from agent-observed hosted compilation and does not establish MethodChannel runtime success.
+
+A minimal optional debug harness now builds com.nuvikoz.edu.sec01test and its matching com.nuvikoz.edu.sec01test.test instrumentation APK. It uses test_driver/secure_store_runtime.dart (no API/client imports), an explicit sec01RuntimeHarness Gradle property and conditional debug-only Android source sets. MainActivity is open solely so a non-exported debug harness activity can reuse the ACTUAL configureFlutterEngine/secure-token-store handler. Normal application source sets and release behavior do not include the harness activity/control channel. Harness launcher is disabled, Internet permission is removed, and both CI APK inspection and device tests require it absent. Separate package/UID prevents replacement or alteration of the ordinary installed app/vault.
+
+FlutterMethodChannelRuntimeTest launches a real FlutterActivity/engine; Dart calls the actual production MethodChannel and adapter. The contract phase performs15 checks: synthetic write/read/clear, ciphertext-only inspection, empty/oversized payload rejection with previous value preserved, missing-key native errors with redacted code/message/details, adapter SecureStorageUnavailable and final clear. Test-only key deletion and result reporting exist only in the non-exported, debug-only separate application. No mock messenger, storage fallback, login, production API or external service. Each result is bound to a fresh nonce/phase. Two additional phases persist-write/persist-read require a force-stop between instrumentation processes; they verify actual new-engine persistence and cleanup. A missing result or timeout fails, never counts as success.
+
+Existing metadata-blocked SDK/checksum/credential-free/NoNewPrivs/capability controls remain unchanged. CI builds normal APKs first, separately builds the harness and its matching test APK, verifies package IDs/no Internet permission, and exports sec01-channel-runtime artifact with both APK hashes and exact checkout SOURCE_COMMIT. It restores ordinary artifacts after the second build so original checksums remain paired. CI compilation is not device execution. Hosted KVM preflight remains separately BLOCKED under unchanged permissions.
+
+STATUS: harness device execution NOT RUN. Await exact-head hosted compilation and artifact evidence. Do not claim MethodChannel PASS before owner returns real Vivo instrumentation output. No new device-install instructions have been issued; report artifact URL/checksums first, then guide ONE Terminal/ADB step at a time.
+
+Planned device phases (do not execute as a batch): confirm one authorized Vivo device; verify downloaded APK SHA256SUMS; install separate harness APK and test APK; run FlutterMethodChannelRuntimeTest contract phase; then persist-write, force-stop com.nuvikoz.edu.sec01test, persist-read. Record each command/output and count skipped tests as NOT RUN. Uninstall only the two .sec01test packages after completed verification. No macOS Flutter SDK needed.
+
+PR7 only. Main/PR6/PR8 unchanged; all PRs remain Draft/unmerged. No production activation, independent lost-factor reset, merge or deployment. NEXT SAFE TASK: verify exact-head hosted APKs, provide artifact URL and actual hashes, then wait for the owner after each single device step.
+
+# Historical SEC-01 evidence
+
+# SEC-01 Android build recovery — current checkpoint
+
+ChatGPT Work is now the sole development owner, including Android/Flutter/native security. Prior Gemini ownership assignments below are historical. PR7 remains Draft; no merge/deployment.
+
+Confirmed AndroidX failure at2a1f130 was fixed by android/gradle.properties containing only android.useAndroidX=true. No Jetifier or speculative version changes. Published5b65d0fb0c5d190b661c33298a4445c0b60a9936 passed all four checks in M1 run40890574983 / Integrity40890575000. Flutter3.47.8/Dart3.13.7, Gradle8.14/AGP8.11.1/Kotlin2.2.20/Java17. Actual flutter build apk --debug --no-pub succeeded; path apps/edu-mobile/build/app/outputs/flutter-apk/app-debug.apk; log size144M; SHA25605d91fb852610a13d2e69cef4fbbf023763ee72692d091f1006ebe0fefade7c3. This evidence belongs only to5b65d0fb; later checkpoints need their own CI.
+
+This follow-up prepares six tests invoking the actual AndroidKeyStore/vault (AES-GCM, round trip/reopen, random ciphertext/no plaintext, tampering, missing keys, interrupted AtomicFile write, failed payload preservation and secure clear), plus an explicit two-instrumentation-process persistence procedure. Existing five JVM tests only check constants/duplicated validation; they are not vault security verification. CI now runs JVM tests and compiles the instrumentation APK inside the existing metadata-blocked, env-clean, no-new-privileges/capability-free process. It does NOT execute device instrumentation. Seven-day artifacts contain only debug application/test APKs and the actual APK checksum. Release signing no longer reuses the debug key.
+
+AndroidKeyStore instrumentation and MethodChannel read/write/clear runtime: NOT RUN (no adb, emulator or device in Work). Actual activity recreation, device-invalidated key behavior and injected filesystem failure coverage remain incomplete; new vault-object reopening and staged-write interruption must not be described as those stronger checks. No full native security acceptance claim.
+
+Device procedure (DISPOSABLE debug install only; tests erase the app vault; never use real credentials): download the same-head artifact, verify the checksum, install app-debug.apk and app-debug-androidTest.apk with adb install -r. Run:
+
+```sh
+adb shell am instrument -w -e class com.nuvikoz.edu.SecureTokenVaultInstrumentedTest com.nuvikoz.edu.test/androidx.test.runner.AndroidJUnitRunner
+adb shell am instrument -w -e class com.nuvikoz.edu.VaultProcessPersistenceTest -e phase write com.nuvikoz.edu.test/androidx.test.runner.AndroidJUnitRunner
+adb shell am force-stop com.nuvikoz.edu
+adb shell am instrument -w -e class com.nuvikoz.edu.VaultProcessPersistenceTest -e phase read com.nuvikoz.edu.test/androidx.test.runner.AndroidJUnitRunner
+```
+
+Capture runner reports, Android API/device model and both process runs. MethodChannel runtime still requires a real Flutter-engine/device journey using synthetic data; native vault tests alone cannot prove Dart/channel dispatch.
+
+NEXT SAFE TASK: verify this follow-up exact-head hosted APK/JVM/instrumentation compilation, then refresh existing PR8 by a fast-forward merge commit of this PR7 history and verify all combined jobs. Preserve metadata isolation and production platform/lost-factor gates. No main merge, Hostinger/Nursery/DNS/live database or messaging changes.
+
+# Historical SEC-01 evidence
+
+# Active ownership handoff
+
+SEC-01 native source implementation COMPLETED by Android Studio Gemini on `feature/m1-security-completion` (Draft PR #7).
+Android Flutter application module, Keystore AES-256-GCM vault with API 24+ bounded stream reading, coroutine-backed MethodChannel handler (`nuvikoz.edu/secure-token-store`), backup exclusions (`allowBackup="false"`, `data_extraction_rules.xml`), HTTPS network security config (`network_security_config.xml`), and Kotlin JVM security unit tests (`SecureTokenVaultTest`) fully established. Executed native unit test result: `ALL_NATIVE_UNIT_TESTS_PASSED`. Read `apps/edu-mobile/android/NATIVE_CHECKPOINT.md` for full implementation breakdown.
+
+# SEC-01 handoff — SOURCE IMPLEMENTED & HARDENED (Draft PR #7)
+
+Branch `feature/m1-security-completion` based on verified main `c9ae3cd5d5cc2dc7683fe61576fbc851f49b85ff`. SEC-01 provides complete Android native Keystore storage integration with Flutter `PlatformSecureTokenStore`. No plaintext fallback; corrupt or missing keys fail closed. Native Kotlin compilation and unit tests verified passing. GitHub CI static analysis (`flutter analyze`) and tests (`flutter test`) passed. Native APK assembly blocked locally on SDK version constraint; Keystore OS instrumentation NOT RUN (no active device). Future SEC-02/03 work remains on separate feature branches.
+
+
+
+# Historical evidence — prior merged foundation
+
 # Current checkpoint — advanced authentication final owner review
 
 Existing branch `feature/m1-advanced-auth-security`; PR #5 https://github.com/mollanuramin130/NUVIKOZ_Edu/pull/5 remains **Draft**. Latest published implementation HEAD verified before this documentation-only update: `66bcdde57b64cb56a7c4120c2bd7fe2ed62e5f8d`. The documentation commit supersedes that HEAD without changing implementation; resolve the live PR head and its own checks for final review.
