@@ -8,6 +8,7 @@ use App\Support\Api;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class BrowserSession
 {
@@ -18,7 +19,7 @@ class BrowserSession
         $membership = $user ? Membership::where('user_id', $user->id)->where('school_id', $session->get('school_id'))->where('status', 'active')->with('school')->first() : null;
         $family = $membership && in_array($membership->role->value, ['student', 'parent'], true);
         $idle = $family ? 28800 : 1800;
-        if (! $user || $user->status !== 'active' || $user->is_platform_admin || ! $membership || in_array($membership->school->access_state, ['suspended', 'archived'], true) || ! hash_equals((string) $session->get('credential_hash', ''), hash('sha256', $user->password)) || time() - $session->get('issued_at', 0) >= 43200 || time() - $session->get('seen_at', 0) >= $idle) {
+        if (DB::table('session_revocations')->where('session_hash', hash('sha256', $session->getId()))->exists() || ! $user || $user->status !== 'active' || $user->is_platform_admin || ! $membership || in_array($membership->school->access_state, ['suspended', 'archived'], true) || ! hash_equals((string) $session->get('credential_hash', ''), hash('sha256', $user->password)) || time() - $session->get('issued_at', 0) >= 43200 || time() - $session->get('seen_at', 0) >= $idle) {
             Auth::guard('web')->logout();
             $session->invalidate();
             $session->regenerateToken();
