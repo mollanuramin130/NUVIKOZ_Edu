@@ -227,7 +227,8 @@ test('School Admin cannot provision before actual MFA enrollment and recovery ch
 test('session inventory revokes another actual browser context without exposing its cookie',async({context,page,browser})=>{
  const other=await browser.newContext({ignoreHTTPSErrors:true});expect((await login(other)).status()).toBe(200);expect((await login(context)).status()).toBe(200);
  const inventory=await context.request.get(`${api}/security/sessions`,{headers:{Origin:origin}});expect(inventory.status()).toBe(200);const rows=(await inventory.json()).data.sessions;expect(rows.length).toBeGreaterThanOrEqual(2);
- const target=rows.find((r:{current:boolean})=>!r.current);expect(target).toBeTruthy();
+ const otherInventory=await other.request.get(`${api}/security/sessions`,{headers:{Origin:origin}});expect(otherInventory.status()).toBe(200);const otherId=(await otherInventory.json()).data.sessions.find((r:{current:boolean})=>r.current).id;
+ const target=rows.find((r:{id:string})=>r.id===otherId);expect(target).toBeTruthy();
  const foreignCookie=(await other.cookies()).find(c=>c.name==='edu_browser_session')!;expect(JSON.stringify(rows)).not.toContain(foreignCookie.value);
  const csrf=await bootstrap(context);expect((await context.request.post(`${api}/security/sessions/${target.id}/revoke`,{headers:{Origin:origin,'X-CSRF-TOKEN':csrf},data:{password}})).status()).toBe(200);
  expect((await other.request.get(`${api}/me`,{headers:{Origin:origin}})).status()).toBe(401);
