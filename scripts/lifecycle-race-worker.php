@@ -30,6 +30,7 @@ try {
    echo $response->getStatusCode()===200?'issued':'denied'; break;
  case 'password':
    $u=User::findOrFail($m->user_id);$u->password='Synthetic-Race-New-Password';$u->save();echo 'changed';break;
+ case 'admin-deactivate': $m->user->update(['status'=>'inactive']); echo 'changed';break;
  case 'admin-demote':
    $m->role='principal';$m->save();echo 'changed';break;
  case 'membership':
