@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ActivationController;
 use App\Http\Controllers\BrowserAuthController as Browser;
+use App\Http\Controllers\CapabilityController;
 use App\Http\Controllers\MfaController;
 use App\Http\Controllers\RecoveryController;
 use App\Http\Controllers\SecurityInventoryController;
@@ -43,4 +44,10 @@ Route::prefix('api/v1/browser/security')->middleware(['auth:sanctum', BrowserSes
     Route::get('/devices', [SecurityInventoryController::class, 'devices']);
     Route::post('/sessions/{id}/revoke', [SecurityInventoryController::class, 'revokeSession'])->middleware('throttle:10,1,session-revoke:');
     Route::post('/devices/{id}/revoke', [SecurityInventoryController::class, 'revokeDevice'])->middleware('throttle:10,1,device-revoke:');
+});
+
+Route::prefix('api/v1/browser/security')->middleware(['auth:sanctum', BrowserSession::class])->group(function (): void {
+    Route::get('/permissions', [CapabilityController::class, 'index']);
+    Route::post('/permissions/{membership}', [CapabilityController::class, 'assign'])->middleware('throttle:10,1,permission-change:');
+    Route::get('/capabilities/{capability}/probe', [CapabilityController::class, 'probe']);
 });
