@@ -1,3 +1,9 @@
+# Current execution evidence — advanced batch restart
+
+Tested AUTH-06 checkpoint3f701e8feab2e881946f4ff0bdb0c7bd61669f47 passed80 MariaDB tests/409 assertions and15 HTTPS browser tests (run40797487540). AUTH-07 checkpointa0d64d699e37bb3d5310e6d623760c0536de2b50 passed87 MariaDB tests/448 assertions and migrations; its new sixteenth browser test exposed a disposable fixture password that an earlier recovery test intentionally changed. The correction restores only the synthetic teacher password before each independent browser test and selects the exact other browser's opaque session reference. Real password-recovery behavior is unchanged. Current local PHP83 passed/420 assertions; four MariaDB-only races skipped locally. Pint, Composer strict validation/platform checks/audit, web lint/typecheck/build and integrity passed. Current-head hosted CI must be verified after this correction. Machine contract: packages/contracts/m1-security.openapi.json.
+
+This is a continuation checkpoint, not completion of AUTH-06–10. Finish the remaining AUTH-07 concurrency/complete acceptance matrix, then AUTH-08/09 and full AUTH-10 on the same branch and Draft PR5. No merge/deployment is authorized. Resolve actual remote tip and CI; earlier evidence timestamps are historical.
+
 # Advanced batch continuation — AUTH-07 checkpoint
 
 Same branch `feature/m1-advanced-auth-security`, Draft PR5 https://github.com/mollanuramin130/NUVIKOZ_Edu/pull/5 . Verified AUTH-06 checkpoint `3f701e8feab2e881946f4ff0bdb0c7bd61669f47`: CI run40797487540 passed 80 MariaDB tests/409 assertions, four independent lifecycle/MFA races and15 HTTPS browser tests; web, metadata-blocked Flutter and Integrity40797487541 passed. Baseline main42405d34ce5a6a6b812c38c7e2a6c4a80f4e44df remains untouched.
