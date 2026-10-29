@@ -1,3 +1,11 @@
+# SEC-02 HTTPS acceptance correction — awaiting new-head CI
+
+Initial UI publication a388104c84e6ee756e980d0fe27f61afcb3dd52d matched local a5bac78. M1 run40842498667: Web/Flutter/Integrity passed; API PHP/MariaDB passed but browser suite failed 3 platform cases (20 passed, including all 17 school journeys). Actual UI defect: BroadcastChannel notifications also reached a different channel instance in the originating document, racing refresh/secret cleanup with MFA confirmation/logout. The browser client now tags notifications with an ephemeral per-document random sender and ignores its own messages; cross-tab listeners still revalidate. No session/MFA policy change. Playwright waits explicitly for recovery-code rendering and completed logout. Expired assurance correctly returns to pending MFA with no protected identity; test now asserts that actual safe UX and retains API denial.
+
+Local lint/typecheck/build passed for correction; full PHP unchanged (111/698 locally, 13 MariaDB skips). New hosted run is required before SEC-02 browser acceptance or SEC-03. Keep Draft PR6, same branch. Production issuer remains disabled, SEC-01 untouched. NEXT SAFE TASK: publish this narrow UI-race correction, verify all 23 HTTPS journeys and four checks on exact new HEAD, then continue SEC-03. Do not claim browser gate passed from the failed run.
+
+# Historical initial UI checkpoint
+
 # SEC-02 platform UI and HTTPS journeys — local implementation checkpoint
 
 Continues local a9807e241ca9fb24a5f4d554ca4f9f922ae43dfc and verified published dc8acad1042597daf3148882434b0d32c4e70fb7, same branch and Draft PR6. Added `/platform` UI using existing credentialed/CSRF client, with separate pending/enrollment/TOTP/recovery/identity/logout and unavailable/expired states. No client privilege toggle. API contract now describes actual synthetic HTTP subset.
