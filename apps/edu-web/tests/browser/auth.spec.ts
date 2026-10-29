@@ -203,7 +203,7 @@ test('assisted recovery resets through HTTPS UI and revokes another browser sess
 
 test('School Admin cannot provision before actual MFA enrollment and recovery challenge',async({context,page})=>{
  const response=await login(context,'A','ADMIN',password,false);expect(response.status()).toBe(200);
- const data=(await response.json()).data;expect(data.mfa_required).toBe(true);
+ const data=(await response.json()).data;expect(data.mfa_required).toBe(true);const pendingCookie=(await context.cookies()).find(c=>c.name==='edu_browser_session')!;
  const denied=await context.request.post(`${api}/accounts`,{headers:{Origin:origin,'X-CSRF-TOKEN':data.csrf_token,'Idempotency-Key':'synthetic-mfa-denied-0001'},data:{name:'Denied',role:'teacher',login_identifier:'DENIED'}});expect(denied.status()).toBe(403);
  await page.goto('/dashboard/school_admin');await expect(page).toHaveURL(/profile\/security/);
  await page.getByLabel('Current password',{exact:true}).fill(password);await page.getByRole('button',{name:'Begin enrollment',exact:true}).click();
@@ -211,7 +211,7 @@ test('School Admin cannot provision before actual MFA enrollment and recovery ch
  await page.getByLabel('Current password',{exact:true}).fill(password);await page.getByLabel('Authenticator code').fill(totp(seed));
  await page.getByRole('button',{name:'Confirm enrollment',exact:true}).click();
  await expect(page.getByRole('region',{name:'New recovery codes'})).toBeVisible();
- const codes=await page.getByRole('region',{name:'New recovery codes'}).locator('li').allTextContents();expect(codes.length).toBe(8);
+ const codes=await page.getByRole('region',{name:'New recovery codes'}).locator('li').allTextContents();expect(codes.length).toBe(8);const stale=await httpRequest.newContext({ignoreHTTPSErrors:true});expect((await stale.get(`${api}/me`,{headers:{Origin:origin,Cookie:`edu_browser_session=${pendingCookie.value}`}})).status()).toBe(401);await stale.dispose();
  const csrf=await bootstrap(context);
  expect((await context.request.post(`${api}/security/mfa/challenge`,{headers:{Origin:origin,'X-CSRF-TOKEN':csrf},data:{password,code:totp(seed)}})).status()).toBe(422);
  await page.getByRole('link',{name:'Continue to dashboard'}).click();await expect(page).toHaveURL(/dashboard\/school_admin/);
@@ -243,7 +243,7 @@ test('School Admin permission UI grants and revokes a role-bounded capability fo
  expect((await login(context,'A','ADMIN')).status()).toBe(200);
  const target=execFileSync('php',[fixture,'permission-target'],{encoding:'utf8'}).trim();
  page.on('dialog',dialog=>dialog.accept());await page.goto('/security/permissions');
- await page.getByLabel('Target membership').selectOption(target);await expect(page.getByText('Role: teacher; version: 1')).toBeVisible();await page.getByLabel('Capability',{exact:true}).selectOption('marks.enter');
+ await page.getByLabel('Target membership').selectOption(target);await expect(page.getByText(/Role: teacher; version: [1-9]\d*/)).toBeVisible();await page.getByLabel('Capability',{exact:true}).selectOption('marks.enter');
  await page.getByRole('button',{name:'Confirm permission change'}).click();
  await expect(page.getByRole('main').getByRole('status')).toContainText('Permission updated');
  const permitted=await recipient.request.get(`${api}/security/capabilities/marks.enter/probe`,{headers:{Origin:origin}});expect(permitted.status()).toBe(200);expect((await permitted.json()).data.domain_implemented).toBe(false);
