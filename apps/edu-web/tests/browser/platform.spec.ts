@@ -52,3 +52,21 @@ test('school session cannot enter platform context and production issuer denies 
  expect((await isolated.post(`${disabled}/platform/login`,{headers:{Origin:origin,'X-CSRF-TOKEN':(await boot.json()).data.csrf_token},data:{identifier:id,password}})).status()).toBe(403);
  await isolated.dispose();
 });
+
+test('platform authenticator replacement requires both factors and signs out before fresh authentication',async({page,context})=>{
+ await login(page,id);const oldCodes=await enroll(page);
+ const before=(await context.cookies()).find(c=>c.name==='edu_browser_session')!;
+ // Use a named region to scope this sensitive form independently of login/challenge forms.
+ const region=page.getByRole('region',{name:'Authenticator replacement'});
+ await region.getByLabel('Password for replacement').fill(password);await region.getByLabel('Existing factor type').selectOption('recovery');await region.getByLabel('Existing factor code').fill(oldCodes[0]);await region.getByRole('button',{name:'Begin authenticator replacement'}).click();
+ const seed=await region.getByTestId('replacement-seed').textContent();
+ expect((await context.request.get(`${api}/platform/identity`,{headers:{Origin:origin}})).status()).toBe(200);
+ await region.getByLabel('Password for replacement').fill(password);await region.getByLabel('New authenticator code').fill('wrong!');await region.getByRole('button',{name:'Confirm replacement',exact:true}).click();await expect(region.getByRole('alert')).toBeVisible();
+ await region.getByLabel('New authenticator code').fill(totp(seed!));await region.getByRole('button',{name:'Confirm replacement',exact:true}).click();await expect(page.getByRole('heading',{name:'Authenticator replaced',exact:true})).toBeVisible();
+ const codes=await page.getByRole('listitem').allTextContents();expect(codes).toHaveLength(8);
+ expect((await context.request.get(`${api}/platform/identity`,{headers:{Origin:origin}})).status()).toBe(401);
+ const stale=await httpRequest.newContext({ignoreHTTPSErrors:true});expect((await stale.get(`${api}/platform/identity`,{headers:{Origin:origin,Cookie:`edu_browser_session=${before.value}`}})).status()).toBe(401);await stale.dispose();
+ await page.getByRole('link',{name:'Return to platform sign-in'}).click();await login(page,id);
+ expect((await post(context,'mfa/recovery',{password,code:oldCodes[1]})).status()).toBe(422);
+ expect((await post(context,'mfa/recovery',{password,code:codes[0]})).status()).toBe(200);
+});
