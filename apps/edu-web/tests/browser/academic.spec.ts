@@ -37,7 +37,12 @@ test('complete academic workflow uses actual login MFA and every supported UI co
  await navigate(page,'Subjects');await createSubject(page,'UI_MATH');await expect(page.getByRole('row').filter({hasText:'UI_MATH'})).toBeVisible();await createSubject(page,'UI_ART');await expect(page.getByRole('row').filter({hasText:'UI_ART'})).toBeVisible();
  await page.getByLabel('Class offering',{exact:true}).selectOption({label:'UI Senior Class'});await page.getByLabel('Subject to assign',{exact:true}).selectOption({label:'UI_MATH · Synthetic UI_MATH'});await page.getByLabel('Subject classification',{exact:true}).selectOption('compulsory');await page.getByRole('button',{name:'Assign subject',exact:true}).click();await expect(page.getByRole('row').filter({hasText:'Synthetic UI_MATH'}).filter({hasText:'Compulsory subject'})).toBeVisible();
  await page.getByLabel('Subject to assign',{exact:true}).selectOption({label:'UI_ART · Synthetic UI_ART'});await page.getByLabel('Subject classification',{exact:true}).selectOption('optional');await page.getByRole('button',{name:'Assign subject',exact:true}).click();await expect(page.getByRole('row').filter({hasText:'Synthetic UI_ART'}).filter({hasText:'Optional subject'})).toBeVisible();
- await page.setViewportSize({width:390,height:844});await page.getByRole('button',{name:'Toggle academic navigation'}).click();await navigate(page,'Sections');await page.getByLabel('Class offering',{exact:true}).selectOption({label:'UI Senior Class'});await expect(page.getByRole('row').filter({hasText:'UI Section A'})).toBeVisible();
+ await page.setViewportSize({width:390,height:844});await page.getByRole('button',{name:'Toggle academic navigation'}).click();await navigate(page,'Sections');
+ const mobileResponse=page.waitForResponse(r=>r.url().includes('/academic/sections?')&&r.request().method()==='GET');
+ await page.getByLabel('Class offering',{exact:true}).selectOption({label:'UI Senior Class'});
+ const actualMobileResponse=await mobileResponse;console.log('SYNTHETIC_MOBILE_SECTIONS_RESPONSE',actualMobileResponse.status(),await actualMobileResponse.text());
+ try {await expect(page.getByRole('row').filter({hasText:'UI Section A'})).toBeVisible();}
+ catch(e) {console.log('SYNTHETIC_MOBILE_DOM',await page.locator('.academic-workspace').innerText());const diagnostic=await page.screenshot({fullPage:true});console.log(`ACADEMIC_UI_MOBILE_BASE64:${diagnostic.toString('base64')}`);throw e;}
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
  expect(await page.locator('main input, main select').evaluateAll(elements=>elements.every(e=>(e as HTMLInputElement).labels?.length))).toBe(true);
  expect(await page.getByRole('button',{name:'Create section',exact:true}).evaluate(e=>e.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
@@ -58,8 +63,8 @@ test('lost acknowledgement retains the command intent and double submit creates 
  await page.route('**/api/v1/browser/academic/subjects',async route=>{if(route.request().method()!=='POST'){await route.continue();return;}count++;keys.push(route.request().headers()['idempotency-key']);if(count===1){const r=await route.fetch();expect(r.status()).toBe(200);await route.abort('failed');}else await route.continue();});
  await page.getByLabel('Subject code',{exact:true}).fill('ACK_UI');await page.getByLabel('Subject name',{exact:true}).fill('Synthetic ACK_UI');
  await page.getByRole('button',{name:'Create subject',exact:true}).evaluate(e=>{const f=e.closest('form')!;f.requestSubmit();f.requestSubmit();});
- await expect(page.getByRole('alert')).toContainText('could not confirm');expect(count).toBe(1);
- await page.getByRole('button',{name:'Create subject',exact:true}).click();await expect(page.getByRole('status')).toContainText('existing committed record');expect(count).toBe(2);expect(keys[1]).toBe(keys[0]);await expect(page.getByRole('row').filter({hasText:'ACK_UI'})).toHaveCount(1);
+ await expect(page.getByRole('region',{name:'Create subject',exact:true}).getByRole('alert')).toContainText('could not confirm');expect(count).toBe(1);
+ await page.getByRole('button',{name:'Create subject',exact:true}).click();await expect(page.getByRole('region',{name:'Create subject',exact:true}).getByRole('status')).toContainText('existing committed record');expect(count).toBe(2);expect(keys[1]).toBe(keys[0]);await expect(page.getByRole('row').filter({hasText:'ACK_UI'})).toHaveCount(1);
 });
 
 test('actual CSRF denial refreshes the workspace and never replays the unsafe UI command',async({page,context})=>{
@@ -76,7 +81,7 @@ test('expired entitlement denies UI writes while authorized historical reads rem
 
 test('actual UI cursor pagination search empty states and duplicate conflict require deliberate review',async({page,context})=>{
  execFileSync('php',[fixture,'academic-ui-pagination']);await apiAdmin(context);await page.goto('/academic/classes');const catalog=page.getByRole('region',{name:'School class catalog',exact:true});await expect(catalog.getByText('25 loaded records · page 1',{exact:true})).toBeVisible();await catalog.getByRole('button',{name:'Next page',exact:true}).click();await expect(catalog.getByRole('row').filter({hasText:'Pagination Class 25'})).toBeVisible();await catalog.getByLabel('Search this loaded page').fill('not-a-real-class');await expect(catalog.getByRole('heading',{name:'No matches on this page'})).toBeVisible();await catalog.getByLabel('Search this loaded page').fill('');await catalog.getByRole('button',{name:'Previous page',exact:true}).click();await expect(catalog.getByText('25 loaded records · page 1',{exact:true})).toBeVisible();
- await page.getByLabel('Class name',{exact:true}).fill('Pagination Class 00');await page.getByRole('button',{name:'Create class',exact:true}).click();await expect(page.getByRole('alert')).toContainText('Refresh and review');await expect(page.getByRole('alert').getByRole('button',{name:'Refresh records'})).toBeVisible();
+ await page.getByLabel('Class name',{exact:true}).fill('Pagination Class 00');await page.getByRole('button',{name:'Create class',exact:true}).click();await expect(page.getByRole('region',{name:'Create class',exact:true}).getByRole('alert')).toContainText('Refresh and review');await expect(page.getByRole('region',{name:'Create class',exact:true}).getByRole('alert').getByRole('button',{name:'Refresh records'})).toBeVisible();
 });
 
 test('another tab context change discards a delayed private response and clears old academic state',async({page,context})=>{
