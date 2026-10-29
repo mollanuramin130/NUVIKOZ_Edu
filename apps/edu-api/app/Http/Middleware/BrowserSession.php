@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Membership;
+use App\Services\PrivilegedMfa;
 use App\Support\Api;
 use Closure;
 use Illuminate\Http\Request;
@@ -33,6 +34,10 @@ class BrowserSession
         }
         $session->put('seen_at', time());
         $request->attributes->set('membership', $membership);
+        $bootstrap = $request->is('api/v1/browser/me') || $request->is('api/v1/browser/security/mfa/*');
+        if ($membership->role->value === 'school_admin' && ! $bootstrap && ! app(PrivilegedMfa::class)->verified($membership, $request)) {
+            return Api::error('MFA_REQUIRED', 'Complete privileged MFA first.', 403);
+        }
 
         return $next($request);
     }
