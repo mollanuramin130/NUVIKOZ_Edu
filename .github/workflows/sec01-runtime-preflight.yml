@@ -1,0 +1,17 @@
+name: SEC-01 runtime preflight
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  runtime-preflight:
+    if: github.event.pull_request.number == 7 && github.head_ref == 'feature/m1-security-completion'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - name: Check unmodified runtime access under existing isolation
+        run: bash scripts/sec01-runtime-preflight.sh
