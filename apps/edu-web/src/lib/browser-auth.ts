@@ -4,7 +4,8 @@ export class AuthError extends Error {
 }
 const base = process.env.NEXT_PUBLIC_EDU_API_BASE_URL;
 let csrf: string | undefined;
-const sessionSender = crypto.randomUUID();
+// Insecure pages must still render the HTTPS-required error before any credential request.
+const sessionSender = globalThis.isSecureContext ? crypto.randomUUID() : undefined;
 export function onSessionChange(listener: () => void) {
   const channel = new BroadcastChannel('edu-session');
   channel.onmessage = event => { if (event.data?.source === sessionSender) return; csrf = undefined; listener(); };
