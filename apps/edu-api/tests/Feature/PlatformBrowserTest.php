@@ -109,6 +109,7 @@ class PlatformBrowserTest extends TestCase
     public function test_persisted_assurance_is_invalidated_by_current_security_state(): void
     {
         $u = $this->authenticate();
+        $this->travel(6)->minutes();
         $data = $this->sessionData();
         $cookie = $this->cookie;
         $row = (array) DB::table('sessions')->where('id', app('session')->driver()->getId())->first();
@@ -140,6 +141,8 @@ class PlatformBrowserTest extends TestCase
             }
             $this->saveSession($changed);
             $this->assertContains($this->browser('GET', 'platform/identity')->status(), [401, 403], $case);
+            $this->assertContains($this->browser('GET', 'platform/status')->status(), [401, 403], $case);
+            $this->assertContains($this->browser('POST', 'platform/mfa/replacement/start', ['password' => 'Synthetic-Platform-Password', 'method' => 'totp', 'code' => 'not-a-code'])->status(), [401, 403], $case);
             if ($case === 'disabled') {
                 DB::table('users')->where('id', $u->id)->update(['status' => 'active']);
             }
@@ -227,6 +230,115 @@ class PlatformBrowserTest extends TestCase
         $data['platform_context']['seen_at'] = now()->timestamp;
         $this->saveSession($data);
         $this->browser('GET', 'platform/identity')->assertForbidden();
+    }
+
+    public function test_verified_context_status_and_replacement_survive_initial_challenge_deadline(): void
+    {
+        $this->travelTo(now()->startOfMinute());
+        $user = $this->authenticate();
+        $start = now()->copy();
+        $seed = Crypt::decryptString(DB::table('mfa_credentials')->where('user_id', $user->id)->value('secret_encrypted'));
+        $this->travelTo($start->copy()->addMinutes(5));
+        $this->browser('GET', 'platform/identity')->assertOk();
+        $this->browser('GET', 'platform/status')->assertOk()->assertJsonPath('data.verified', true);
+        $this->browser('POST', 'platform/mfa/challenge', ['password' => 'Synthetic-Platform-Password', 'code' => app(Totp::class)->code($seed, now()->timestamp)])->assertForbidden();
+        $this->travelTo($start->copy()->addMinutes(6));
+        $pending = $this->browser('POST', 'platform/mfa/replacement/start', ['password' => 'Synthetic-Platform-Password', 'method' => 'totp', 'code' => app(Totp::class)->code($seed, now()->timestamp)])->assertOk();
+        $this->travel(1)->seconds();
+        $this->browser('POST', 'platform/mfa/replacement/confirm', ['password' => 'Synthetic-Platform-Password', 'replacement_id' => $pending->json('data.replacement_id'), 'code' => app(Totp::class)->code($pending->json('data.secret'), now()->timestamp)])->assertOk()->assertJsonPath('data.reauthentication_required', true);
+        $this->browser('GET', 'platform/identity')->assertUnauthorized();
+    }
+
+    public function test_replacement_started_before_challenge_expiry_can_confirm_after_it_with_valid_assurance(): void
+    {
+        $this->travelTo(now()->startOfMinute());
+        $user = $this->authenticate();
+        $seed = Crypt::decryptString(DB::table('mfa_credentials')->where('user_id', $user->id)->value('secret_encrypted'));
+        $this->travel(299)->seconds();
+        $pending = $this->browser('POST', 'platform/mfa/replacement/start', ['password' => 'Synthetic-Platform-Password', 'method' => 'totp', 'code' => app(Totp::class)->code($seed, now()->timestamp)])->assertOk();
+        $this->travel(2)->seconds();
+        $this->browser('GET', 'platform/identity')->assertOk();
+        $this->browser('POST', 'platform/mfa/replacement/confirm', ['password' => 'Synthetic-Platform-Password', 'replacement_id' => $pending->json('data.replacement_id'), 'code' => app(Totp::class)->code($pending->json('data.secret'), now()->timestamp)])->assertOk();
+    }
+
+    public function test_pending_enrollment_cannot_complete_at_or_after_five_minutes(): void
+    {
+        $this->travelTo(now()->startOfMinute());
+        config(['platform.synthetic_auth' => true, 'browser.origins' => ['https://web.edu.test']]);
+        $user = User::create(['name' => 'Synthetic pending', 'password' => 'Synthetic-Platform-Password']);
+        $user->forceFill(['is_platform_admin' => true])->save();
+        $this->browser('GET', 'csrf')->assertOk();
+        $this->browser('POST', 'platform/login', ['identifier' => $user->id, 'password' => 'Synthetic-Platform-Password'])->assertOk();
+        $this->travel(299)->seconds();
+        $this->browser('GET', 'platform/status')->assertOk()->assertJsonPath('data.verified', false);
+        $setup = $this->browser('POST', 'platform/mfa/enrollment', ['password' => 'Synthetic-Platform-Password'])->assertOk();
+        $this->travel(1)->seconds();
+        $this->browser('GET', 'platform/status')->assertForbidden();
+        $this->browser('GET', 'platform/identity')->assertForbidden();
+        $this->browser('POST', 'platform/mfa/confirm', ['password' => 'Synthetic-Platform-Password', 'code' => app(Totp::class)->code($setup->json('data.secret'), now()->timestamp)])->assertForbidden();
+        $this->assertNull(DB::table('mfa_credentials')->where('user_id', $user->id)->value('confirmed_at'));
+        $this->assertArrayNotHasKey('platform_assurance', $this->sessionData());
+    }
+
+    public function test_expired_pending_challenge_cannot_use_existing_totp_recovery_or_replacement(): void
+    {
+        $this->travelTo(now()->startOfMinute());
+        $user = $this->authenticate();
+        $seed = Crypt::decryptString(DB::table('mfa_credentials')->where('user_id', $user->id)->value('secret_encrypted'));
+        $this->browser('POST', 'platform/logout')->assertOk();
+        $this->browser('POST', 'platform/login', ['identifier' => $user->id, 'password' => 'Synthetic-Platform-Password'])->assertOk();
+        $this->travel(299)->seconds();
+        $this->browser('GET', 'platform/status')->assertOk()->assertJsonPath('data.verified', false);
+        $this->travel(1)->seconds();
+        $this->browser('GET', 'platform/status')->assertForbidden();
+        $this->browser('GET', 'platform/identity')->assertForbidden();
+        $this->browser('POST', 'platform/mfa/challenge', ['password' => 'Synthetic-Platform-Password', 'code' => app(Totp::class)->code($seed, now()->timestamp)])->assertForbidden();
+        $recovery = str_repeat('a', 32);
+        DB::table('mfa_recovery_codes')->insert(['id' => (string) Str::ulid(), 'user_id' => $user->id, 'code_hash' => hash('sha256', $recovery), 'created_at' => now(), 'updated_at' => now()]);
+        $this->browser('POST', 'platform/mfa/recovery', ['password' => 'Synthetic-Platform-Password', 'code' => $recovery])->assertForbidden();
+        $this->browser('POST', 'platform/mfa/replacement/start', ['password' => 'Synthetic-Platform-Password', 'method' => 'recovery', 'code' => $recovery])->assertForbidden();
+        $this->assertNull(DB::table('mfa_recovery_codes')->where('code_hash', hash('sha256', $recovery))->value('consumed_at'));
+        $this->assertDatabaseCount('mfa_replacements', 0);
+    }
+
+    public function test_verified_assurance_expires_at_fifteen_minutes_even_for_inflight_replacement(): void
+    {
+        $this->travelTo(now()->startOfMinute());
+        $user = $this->authenticate();
+        $seed = Crypt::decryptString(DB::table('mfa_credentials')->where('user_id', $user->id)->value('secret_encrypted'));
+        $this->travel(899)->seconds();
+        $this->browser('GET', 'platform/identity')->assertOk();
+        $this->browser('GET', 'platform/status')->assertOk()->assertJsonPath('data.verified', true);
+        $pending = $this->browser('POST', 'platform/mfa/replacement/start', ['password' => 'Synthetic-Platform-Password', 'method' => 'totp', 'code' => app(Totp::class)->code($seed, now()->timestamp)])->assertOk();
+        $credential = (array) DB::table('mfa_credentials')->where('user_id', $user->id)->first();
+        $this->travel(1)->seconds();
+        $this->browser('GET', 'platform/identity')->assertForbidden();
+        $this->browser('GET', 'platform/status')->assertForbidden();
+        $this->browser('POST', 'platform/mfa/replacement/start', ['password' => 'Synthetic-Platform-Password', 'method' => 'totp', 'code' => app(Totp::class)->code($seed, now()->timestamp)])->assertForbidden();
+        $this->browser('POST', 'platform/mfa/replacement/confirm', ['password' => 'Synthetic-Platform-Password', 'replacement_id' => $pending->json('data.replacement_id'), 'code' => app(Totp::class)->code($pending->json('data.secret'), now()->timestamp)])->assertForbidden();
+        $this->assertSame($credential, (array) DB::table('mfa_credentials')->where('user_id', $user->id)->first());
+        $this->assertDatabaseHas('mfa_replacements', ['id' => $pending->json('data.replacement_id')]);
+    }
+
+    public function test_idle_and_absolute_context_boundaries_remain_strict_with_fresh_assurance(): void
+    {
+        $this->travelTo(now()->startOfMinute());
+        $this->authenticate();
+        $base = now()->copy();
+        $original = $this->sessionData();
+        foreach (['idle' => 1800, 'absolute' => 43200] as $boundary => $limit) {
+            $this->travelTo($base);
+            $data = $original;
+            // Isolate each lifetime in persisted server state; never accept timestamps from a client.
+            $data['platform_context']['issued_at'] = $base->timestamp - $limit + 1;
+            $data['platform_context']['seen_at'] = $boundary === 'idle' ? $base->timestamp - $limit + 1 : $base->timestamp;
+            $this->saveSession($data);
+            $this->browser('GET', 'platform/status')->assertOk()->assertJsonPath('data.verified', true);
+            $this->travel(1)->seconds();
+            $this->browser('GET', 'platform/status')->assertForbidden();
+            $this->browser('GET', 'platform/identity')->assertForbidden();
+            $this->browser('POST', 'platform/mfa/replacement/start', ['password' => 'Synthetic-Platform-Password', 'method' => 'totp', 'code' => '123456'])->assertForbidden();
+        }
     }
 
     public function test_platform_mutations_preserve_origin_csrf_and_production_denial(): void
