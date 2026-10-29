@@ -28,3 +28,7 @@ Added School Admin browser staff provisioning with single-use 30-minute activati
 ## AUTH-05 — assisted password recovery
 
 Added tenant-bound, School Admin-authorized in-person recovery, hashed 15-minute single-use proofs, atomic credential replacement/revocation, scoped rate limits, audit events, and minimal Next.js recovery screens. Public requests are generic and do not fabricate verified contact delivery. Production issuance remains disabled; pending activation cannot use recovery. MFA and production deployment remain pending.
+
+## Advanced M1 batch — AUTH-06 checkpoint
+
+Added School Admin TOTP enrollment/challenges, hashed recovery codes, short-lived server assurance, service-level privileged enforcement, `/profile/security`, RFC-vector/negative/race/browser tests. Legacy device provisioning and platform token health are fail-closed until safe MFA-aware transports exist. AUTH-07–10 remain pending on the coordinated branch; no merge/deploy or production messaging.
