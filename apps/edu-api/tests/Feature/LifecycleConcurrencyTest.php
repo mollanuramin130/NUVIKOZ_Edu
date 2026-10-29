@@ -9,6 +9,8 @@ use App\Models\User;
 use App\Services\SecurityInventory;
 use App\Support\Api;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
+use Illuminate\Session\ArraySessionHandler;
+use Illuminate\Session\Store;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -51,6 +53,19 @@ class LifecycleConcurrencyTest extends TestCase
         $token = $u->createToken('Synthetic', ['school:'.$s->id], now()->addDays(7));
         $oldSession = str_repeat('a', 40);
         DB::table('sessions')->insert(['id' => $oldSession, 'user_id' => $u->id, 'payload' => 'synthetic', 'last_activity' => time()]);
+        $probe = function () use ($u, $s, $oldSession) {
+            $session = new Store('synthetic', new ArraySessionHandler(480));
+            $session->setId($oldSession);
+            $session->start();
+            request()->setLaravelSession($session);
+            Auth::guard('web')->setUser($u->fresh());
+            $session->put(['school_id' => $s->id, 'credential_hash' => hash('sha256', $u->fresh()->password), 'issued_at' => time(), 'seen_at' => time()]);
+
+            return app(BrowserSession::class)->handle(request(), fn () => Api::ok([]))->getStatusCode();
+        };
+        if ($second === 'session-revoke') {
+            $this->assertSame(200, $probe(), 'The same session must be eligible before revocation.');
+        }
         $target = app(SecurityInventory::class)->opaque(str_contains($first, 'device') ? 'device' : 'session', str_contains($first, 'device') ? (string) $token->accessToken->id : $oldSession, $u->id);
         $dir = sys_get_temp_dir().'/edu-lifecycle-'.bin2hex(random_bytes(8));
         mkdir($dir, 0700);
@@ -89,14 +104,9 @@ class LifecycleConcurrencyTest extends TestCase
             }
             if ($second === 'session-revoke') {
                 $this->assertDatabaseHas('session_revocations', ['session_hash' => hash('sha256', $oldSession)]);
-                $session = app('session')->driver();
-                $session->setId($oldSession);
-                $session->start();
-                request()->setLaravelSession($session);
-                Auth::guard('web')->login($u);
-                $session->setId($oldSession);
-                $session->put(['school_id' => $s->id, 'credential_hash' => hash('sha256', $u->password), 'issued_at' => time(), 'seen_at' => time()]);
-                $this->assertSame(401, app(BrowserSession::class)->handle(request(), fn () => Api::ok([]))->getStatusCode());
+                $this->assertDatabaseHas('sessions', ['id' => $oldSession, 'payload' => 'synthetic-late-writer']);
+                $this->assertSame('revoked', $results[1]);
+                $this->assertSame(401, $probe());
             }
         } finally {
             foreach ($jobs as $job) {
