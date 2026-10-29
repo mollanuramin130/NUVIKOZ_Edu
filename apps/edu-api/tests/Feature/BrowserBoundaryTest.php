@@ -3,7 +3,11 @@
 namespace Tests\Feature;
 
 use App\Http\Middleware\BrowserSession;
+use App\Models\Membership;
+use App\Models\School;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class BrowserBoundaryTest extends TestCase
@@ -85,5 +89,17 @@ class BrowserBoundaryTest extends TestCase
         $this->assertNull(config('session.domain'));
         $this->assertTrue(config('session.secure'));
         $this->assertTrue(config('session.http_only'));
+    }
+
+    public function test_revocation_tombstone_denies_a_resurrected_server_session(): void
+    {
+        config(['browser.origins' => ['https://web.edu.test']]);
+        $school = School::create(['code' => 'TOMBSTONE', 'name' => 'Synthetic', 'data_stage' => 'live', 'access_state' => 'live_enabled']);
+        $user = User::create(['name' => 'Synthetic', 'password' => 'Synthetic-Password']);
+        Membership::create(['school_id' => $school->id, 'user_id' => $user->id, 'role' => 'teacher', 'login_identifier' => 'SYNTHETIC', 'status' => 'active']);
+        $this->actingAs($user, 'web')->withSession(['school_id' => $school->id, 'credential_hash' => hash('sha256', $user->password), 'issued_at' => time(), 'seen_at' => time()]);
+        $session = app('session')->driver()->getId();
+        DB::table('session_revocations')->insert(['session_hash' => hash('sha256', $session), 'user_id' => $user->id, 'created_at' => now()]);
+        $this->getJson('https://localhost/api/v1/browser/me', ['Origin' => 'https://web.edu.test'])->assertUnauthorized();
     }
 }

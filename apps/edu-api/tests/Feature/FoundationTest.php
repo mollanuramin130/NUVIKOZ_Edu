@@ -117,7 +117,7 @@ class FoundationTest extends TestCase
         $m = $this->member($this->school());
         $this->auth($m);
         $m->update(['status' => 'inactive']);
-        $this->getJson('/api/v1/schools/'.$m->school_id)->assertNotFound();
+        $this->getJson('/api/v1/schools/'.$m->school_id)->assertUnauthorized();
     }
 
     public function test_school_role_cannot_access_platform(): void
@@ -385,5 +385,16 @@ class FoundationTest extends TestCase
     public function test_method_error_retains_allow_header(): void
     {
         $this->postJson('/api/v1/health')->assertStatus(405)->assertHeader('Allow')->assertJsonPath('error.code', 'HTTP_405');
+    }
+
+    public function test_ordinary_and_privileged_device_expiry_is_bounded(): void
+    {
+        $school = $this->school();
+        foreach (['teacher' => 604800, 'school_admin' => 43200] as $role => $seconds) {
+            $m = $this->member($school, $role, strtoupper($role));
+            $response = $this->postJson('/api/v1/auth/login', ['school_code' => 'A', 'identifier' => $m->login_identifier, 'password' => 'Synthetic-Test-Password'])->assertOk();
+            $this->assertEqualsWithDelta($seconds, now()->diffInSeconds($response->json('data.expires_at')), 2);
+            $this->assertNotNull($m->user->tokens()->first()->expires_at);
+        }
     }
 }
