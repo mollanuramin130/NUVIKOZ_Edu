@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\FoundationController as C;
+use App\Http\Controllers\SecurityInventoryController;
 use App\Support\Api;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -27,6 +28,8 @@ Route::prefix('v1')->group(function (): void {
 
         });
         Route::middleware('tenant')->group(function (): void {
+            Route::get('/security/devices', [SecurityInventoryController::class, 'devices']);
+            Route::post('/security/devices/{id}/revoke', [SecurityInventoryController::class, 'revokeDevice'])->middleware('throttle:10,1,device-revoke:');
             Route::get('/schools/{school}', [C::class, 'school']);
             Route::post('/accounts', [C::class, 'provision']);
             Route::post('/storage/reservations', [C::class, 'fileDenied']);

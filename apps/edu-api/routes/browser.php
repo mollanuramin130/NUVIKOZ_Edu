@@ -4,6 +4,7 @@ use App\Http\Controllers\ActivationController;
 use App\Http\Controllers\BrowserAuthController as Browser;
 use App\Http\Controllers\MfaController;
 use App\Http\Controllers\RecoveryController;
+use App\Http\Controllers\SecurityInventoryController;
 use App\Http\Middleware\BrowserSession;
 use Illuminate\Support\Facades\Route;
 
@@ -35,4 +36,11 @@ Route::prefix('api/v1/browser/security/mfa')->middleware(['auth:sanctum', Browse
     Route::post('/challenge', [MfaController::class, 'challenge']);
     Route::post('/recovery-code', [MfaController::class, 'recovery']);
     Route::post('/recovery-codes/regenerate', [MfaController::class, 'regenerate']);
+});
+
+Route::prefix('api/v1/browser/security')->middleware(['auth:sanctum', BrowserSession::class])->group(function (): void {
+    Route::get('/sessions', [SecurityInventoryController::class, 'sessions']);
+    Route::get('/devices', [SecurityInventoryController::class, 'devices']);
+    Route::post('/sessions/{id}/revoke', [SecurityInventoryController::class, 'revokeSession'])->middleware('throttle:10,1,session-revoke:');
+    Route::post('/devices/{id}/revoke', [SecurityInventoryController::class, 'revokeDevice'])->middleware('throttle:10,1,device-revoke:');
 });
