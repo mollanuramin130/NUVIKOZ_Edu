@@ -124,7 +124,7 @@ class PrivilegedMfaTest extends TestCase
     {
         foreach (['membership', 'school', 'activation', 'identity', 'platform', 'principal'] as $case) {
             $m = $this->member('S'.$case);
-            if (in_array($case, ['membership', 'principal'], true)) {
+            if (in_array($case, ['membership', 'principal', 'activation', 'identity', 'platform'], true)) {
                 $this->backupAdminFixture($m);
             }
             match ($case) {

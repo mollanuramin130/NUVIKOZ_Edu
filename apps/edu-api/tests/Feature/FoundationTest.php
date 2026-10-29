@@ -129,6 +129,7 @@ class FoundationTest extends TestCase
     public function test_platform_identity_has_separate_guard(): void
     {
         $m = $this->member($this->school());
+        $this->backupAdminFixture($m);
         $m->user->forceFill(['is_platform_admin' => true])->save();
         $this->auth($m)->getJson('/api/v1/platform/health')->assertForbidden();
         app('auth')->forgetGuards();
@@ -345,6 +346,7 @@ class FoundationTest extends TestCase
     public function test_platform_user_cannot_issue_tokens_through_school_login(): void
     {
         $m = $this->member($this->school());
+        $this->backupAdminFixture($m);
         $m->user->forceFill(['is_platform_admin' => true])->save();
         $this->postJson('/api/v1/auth/login', ['school_code' => 'A', 'identifier' => 'TEST', 'password' => 'Synthetic-Test-Password'])->assertUnauthorized();
         $this->assertDatabaseCount('personal_access_tokens', 0);
@@ -361,6 +363,7 @@ class FoundationTest extends TestCase
     public function test_service_rechecks_password_change_requirement(): void
     {
         $m = $this->member($this->school());
+        $this->backupAdminFixture($m);
         $m->user->update(['must_change_password' => true]);
         $this->expectException(AuthorizationException::class);
         app(ProvisionStaff::class)->execute($m, ['name' => 'Teacher', 'login_identifier' => 'NEW', 'role' => 'teacher'], 'test', 'synthetic-request-key');

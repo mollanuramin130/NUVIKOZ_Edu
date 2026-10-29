@@ -124,6 +124,22 @@ class CapabilitiesTest extends TestCase
         $this->assertDatabaseHas('memberships', ['id' => $a->id]);
     }
 
+    public function test_global_identity_changes_cannot_remove_the_last_eligible_admin(): void
+    {
+        $a = $this->member();
+        foreach ([['status' => 'inactive'], ['activation_required' => true], ['must_change_password' => true], ['is_platform_admin' => true]] as $data) {
+            $identity = $a->user->fresh();
+            $this->denied(fn () => $identity->forceFill($data)->save());
+            $this->assertSame('active', $identity->fresh()->status);
+            $this->assertFalse($identity->fresh()->activation_required);
+            $this->assertFalse($identity->fresh()->must_change_password);
+            $this->assertFalse($identity->fresh()->is_platform_admin);
+        }
+        $this->backupAdminFixture($a);
+        $a->user->fresh()->update(['status' => 'inactive']);
+        $this->assertSame('inactive', $a->user->fresh()->status);
+    }
+
     public function test_authorized_member_mutation_is_versioned_audited_and_revokes_stale_authority(): void
     {
         $a = $this->member();
