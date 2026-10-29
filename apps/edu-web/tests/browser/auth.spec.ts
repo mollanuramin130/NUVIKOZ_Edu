@@ -243,7 +243,7 @@ test('School Admin permission UI grants and revokes a role-bounded capability fo
  expect((await login(context,'A','ADMIN')).status()).toBe(200);
  const target=execFileSync('php',[fixture,'permission-target'],{encoding:'utf8'}).trim();
  page.on('dialog',dialog=>dialog.accept());await page.goto('/security/permissions');
- await page.getByLabel('Target membership').selectOption(target);await page.getByLabel('Capability',{exact:true}).selectOption('marks.enter');
+ await page.getByLabel('Target membership').selectOption(target);await expect(page.getByText('Role: teacher; version: 1')).toBeVisible();await page.getByLabel('Capability',{exact:true}).selectOption('marks.enter');
  await page.getByRole('button',{name:'Confirm permission change'}).click();
  await expect(page.getByRole('main').getByRole('status')).toContainText('Permission updated');
  const permitted=await recipient.request.get(`${api}/security/capabilities/marks.enter/probe`,{headers:{Origin:origin}});expect(permitted.status()).toBe(200);expect((await permitted.json()).data.domain_implemented).toBe(false);
