@@ -1,11 +1,12 @@
 # Active ownership handoff
 
-SEC-01 native development COMPLETED by Android Studio Gemini on `feature/m1-security-completion`.
+SEC-01 native source implementation COMPLETED by Android Studio Gemini on `feature/m1-security-completion` (Draft PR #7).
 Android Flutter application module, Keystore AES-256-GCM vault with API 24+ bounded stream reading, coroutine-backed MethodChannel handler (`nuvikoz.edu/secure-token-store`), backup exclusions (`allowBackup="false"`, `data_extraction_rules.xml`), HTTPS network security config (`network_security_config.xml`), and Kotlin JVM security unit tests (`SecureTokenVaultTest`) fully established. Executed native unit test result: `ALL_NATIVE_UNIT_TESTS_PASSED`. Read `apps/edu-mobile/android/NATIVE_CHECKPOINT.md` for full implementation breakdown.
 
-# SEC-01 handoff — COMPLETED (Android Native Keystore Storage)
+# SEC-01 handoff — SOURCE IMPLEMENTED & HARDENED (Draft PR #7)
 
-Branch `feature/m1-security-completion` based on verified main `c9ae3cd5d5cc2dc7683fe61576fbc851f49b85ff`. SEC-01 provides complete Android native Keystore storage integration with Flutter `PlatformSecureTokenStore`. No plaintext fallback; corrupt or missing keys fail closed. Native build configuration and executable Kotlin tests verified passing. Future SEC-02/03 work remains on separate feature branches.
+Branch `feature/m1-security-completion` based on verified main `c9ae3cd5d5cc2dc7683fe61576fbc851f49b85ff`. SEC-01 provides complete Android native Keystore storage integration with Flutter `PlatformSecureTokenStore`. No plaintext fallback; corrupt or missing keys fail closed. Native Kotlin compilation and unit tests verified passing. GitHub CI static analysis (`flutter analyze`) and tests (`flutter test`) passed. Native APK assembly blocked locally on SDK version constraint; Keystore OS instrumentation NOT RUN (no active device). Future SEC-02/03 work remains on separate feature branches.
+
 
 
 # Historical evidence — prior merged foundation
