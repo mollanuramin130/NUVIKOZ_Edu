@@ -41,7 +41,7 @@ export async function browserRequest<T>(path: string, body?: unknown): Promise<T
   }
   if (result.data.csrf_token) csrf = result.data.csrf_token;
   if ((path === 'activation/consume' || path === 'recovery/consume')) csrf = undefined;
-  if (path === 'platform/login' || path === 'platform/logout' || (path.startsWith('platform/mfa/') && result.data.verified) || (path.startsWith('security/sessions/') && path.endsWith('/revoke')) || (path.startsWith('security/mfa/') && result.data.verified) || path === 'login' || path === 'logout' || (path === 'activation/consume' || path === 'recovery/consume')) announceSessionChange();
+  if (result.data.reauthentication_required || path === 'platform/login' || path === 'platform/logout' || (path.startsWith('platform/mfa/') && result.data.verified) || (path.startsWith('security/sessions/') && path.endsWith('/revoke')) || (path.startsWith('security/mfa/') && result.data.verified) || path === 'login' || path === 'logout' || (path === 'activation/consume' || path === 'recovery/consume')) announceSessionChange();
   return result.data as T;
 }
 export async function bootstrap() { return browserRequest<{ csrf_token: string }>('csrf'); }
