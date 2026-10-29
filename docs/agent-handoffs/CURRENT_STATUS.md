@@ -1,3 +1,13 @@
+# Advanced M1 coordinated batch — AUTH-06 checkpoint
+
+Branch `feature/m1-advanced-auth-security`, baseline main `42405d34ce5a6a6b812c38c7e2a6c4a80f4e44df` (AUTH-05 merged). Main post-merge M1 run40794264739 and Integrity run40794264734 passed. Old open-PR4/pending-AUTH05 text below is historical.
+
+AUTH-06: encrypted TOTP, expiring enrollment, password reauthentication, replay counter, one-time hashed recovery codes, atomic audit, current-school/session/credential-bound assurance and privilege/session rotation; SchoolAccess enforces MFA on provisioning/reissue/recovery issuance, while proof redemption rechecks issuer identity independently. Minimal `/profile/security` enrollment/challenge/recovery UI. Legacy privileged device provisioning and platform health remain closed without reviewed MFA-aware issuers. No insecure reset/seed replacement or production delivery. Read ADR-022 and contract addendum. One additive MFA migration. Local PHP:80 discovered,76 passed/381 assertions; four MariaDB-only races skipped under SQLite. Web lint/TypeScript/production build and blocking Composer audit passed. Actual-head MariaDB/browser CI must pass before claiming this phase complete.
+
+AUTH-06 PARTIAL pending hosted integration acceptance and independent review; AUTH-07 NOT STARTED; AUTH-08 NOT STARTED; AUTH-09 NOT STARTED; AUTH-10 PARTIAL (existing regression harness extended). Continue in dependency order on this same branch and one Draft PR. Commit each tested coherent phase. Do not invent guardians/contacts or claim the batch complete. NEXT SAFE TASK: verify MFA MariaDB/concurrency/HTTPS CI and fix failures, then AUTH-07 actual server session/device inventory and revocation. No merge/deploy/Nursery changes.
+
+Earlier evidence follows as history.
+
 # AUTH-05 password recovery checkpoint — 2026-10-29
 
 Branch `feature/m1-auth05-password-recovery` starts from verified main `ed7268a18266c0dd19dcf1dfe1004874023aba8e` (AUTH-04 merged). Post-merge M1 run 40791513153 API/web/metadata-blocked Flutter and Repository Integrity run 40791513165 passed. Historical open-PR #3 statements below are obsolete.
