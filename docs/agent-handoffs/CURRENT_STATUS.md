@@ -1,3 +1,17 @@
+# Current checkpoint — M2 Slice C academic web implementation
+
+Updated2026-10-30 (owner local date). Existing branch `feature/m2-academic-setup`, Draft PR9 https://github.com/mollanuramin130/NUVIKOZ_Edu/pull/9 . Remote baseline verified `7cf29bcf370225957ae7637705e7acb6b8012c9e`:149 MariaDB/994 assertions,24 concurrency,20 HTTPS,16 Flutter and four jobs passed. Main/PR6/PR7/PR8 unchanged. Local Slice B mirror retained by checkpoint/m2-slice-b-local-65a0d8a. Preserve local history and use actual remote parent/lease for publication, never force-push.
+
+Owner explicitly approved Executive Enterprise + Modern EdTech Premium Hybrid for Slice C. Five functional `/academic` web views connect all six browser resource create/list paths. Scoped semantic tokens, responsive sidebar/menu, reusable forms/selectors/tables/feedback, 25-row cursor pages, explicit extra selector pages and page-local search. No invented totals/names, student data, teacher assignment or unsupported calendar actions. Native/mobile source and all locks/security-isolation scripts unchanged. Existing auth/role pages preserved; School Admin dashboard links to academic workspace.
+
+Browser client now supports typed academic requests, path/query/key allowlists, UUID in-memory idempotency intents, credentials/no-store/CSRF/HTTPS, no automatic POST replay, field errors and request cancellation. Context/session changes clear the private subtree and discard stale requests/intents. A generic403 triggers current identity/MFA revalidation without inventing an entitlement status. No browser credential/command persistence. See M2 contract and approved design doc.
+
+Local lint/typecheck/build and7 isolated client tests passed; measured core contrast pairs pass the stated thresholds (not full accessibility certification). Eight new actual UI HTTPS journeys and screenshots are prepared but NOT YET claimed passed. Hosted final-head149 MariaDB tests,24 concurrency cases, complete28 HTTPS journeys and existing16 isolated Flutter tests must execute. Capture and inspect real desktop/mobile screenshots after success; artifact contains synthetic screens/checksums only. No extra device APK testing required here.
+
+NEXT SAFE TASK: publish coherent Slice C checkpoint on existing branch/PR9; inspect new hosted CI, correct actual UI/security failures, then record exact tested SHA and evidence. Slice D needs reviewed mobile academic authorization/privileged MFA and outstanding MethodChannel physical acceptance; do not repurpose browser-only routes into mobile-token endpoints. Keep every PR Draft/unmerged; no deployment, production issuer, lost-factor override, real delivery, Hostinger/DNS/Nursery changes.
+
+# Historical evidence — M2 Slice B
+
 # Current checkpoint — M2 Slice B backend implementation
 
 Updated2026-10-29. Existing branch `feature/m2-academic-setup`, Draft PR9 https://github.com/mollanuramin130/NUVIKOZ_Edu/pull/9 . Slice A baseline `2885e3dcd469797e7155c15b4579001b8810d069` is retained. Published Slice B implementation `884ec68e2e299df564541778a952a4c90f557d42`, tree `574a72d7f2e842214fba69e458a829c06b0539cf`; local source mirror `2f0e2c2` has identical tree. All four implementation checks passed (run40928712658/Integrity40928712670). The evidence-only successor needs its own final-head checks. Local history is a content-identical source mirror; checkpoint/m2-slice-a-local-f223bd2 preserves its starting commits. Resolve actual remote HEAD before any future publication; use its exact parent/lease, never force-push or overwrite newer changes.

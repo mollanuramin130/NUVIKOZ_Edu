@@ -1,5 +1,10 @@
 # Change log
 
+## Unreleased — M2 Slice C
+
+- Owner-approved hybrid academic workspace: secure real API sessions/classes/offerings/sections/subjects forms and lists, reusable responsive components and scoped design tokens.
+- Extend browser client with typed filters, cursor/key validation, in-memory idempotent intent and cancellation; add client boundary and actual UI HTTPS tests with synthetic screenshot evidence.
+
 ## Unreleased — M2 Slice B
 
 - Add same-school future class offerings, sections, subject catalogs and required/optional subject offerings with composite FKs, idempotency, audit, bounded Demo caps and scoped cursor filters.

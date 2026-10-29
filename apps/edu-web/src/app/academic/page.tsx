@@ -1,0 +1,8 @@
+import Link from 'next/link';
+import {PageHeading, Panel} from '../../components/academic/controls';
+export default function Overview() {
+  return <><PageHeading title="A thoughtful start to every academic year." section="Overview" description="Set up sessions, classes, sections and subjects in one connected workspace."/>
+    <div className="ac-intro"><span className="ac-eyebrow">ACADEMIC FOUNDATIONS</span><h2>One school. Clear relationships.</h2><p>Define your catalogs once, then organize each future session deliberately. Every command is checked against your current school and security context.</p><Link className="ac-primary" href="/academic/sessions">Start with sessions →</Link></div>
+    <div className="ac-overview-grid">{[{href:'sessions',step:'01',title:'Plan the calendar',text:'Create future sessions with explicit date boundaries.'},{href:'classes',step:'02',title:'Offer your classes',text:'Connect school-wide classes to a selected session.'},{href:'sections',step:'03',title:'Organize sections',text:'Create sections within a specific class offering.'},{href:'subjects',step:'04',title:'Choose subjects',text:'Assign compulsory or optional subjects deliberately.'}].map(p=><Link key={p.href} href={`/academic/${p.href}`} className="ac-overview-card"><span>{p.step}</span><h2>{p.title}</h2><p>{p.text}</p><b>Open workspace ↗</b></Link>)}</div>
+    <Panel title="Available in this milestone"><p>Secure creation and listing of academic setup records. Session activation, editing, deletion, staff assignment and student enrollment are separate workflows and are not available here.</p><p className="ac-note">Historical reading may remain available after entitlement expiry. The server decides which new commands are currently permitted.</p></Panel></>;
+}

@@ -12,7 +12,7 @@ This milestone groups F015 (bounded future calendar), F018 (classes/sections/sub
 |---|---|---|---|
 | A | Future session and class catalog backend | Current School Admin + MFA, tenant-scoped listing, strict payloads, expiry, Demo caps, audit rollback, idempotency and real MariaDB races | INTEGRATION VERIFIED for supported backend slice atd0534d3; owner review pending |
 | B | Session offerings, sections, subjects | Composite tenant FKs, nullable deferred teacher, compulsory/optional subjects, no cross-session mixing | INTEGRATION VERIFIED at884ec68; teacher assignment deferred; full UI/mobile/owner acceptance pending |
-| C | Unified web academic setup | Approved visual direction, real API integration, responsive/keyboard/error/conflict states | NOT STARTED |
+| C | Unified web academic setup | Approved A+B Hybrid; real API integration; responsive/keyboard/error/conflict states | IMPLEMENTED — hosted UI integration pending |
 | D | Flutter setup/read workflow | Same contract; secured CI; milestone APK and meaningful device journey | NOT STARTED |
 
 No edit/delete/activate/close API exists in slice A. Sessions always start in `future`; no automatic activation is implied. Current/active boundary changes remain unavailable until platform approval workflow exists. A missing valid IANA school timezone denies future-session creation; this branch does not invent onboarding/timezone configuration. Class catalog remains independent of sessions.
@@ -59,3 +59,13 @@ Progress credit after supported Slice B backend integration passes: B earns80% �
 ## Executed Slice B integration
 
 Implementation884ec68e2e299df564541778a952a4c90f557d42: M1 run40928712658 API/Web/Flutter passed; Integrity40928712670 passed. Real MariaDB149 tests/994 assertions, no skips; all24 concurrency cases (10 new),20 actual HTTPS journeys (2 new),16 isolated Flutter tests; migration fresh/rollback/remigrate including000008; Pint, Composer/npm audits, web lint/typecheck/build passed. See M2_SLICE_B_RESULTS.md. No production/device acceptance inferred. Evidence-only successors require their own checks. Current estimate: M2~48%, overall~13.4%; F018 backend subset is integration verified while domain UI/mobile, teacher assignment and owner acceptance remain pending.
+
+## Slice C — owner-approved web direction
+
+Owner approved Executive Enterprise + Modern EdTech Premium Hybrid. Existing six-role/auth flows remain intact; the School Admin academic workspace uses scoped reusable navy/blue/teal tokens and actual backend projections. Five screens (overview plus sessions/classes/sections/subjects), six create/list resources, explicit relationship selection and cursor pagination. No unsupported session actions, teacher assignment or fake statistics. Typed browser client extends existing calls backward-compatibly with safe path/query/key validation, abort signals, field errors and no automatic mutation replay. No arbitrary URL/header override or browser credential persistence.
+
+Local web lint/typecheck/build and7 isolated client tests passed. Hosted8 new UI HTTPS journeys plus20 existing browser regressions and all149 MariaDB tests must pass against the new head; old Slice B results cannot be transferred. Actual responsive screenshots are generated only from synthetic UI execution. Owner review and Slice D remain pending.
+
+Planning credit after supported Slice C hosted integration passes: C80% ×25%=20%, added to A20+B28 gives M2~68%. F01835→60% partial planning credit and F0155→10% would yield overall~14.1% with denominator198 unchanged; not feature acceptance. Do not count Flutter academic UI, actual teacher assignment or missing platform calendar/onboarding prerequisites as complete.
+
+Slice D prerequisites: preserve SEC-01 MethodChannel device acceptance pending; define/review mobile academic authorization and privileged mobile MFA before introducing any school-admin token endpoints. Existing APIs are browser-only, so do not alias them to mobile bearer tokens or treat browser cookies as mobile credentials. Once those dependencies are approved and implemented, build typed Flutter academic workflows under unchanged isolated CI and group one meaningful device journey/APK checkpoint. No extra phone download for Slice C.

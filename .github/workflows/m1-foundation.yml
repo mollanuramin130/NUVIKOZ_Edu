@@ -65,6 +65,19 @@ jobs:
       - name: Real HTTPS Next.js to Laravel browser authentication
         working-directory: .
         run: bash scripts/run-browser-integration.sh
+      - name: Checksum synthetic academic UI screenshots
+        working-directory: .
+        run: |
+          printf '%s\n' "$GITHUB_SHA" > artifacts/academic-ui/SOURCE_COMMIT
+          cd artifacts/academic-ui
+          sha256sum *.png > SHA256SUMS
+      - name: Preserve actual synthetic academic workspace screenshots
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: academic-ui-${{ github.sha }}
+          retention-days: 7
+          if-no-files-found: error
+          path: artifacts/academic-ui/
       - name: Blocking dependency audit after test evidence
         run: composer audit --locked --no-interaction
   web:
@@ -86,6 +99,7 @@ jobs:
       - run: npm audit --audit-level=high
       - run: npm run lint
       - run: npm run typecheck
+      - run: npm run test:client
       - run: npm run build
   flutter:
     # Explicit owner authorization: metadata-blocked, credential-free verification.
