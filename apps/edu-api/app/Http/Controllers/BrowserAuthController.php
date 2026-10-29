@@ -6,6 +6,7 @@ use App\Http\Requests\LoginRequest;
 use App\Models\Membership;
 use App\Models\School;
 use App\Models\User;
+use App\Services\PrivilegedMfa;
 use App\Support\Api;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -43,9 +44,9 @@ class BrowserAuthController extends Controller
             Auth::guard('web')->login($user);
             $request->session()->regenerate(true);
             $request->session()->regenerateToken();
-            $request->session()->put(['school_id' => $current->school_id, 'issued_at' => time(), 'seen_at' => time(), 'credential_hash' => hash('sha256', $user->password)]);
+            $request->session()->put(['school_id' => $current->school_id, 'issued_at' => time(), 'seen_at' => time(), 'mfa_challenge_expires_at' => now()->addMinutes(5)->timestamp, 'credential_hash' => hash('sha256', $user->password)]);
 
-            return Api::ok(['user_id' => $user->id, 'school_id' => $current->school_id, 'role' => $current->role->value, 'csrf_token' => $request->session()->token()]);
+            return Api::ok(['user_id' => $user->id, 'school_id' => $current->school_id, 'role' => $current->role->value, 'mfa_required' => $current->role->value === 'school_admin', 'csrf_token' => $request->session()->token()]);
         });
     }
 
@@ -53,7 +54,7 @@ class BrowserAuthController extends Controller
     {
         $membership = $request->attributes->get('membership');
 
-        return Api::ok(['user_id' => $request->user()->id, 'school_id' => $membership->school_id, 'role' => $membership->role->value]);
+        return Api::ok(['user_id' => $request->user()->id, 'school_id' => $membership->school_id, 'role' => $membership->role->value, 'mfa_required' => $membership->role->value === 'school_admin' && ! app(PrivilegedMfa::class)->verified($membership, $request)]);
     }
 
     public function logout(Request $request)

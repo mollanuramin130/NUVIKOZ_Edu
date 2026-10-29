@@ -85,6 +85,8 @@ class FoundationController extends Controller
 
     public function provision(ProvisionRequest $request, ProvisionStaff $service)
     {
+        abort(403); // Privileged device provisioning is closed until MFA-aware device assurance exists.
+
         return Api::ok($service->execute($request->attributes->get('membership'), $request->validated(), $request->attributes->get('request_id'), $request->header('Idempotency-Key')), 201);
     }
 
