@@ -4,14 +4,15 @@ export class AuthError extends Error {
 }
 const base = process.env.NEXT_PUBLIC_EDU_API_BASE_URL;
 let csrf: string | undefined;
+const sessionSender = crypto.randomUUID();
 export function onSessionChange(listener: () => void) {
   const channel = new BroadcastChannel('edu-session');
-  channel.onmessage = () => { csrf = undefined; listener(); };
+  channel.onmessage = event => { if (event.data?.source === sessionSender) return; csrf = undefined; listener(); };
   return () => channel.close();
 }
 function announceSessionChange() {
   const channel = new BroadcastChannel('edu-session');
-  channel.postMessage('changed'); channel.close();
+  channel.postMessage({ source: sessionSender }); channel.close();
 }
 export async function browserRequest<T>(path: string, body?: unknown): Promise<T> {
   if (!base) throw new Error('The Edu API origin is not configured.');
