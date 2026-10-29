@@ -39,7 +39,7 @@ void main(){
  test('real transport serializes JSON and scoped headers, disallows redirects, and disposes',()async{
   final outgoing=Outgoing(Reply(200,'{"data":{"ok":true}}'));final io=Client(outgoing);final api=EduApiClient(Uri.parse('https://edu.example'),client:io);
   expect((await api.send('POST','/api/v1/auth/login',body:{'school_code':'A','identifier':'ID','password':'Synthetic'},token:'synthetic-token',school:'synthetic-school'))['data'],{'ok':true});
-  expect(jsonDecode(outgoing.sent),{'school_code':'A','identifier':'ID','password':'Synthetic'});expect(outgoing.headers.values[HttpHeaders.authorizationHeader],'Bearer synthetic-token');expect(outgoing.headers.values['X-School-ID'],'synthetic-school');expect(outgoing.followRedirects,isFalse);expect(io.requested!.query,isEmpty);api.close();expect(io.disposed,isTrue);
+  expect(jsonDecode(outgoing.sent),{'school_code':'A','identifier':'ID','password':'Synthetic'});expect((outgoing.headers as Headers).values[HttpHeaders.authorizationHeader],'Bearer synthetic-token');expect((outgoing.headers as Headers).values['X-School-ID'],'synthetic-school');expect(outgoing.followRedirects,isFalse);expect(io.requested!.query,isEmpty);api.close();expect(io.disposed,isTrue);
  });
  test('malformed JSON, HTTP denial and timeout map to safe structured failures',()async{
   for(final reply in [Reply(200,'not JSON'),Reply(200,'[]'),Reply(401,'{"error":{"code":"UNAUTHENTICATED"}}')]){
