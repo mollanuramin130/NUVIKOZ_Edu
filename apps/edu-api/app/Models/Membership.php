@@ -19,7 +19,9 @@ class Membership extends Model
     {
         static::updating(function (self $member): void {
             if ($member->isDirty(['role', 'status', 'login_identifier'])) {
-                DB::table('account_activations')->where('school_id', $member->school_id)->whereNull('consumed_at')->whereNull('invalidated_at')->where(fn ($query) => $query->where('membership_id', $member->id)->orWhere('issuer_membership_id', $member->id))->update(['invalidated_at' => now(), 'updated_at' => now()]);
+                foreach (['account_activations', 'account_recoveries'] as $table) {
+                    DB::table($table)->where('school_id', $member->school_id)->whereNull('consumed_at')->whereNull('invalidated_at')->where(fn ($query) => $query->where('membership_id', $member->id)->orWhere('issuer_membership_id', $member->id))->update(['invalidated_at' => now(), 'updated_at' => now()]);
+                }
             }
         });
     }
