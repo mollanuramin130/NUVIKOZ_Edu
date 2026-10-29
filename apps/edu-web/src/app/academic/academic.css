@@ -711,7 +711,7 @@
   display:none
 }
 .ac-topbar .ac-eyebrow {
-  font-size:8px;
+  font-size:10px;
   letter-spacing:.8px
 }
 .ac-top-actions {
@@ -789,3 +789,10 @@
 
 }
 
+
+@media (max-width:760px) {
+  .academic-workspace .ac-pagination,.academic-workspace .ac-help,.academic-workspace .ac-secondary,.academic-workspace .ac-text-button { font-size:12px; }
+  .academic-workspace .ac-footer { font-size:11px; }
+  .academic-workspace td { font-size:13px; }
+  .academic-workspace .ac-note { font-size:13px; }
+}

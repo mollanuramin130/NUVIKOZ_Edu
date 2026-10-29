@@ -71,6 +71,7 @@ jobs:
           printf '%s\n' "$GITHUB_SHA" > artifacts/academic-ui/SOURCE_COMMIT
           cd artifacts/academic-ui
           sha256sum *.png > SHA256SUMS
+          cat SHA256SUMS
       - name: Preserve actual synthetic academic workspace screenshots
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:

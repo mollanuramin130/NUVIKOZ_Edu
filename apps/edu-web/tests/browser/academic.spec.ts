@@ -14,7 +14,12 @@ async function apiAdmin(context:BrowserContext, mfa=true) {
  if(mfa){const setup=await context.request.post(`${api}/security/mfa/enrollment`,{headers:{Origin:origin,'X-CSRF-TOKEN':token},data:{password}});expect(setup.status()).toBe(200);const seed=(await setup.json()).data.secret;const confirm=await context.request.post(`${api}/security/mfa/enrollment/confirm`,{headers:{Origin:origin,'X-CSRF-TOKEN':token},data:{password,code:code(seed)}});expect(confirm.status()).toBe(200);}
 }
 async function signInUI(page:Page, school='A', identifier='ADMIN') {await page.goto('/login');await page.getByLabel('School code').fill(school);await page.getByLabel('Account identifier').fill(identifier);await page.getByLabel('Password',{exact:true}).fill(password);await page.getByRole('button',{name:'Sign in',exact:true}).click();}
-async function navigate(page:Page, name:string) {await page.getByRole('navigation',{name:'Academic navigation'}).getByRole('link',{name,exact:true}).click();}
+async function navigate(page:Page, name:string) {
+ // Shared selector labels exist on multiple pages; await the destination DOM, not just the click.
+ await page.getByRole('navigation',{name:'Academic navigation'}).getByRole('link',{name,exact:true}).click();
+ const headings:Record<string,string>={Sessions:'Academic sessions','Classes & offerings':'Classes & offerings',Sections:'Class sections',Subjects:'Subjects & assignments',Overview:'A thoughtful start to every academic year.'};
+ await expect(page.getByRole('heading',{level:1,exact:true,name:headings[name]})).toBeVisible();
+}
 async function createSubject(page:Page, value:string) {await page.getByLabel('Subject code',{exact:true}).fill(value);await page.getByLabel('Subject name',{exact:true}).fill(`Synthetic ${value}`);await page.getByRole('button',{name:'Create subject',exact:true}).click();}
 test.beforeEach(()=>execFileSync('php',[fixture],{stdio:'pipe'}));
 
@@ -37,16 +42,17 @@ test('complete academic workflow uses actual login MFA and every supported UI co
  await navigate(page,'Subjects');await createSubject(page,'UI_MATH');await expect(page.getByRole('row').filter({hasText:'UI_MATH'})).toBeVisible();await createSubject(page,'UI_ART');await expect(page.getByRole('row').filter({hasText:'UI_ART'})).toBeVisible();
  await page.getByLabel('Class offering',{exact:true}).selectOption({label:'UI Senior Class'});await page.getByLabel('Subject to assign',{exact:true}).selectOption({label:'UI_MATH · Synthetic UI_MATH'});await page.getByLabel('Subject classification',{exact:true}).selectOption('compulsory');await page.getByRole('button',{name:'Assign subject',exact:true}).click();await expect(page.getByRole('row').filter({hasText:'Synthetic UI_MATH'}).filter({hasText:'Compulsory subject'})).toBeVisible();
  await page.getByLabel('Subject to assign',{exact:true}).selectOption({label:'UI_ART · Synthetic UI_ART'});await page.getByLabel('Subject classification',{exact:true}).selectOption('optional');await page.getByRole('button',{name:'Assign subject',exact:true}).click();await expect(page.getByRole('row').filter({hasText:'Synthetic UI_ART'}).filter({hasText:'Optional subject'})).toBeVisible();
+ await page.setViewportSize({width:900,height:1000});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
  await page.setViewportSize({width:390,height:844});await page.getByRole('button',{name:'Toggle academic navigation'}).click();await navigate(page,'Sections');
- const mobileResponse=page.waitForResponse(r=>r.url().includes('/academic/sections?')&&r.request().method()==='GET');
+ const mobileResponse=page.waitForResponse(r=>r.url().startsWith(`${api}/academic/sections?`)&&r.request().method()==='GET');
  await page.getByLabel('Class offering',{exact:true}).selectOption({label:'UI Senior Class'});
- const actualMobileResponse=await mobileResponse;console.log('SYNTHETIC_MOBILE_SECTIONS_RESPONSE',actualMobileResponse.status(),await actualMobileResponse.text());
+ const actualMobileResponse=await mobileResponse;expect(actualMobileResponse.status()).toBe(200);expect((await actualMobileResponse.json()).data.items.some((r:{name:string})=>r.name==='UI Section A')).toBe(true);
  try {await expect(page.getByRole('row').filter({hasText:'UI Section A'})).toBeVisible();}
  catch(e) {console.log('SYNTHETIC_MOBILE_DOM',await page.locator('.academic-workspace').innerText());const diagnostic=await page.screenshot({fullPage:true});console.log(`ACADEMIC_UI_MOBILE_BASE64:${diagnostic.toString('base64')}`);throw e;}
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
  expect(await page.locator('main input, main select').evaluateAll(elements=>elements.every(e=>(e as HTMLInputElement).labels?.length))).toBe(true);
  expect(await page.getByRole('button',{name:'Create section',exact:true}).evaluate(e=>e.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
- await page.getByLabel('Section name',{exact:true}).focus();expect(await page.getByLabel('Section name',{exact:true}).evaluate(e=>getComputedStyle(e).outlineStyle)).not.toBe('none');
+ await page.getByLabel('Section name',{exact:true}).focus();expect(await page.getByLabel('Section name',{exact:true}).evaluate(e=>getComputedStyle(e).outlineStyle)).not.toBe('none');await page.keyboard.press('Tab');await expect(page.getByRole('button',{name:'Create section',exact:true})).toBeFocused();
  const mobile=await page.screenshot({path:path.resolve('../../artifacts/academic-ui/sections-mobile.png'),fullPage:true});console.log(`ACADEMIC_UI_MOBILE_BASE64:${mobile.toString('base64')}`);
  expect(await page.evaluate(()=>Object.keys(localStorage))).toEqual([]);
 });
