@@ -4,6 +4,7 @@ use App\Http\Controllers\ActivationController;
 use App\Http\Controllers\BrowserAuthController as Browser;
 use App\Http\Controllers\CapabilityController;
 use App\Http\Controllers\MfaController;
+use App\Http\Controllers\MfaReplacementController;
 use App\Http\Controllers\PlatformBrowserController;
 use App\Http\Controllers\RecoveryController;
 use App\Http\Controllers\SecurityInventoryController;
@@ -65,4 +66,13 @@ Route::prefix('api/v1/browser/platform')->middleware(PlatformBrowser::class)->gr
         Route::post('/mfa/challenge', [PlatformBrowserController::class, 'challenge']);
         Route::post('/mfa/recovery', [PlatformBrowserController::class, 'recovery']);
     });
+});
+
+Route::prefix('api/v1/browser/security/mfa/replacement')->middleware(['auth:sanctum', BrowserSession::class])->group(function (): void {
+    Route::post('/start', [MfaReplacementController::class, 'start']);
+    Route::post('/confirm', [MfaReplacementController::class, 'confirm']);
+});
+Route::prefix('api/v1/browser/platform/mfa/replacement')->middleware([PlatformBrowser::class, 'auth:sanctum'])->group(function (): void {
+    Route::post('/start', [MfaReplacementController::class, 'start']);
+    Route::post('/confirm', [MfaReplacementController::class, 'confirm']);
 });
