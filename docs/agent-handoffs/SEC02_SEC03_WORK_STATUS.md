@@ -1,3 +1,15 @@
+# SEC-03 implementation checkpoint — local, awaiting MariaDB/HTTPS validation
+
+SEC-02 browser gate PASSED on published37ad7d320258a4c8e41b73a20b22a356042a0241 (same tree as localb712ea74d7d496ba3d34e1caa4e17ace7644a7f2). M1 run40854659014: API/Web/Flutter success; Integrity40854659010 success. Actual124 MariaDB tests/786 assertions, all13 independent races; all23 HTTPS journeys (SIX new platform +17 school), Composer audit clean, migration cycle/Pint/Web lint/typecheck/build passed. Unchanged metadata-blocked Flutter baseline passed; no Gemini native verification claim. Production issuer still disabled, so SEC-02 remains production-PARTIAL despite supported synthetic browser completion.
+
+SEC-03 new additive000006 mfa_replacements schema, locked context-aware MfaReplacement service, strict browser start/confirm routes, shared replacement UI in school security and platform pages. Current password + actual old TOTP/unused recovery code required; encrypted five-minute pending seed bound to session/context/credential/MFA version, old factor preserved until new TOTP confirmation. Atomic swap/code rotation/revocation/audit; fresh login required. No lost-factor reset: BLOCKED pending independent approved verification. No mobile/native/Flutter-isolation/Gemini changes.
+
+Local seven replacement tests/87 assertions pass: both contexts, hashing/encryption, wrong/replayed/expired proof, old-factor preservation, role/school/identity/context/session checks, cross-school membership binding, revocation and audit-failure rollback. Eight new independent MariaDB races (both contexts × concurrent starts/confirmations/password changes/deactivation) are NOT RUN locally. Two new real HTTPS replacement journeys are written (25 total) but NOT RUN until hosted CI. Existing password-recovery-preserves-MFA regression remains enabled. Full final local PHP/Pint/Web/integrity/audit checks and hosted MariaDB/HTTPS evidence must be recorded, never inferred from the SEC-02 SHA.
+
+NEXT SAFE TASK: validate final local tree, publish coherent SEC-03 to same branch/Draft PR6 after checking actual remote HEAD, verify source equality and all four new-head checks. Fix only actual failures. SEC-04 pending full new-head regression; never merge/deploy or enable production issuer. Preserve all local/remote history.
+
+# Historical SEC-02 transport correction checkpoint
+
 # SEC-02 secure-context broadcast compatibility correction
 
 Second UI HEAD bc556c8f441910b8d84f7c563fdab2c6020b4e56, run40843406462: all SIX platform HTTPS journeys passed;22 total browser tests passed. One existing school test failed because unconditional top-level crypto.randomUUID() was unavailable on insecure HTTP, preventing the login page from rendering its HTTPS-required error. Sender ID creation is now gated by isSecureContext; insecure pages still cannot submit credentials because the existing browserRequest HTTPS guard remains unchanged. No insecure random credential/storage fallback introduced. All four jobs must be verified on the new publication before SEC-03. Previous full PHP/MariaDB124/786 passed; no transfer of CI conclusions to new SHA.
