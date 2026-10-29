@@ -20,7 +20,7 @@ Future runtime credentials must lack DROP/ALTER/TRIGGER privileges; a separate m
 
 `2026_10_28_000003_create_account_activations.php` adds `users.activation_required` (boolean, default false for existing accounts) and `account_activations`. Proof rows contain ULID, school/user and same-school target/issuer membership FKs, fixed first_activation purpose, secret/authority/subject SHA-256 hashes, expires_at (30-minute issuance baseline), consumed_at, invalidated_at and timestamps. Composite membership foreign keys prevent cross-school proof links. No plaintext activation secret or temporary password is stored in this table.
 
-Only new browser proof provisioning sets activation_required. Existing accounts are not backfilled or reset. Down removes the proof table before its new user flag. Run only in disposable test databases until production migration is separately approved. MariaDB CI executes fresh/rollback/remigrate and an independent two-process single-use race. School locks serialize activation/reissue with provisioning; identity rows are locked in ID order, then membership/proof rows. Audit events remain append-only under existing triggers. No profile/guardian tables are fabricated.
+Every new staff provisioning entry point, including the legacy device endpoint, sets activation_required and delegates to the activation proof workflow. Existing accounts are not backfilled or reset. Down removes the proof table before its new user flag. Run only in disposable test databases until production migration is separately approved. MariaDB CI executes fresh/rollback/remigrate and an independent two-process single-use race. School locks serialize activation/reissue with provisioning; identity rows are locked in ID order, then membership/proof rows. Audit events remain append-only under existing triggers. No profile/guardian tables are fabricated.
 
 ## AUTH-05 additive recovery proof migration
 
@@ -33,3 +33,7 @@ Only new browser proof provisioning sets activation_required. Existing accounts 
 ## AUTH-07 session revocation tombstones
 
 `2026_10_29_000003_create_session_revocations.php` adds session_revocations: SHA-256 session-ID digest primary key, user FK, creation timestamp. No raw cookie/session payload is stored here. Deletion of a sessions row alone cannot defeat a concurrent session writer; this permanent denial marker is checked on protected browser requests and MFA assurance. Retention/cleanup is a future reviewed operational concern; no tombstone purge API is provided. Down drops only this new table. Existing sessions and Sanctum records remain the inventory source; unknown historical start/absolute-expiry metadata is not invented.
+
+## AUTH-08 additive permission/audit migration
+
+`2026_10_29_000004_add_permission_version_and_audit_details.php` adds unsigned memberships.permission_version default1 and nullable audit_events.details JSON. No identity/proof backfill, new profile/contact records or production migration. Current permission/role/status mutations serialize on the school, lock identities/memberships, compare expected version and append before/after audit details. Existing append-only audit triggers also protect details. Down removes only these two columns. Hosted disposable MariaDB must verify fresh/rollback/remigrate on the final PR HEAD; never run reset commands on real data.
