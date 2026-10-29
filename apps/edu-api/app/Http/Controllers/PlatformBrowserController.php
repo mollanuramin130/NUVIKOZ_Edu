@@ -22,7 +22,7 @@ class PlatformBrowserController extends Controller
 
     public function status(Request $r, PlatformMfa $mfa)
     {
-        $u = $mfa->pendingIdentity($r);
+        $u = $mfa->authenticatedIdentity($r);
 
         return Api::ok(['user_id' => $u->id, 'enrolled' => DB::table('mfa_credentials')->where('user_id', $u->id)->whereNotNull('confirmed_at')->exists(), 'verified' => app(PlatformAssurance::class)->allows($r, 'platform.health')]);
     }
