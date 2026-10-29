@@ -32,6 +32,21 @@ class User extends Authenticatable
         });
     }
 
+    // Serialize credential/membership mutation with issuance; include observer revocation
+    // and the actual SQL update in the same transaction, even for direct model callers.
+    public function save(array $options = [])
+    {
+        if (! $this->exists || ! $this->isDirty(['password', 'status', 'is_platform_admin', 'must_change_password', 'activation_required'])) {
+            return parent::save($options);
+        }
+
+        return DB::transaction(function () use ($options) {
+            DB::table('users')->where('id', $this->id)->lockForUpdate()->first();
+
+            return parent::save($options);
+        }, 3);
+    }
+
     protected function casts(): array
     {
         return ['password' => 'hashed', 'is_platform_admin' => 'boolean', 'must_change_password' => 'boolean', 'activation_required' => 'boolean'];

@@ -4,7 +4,9 @@ namespace App\Models;
 
 use App\Enums\Role;
 use App\Models\Concerns\ImmutableIdentity;
+use App\Services\LastAdminGuard;
 use App\Services\SecurityRevocation;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -26,6 +28,30 @@ class Membership extends Model
                 }
             }
         });
+    }
+
+    // Serialize credential/membership mutation with issuance; include observer revocation
+    // and the actual SQL update in the same transaction, even for direct model callers.
+    public function save(array $options = [])
+    {
+        if (! $this->exists || ! $this->isDirty(['role', 'status', 'login_identifier'])) {
+            return parent::save($options);
+        }
+
+        return DB::transaction(function () use ($options) {
+            DB::table('schools')->where('id', $this->school_id)->lockForUpdate()->first();
+            DB::table('users')->where('id', $this->user_id)->lockForUpdate()->first();
+            $old = DB::table('memberships')->where('id', $this->id)->lockForUpdate()->first();
+            app(LastAdminGuard::class)->removing($old, $this->role->value, $this->status);
+            $this->permission_version = $old->permission_version + 1;
+
+            return parent::save($options);
+        }, 3);
+    }
+
+    public function delete()
+    {
+        throw new AuthorizationException('Membership history cannot be deleted; use the protected deactivation command.');
     }
 
     protected function casts(): array
