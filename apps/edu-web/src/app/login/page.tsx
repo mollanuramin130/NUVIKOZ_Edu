@@ -12,7 +12,7 @@ export default function Login() {
     const form = new FormData(event.currentTarget);
     try {
       const identity = await browserRequest<Identity>('login', { school_code: form.get('school_code'), identifier: form.get('identifier'), password: form.get('password') });
-      router.replace(`/dashboard/${encodeURIComponent(identity.role)}`);
+      router.replace(identity.mfa_required ? '/profile/security' : `/dashboard/${encodeURIComponent(identity.role)}`);
     } catch (e) { setError(e instanceof Error ? e.message : 'Sign in failed.'); }
     finally { setBusy(false); }
   }
