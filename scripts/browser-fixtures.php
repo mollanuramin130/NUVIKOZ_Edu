@@ -22,7 +22,7 @@ if (($argv[1] ?? '') === 'expire') {
 $command = $argv[1] ?? '';
 $schoolA = School::where('code', 'A')->first();
 $memberA = $schoolA ? Membership::where('school_id', $schoolA->id)->where('login_identifier', 'TEACHER')->first() : null;
-if ($command === 'recovery-target' && $memberA) {
+if (in_array($command, ['recovery-target', 'permission-target'], true) && $memberA) {
     echo $memberA->id;
     exit;
 }
