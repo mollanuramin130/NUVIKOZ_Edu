@@ -1,3 +1,25 @@
+# Current checkpoint — advanced authentication final owner review
+
+Existing branch `feature/m1-advanced-auth-security`; PR #5 https://github.com/mollanuramin130/NUVIKOZ_Edu/pull/5 remains **Draft**. Latest published implementation HEAD verified before this documentation-only update: `66bcdde57b64cb56a7c4120c2bd7fe2ed62e5f8d`. The documentation commit supersedes that HEAD without changing implementation; resolve the live PR head and its own checks for final review.
+
+The Last Admin locking-current-read correction is published. Both previously failing tests now pass: `test_independent_identity_deactivations_cannot_remove_both_administrators` and `test_identity_deactivation_racing_membership_demotion_preserves_an_admin`. Concurrent membership demotions and session/token lifecycle races also pass. No earlier failure is an unresolved current result.
+
+Verified evidence at the implementation HEAD: **109 MariaDB tests / 595 assertions**, including **all 11 independent-process concurrency tests**; **17 real HTTPS browser tests**; metadata-blocked Flutter analysis and **16 Flutter tests**. API, Web, Flutter and Repository Integrity all passed. M1 run https://github.com/mollanuramin130/NUVIKOZ_Edu/actions/runs/40825377210 ; Integrity run40825377214. Migration fresh/rollback/remigrate, PHP formatting/platform checks, web audit/lint/typecheck/build and blocking Composer audit passed; no security advisories. Composer strict validation also passed locally. The new documentation HEAD requires its own four successful checks; do not transfer these results to an unverified later commit.
+
+| Task | Current precise status |
+|---|---|
+| AUTH-06 | **PARTIAL** — School Admin browser MFA implemented and tested. Platform issuer, native privileged-device MFA and independently verified MFA reset remain deferred and fail closed. |
+| AUTH-07 | Supported scope implemented and tested, including session/device revocation, expiry, ownership/tenant isolation and independent concurrency. No invented session metadata or indefinite refresh tokens. |
+| AUTH-08 | Current permission foundation implemented and tested: delegated capabilities, fixed role ceilings, live authorization, version conflicts, audit and Last Active School Admin protection. Future academic/finance integrations are not claimed. |
+| AUTH-09 | **PARTIAL** — Flutter API client, auth state, secure storage interface and tests implemented. Native OS-backed token storage, actual device build and production authentication remain unavailable and fail closed. Test memory storage is not production persistence; no SharedPreferences fallback. |
+| AUTH-10 | Supported-scope integration and regression tests passed. Owner final review pending; this is not merge/deployment approval. |
+
+Production activation/recovery delivery, real verified-contact recovery infrastructure, platform issuer, privileged native MFA and independently verified MFA reset remain disabled/unavailable. No real notifications, deployment, main merge, Hostinger/DNS/production database or Nursery modification performed. Keep PR Draft. NEXT SAFE TASK: verify the documentation commit's exact published SHA and four CI conclusions, then owner independent final review. Native secure storage and deferred dependencies require separately bounded work; do not claim complete production M1.
+
+# Historical evidence — superseded checkpoints
+
+The following sections preserve earlier execution evidence. Their pending/failure/NOT STARTED labels describe those historical checkpoints and do not override the current status above.
+
 # Interrupted verification checkpoint
 
 Published remote HEAD ce3e70f139d418966a4245b55b87015539f88fb9: run40804615076 API FAILED two last-admin identity concurrency assertions; Web/Flutter/Integrity passed. Do not approve/merge or mark AUTH08 complete. Local correction changes LastAdminGuard eligibility/count reads to locking current reads (MariaDB REPEATABLE READ snapshot must not survive the school lock wait). Local strengthened lifecycle tests and this correction are committed but NOT YET PUBLISHED/CI VERIFIED. Next task: publish LastAdminGuard.php, LifecycleConcurrencyTest.php, lifecycle-race-worker.php and this handoff on existing branch/PR5, execute all eleven MariaDB races and final four CI jobs. Previous green106/559,17 browser,16 Flutter evidence belongs only to2d75e92. Native secure store still absent/fail closed.
