@@ -37,7 +37,7 @@ class FoundationController extends Controller
             $expiry = $current->role === Role::SchoolAdmin ? now()->addHours(12) : now()->addDays(7);
             $token = $user->createToken($data['device_name'] ?? 'device', ['school:'.$current->school_id], $expiry);
 
-            return Api::ok(['token' => $token->plainTextToken, 'expires_at' => $expiry->toIso8601String(), 'must_change_password' => $user->must_change_password]);
+            return Api::ok(['token' => $token->plainTextToken, 'expires_at' => $expiry->toIso8601String(), 'school_id' => $current->school_id, 'membership_id' => $current->id, 'user_id' => $user->id, 'role' => $current->role->value, 'abilities' => $token->accessToken->abilities, 'must_change_password' => $user->must_change_password]);
         });
     }
 
