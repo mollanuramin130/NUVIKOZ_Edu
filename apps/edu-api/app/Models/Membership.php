@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\Role;
 use App\Models\Concerns\ImmutableIdentity;
+use App\Services\SecurityRevocation;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -19,6 +20,7 @@ class Membership extends Model
     {
         static::updating(function (self $member): void {
             if ($member->isDirty(['role', 'status', 'login_identifier'])) {
+                app(SecurityRevocation::class)->user($member->user_id, $member->school_id);
                 foreach (['account_activations', 'account_recoveries'] as $table) {
                     DB::table($table)->where('school_id', $member->school_id)->whereNull('consumed_at')->whereNull('invalidated_at')->where(fn ($query) => $query->where('membership_id', $member->id)->orWhere('issuer_membership_id', $member->id))->update(['invalidated_at' => now(), 'updated_at' => now()]);
                 }
