@@ -48,7 +48,7 @@ class BrowserBoundaryTest extends TestCase
     {
         $protected = 0;
         foreach (app('router')->getRoutes() as $route) {
-            if (! str_starts_with($route->uri(), 'api/v1/browser/') || in_array($route->uri(), ['api/v1/browser/csrf', 'api/v1/browser/login', 'api/v1/browser/logout', 'api/v1/browser/activation/consume'], true)) {
+            if (! str_starts_with($route->uri(), 'api/v1/browser/') || in_array($route->uri(), ['api/v1/browser/csrf', 'api/v1/browser/login', 'api/v1/browser/logout', 'api/v1/browser/activation/consume', 'api/v1/browser/recovery/request', 'api/v1/browser/recovery/consume'], true)) {
                 continue;
             }
             $protected++;
