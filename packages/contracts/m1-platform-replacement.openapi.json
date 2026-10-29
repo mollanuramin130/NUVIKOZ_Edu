@@ -202,7 +202,7 @@
     },
     "/api/v1/browser/platform/status": {
       "get": {
-        "description": "Current pending platform context with idle/absolute/credential/revocation checks. First-factor challenge deadline remains enforced.",
+        "description": "Current eligible platform context: pending first-factor challenge strictly before five minutes, OR valid session/credential/enrollment-version-bound15-minute MFA assurance. Idle30min and absolute12h limits/nonrevocation remain mandatory.",
         "security": [
           {
             "browserCookie": []
@@ -1010,7 +1010,7 @@
     },
     "/api/v1/browser/platform/mfa/replacement/start": {
       "post": {
-        "description": "Current password plus existing TOTP/unused recovery code. Atomic possession proof, five-minute encrypted intent bound to subject/session/credential/MFA version/context and school membership where applicable. Old factor remains active.",
+        "description": "Current password plus existing TOTP/unused recovery code. Atomic possession proof, five-minute encrypted intent bound to subject/session/credential/MFA version/context and school membership where applicable. Old factor remains active. After the five-minute first-factor deadline, valid current PlatformAssurance is mandatory; no expired-pending fallback. Existing password/factor and pending-intent proof requirements remain unchanged.",
         "security": [
           {
             "browserCookie": []
@@ -1116,7 +1116,7 @@
     },
     "/api/v1/browser/platform/mfa/replacement/confirm": {
       "post": {
-        "description": "Revalidate current context and password, confirm NEW authenticator. Atomically rotate credential/version/codes, consume intent, append audit and revoke all old browser/device credentials. Fresh login required; no implicit assurance.",
+        "description": "Revalidate current context and password, confirm NEW authenticator. Atomically rotate credential/version/codes, consume intent, append audit and revoke all old browser/device credentials. Fresh login required; no implicit assurance. After the five-minute first-factor deadline, valid current PlatformAssurance is mandatory; no expired-pending fallback. Existing password/factor and pending-intent proof requirements remain unchanged.",
         "security": [
           {
             "browserCookie": []
