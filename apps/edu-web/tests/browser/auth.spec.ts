@@ -236,3 +236,20 @@ test('session inventory revokes another actual browser context without exposing 
  await page.goto('/profile/sessions');await expect(page.getByRole('heading',{name:'Sessions and devices'})).toBeVisible();await expect(page.getByRole('heading',{name:'Current browser',exact:true})).toBeVisible();
  await other.close();
 });
+
+test('School Admin permission UI grants and revokes a role-bounded capability for an existing session',async({context,page,browser})=>{
+ const recipient=await browser.newContext({ignoreHTTPSErrors:true});expect((await login(recipient)).status()).toBe(200);
+ expect((await recipient.request.get(`${api}/security/capabilities/marks.enter/probe`,{headers:{Origin:origin}})).status()).toBe(403);
+ expect((await login(context,'A','ADMIN')).status()).toBe(200);
+ const target=execFileSync('php',[fixture,'permission-target'],{encoding:'utf8'}).trim();
+ page.on('dialog',dialog=>dialog.accept());await page.goto('/security/permissions');
+ await page.getByLabel('Target membership').selectOption(target);await page.getByLabel('Capability',{exact:true}).selectOption('marks.enter');
+ await page.getByRole('button',{name:'Confirm permission change'}).click();
+ await expect(page.getByRole('main').getByRole('status')).toContainText('Permission updated');
+ const permitted=await recipient.request.get(`${api}/security/capabilities/marks.enter/probe`,{headers:{Origin:origin}});expect(permitted.status()).toBe(200);expect((await permitted.json()).data.domain_implemented).toBe(false);
+ await page.getByLabel('Change',{exact:true}).selectOption('revoke');await page.getByRole('button',{name:'Confirm permission change'}).click();
+ await expect(page.getByText('Assignments: marks.enter: revoked')).toBeVisible();
+ expect((await recipient.request.get(`${api}/security/capabilities/marks.enter/probe`,{headers:{Origin:origin}})).status()).toBe(403);
+ expect((await recipient.request.post(`${api}/security/permissions/${target}`,{headers:{Origin:origin,'X-CSRF-TOKEN':await bootstrap(recipient)},data:{capability:'financial.export',allowed:true,version:3}})).status()).toBe(403);
+ await recipient.close();
+});
