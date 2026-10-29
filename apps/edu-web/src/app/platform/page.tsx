@@ -1,9 +1,11 @@
 'use client';
 import {useEffect, useState, type FormEvent} from 'react';
+import {MfaReplacement} from '../../components/mfa-replacement';
 import {AuthError, browserRequest, onSessionChange} from '../../lib/browser-auth';
 type Status={user_id:string;enrolled:boolean;verified:boolean};
 type Identity={user_id:string;context:string;capabilities:string[]};
 export default function Platform(){
+  const [replacementDone,setReplacementDone]=useState(false);
   const [status,setStatus]=useState<Status|null>(null),[identity,setIdentity]=useState<Identity|null>(null);
   const [seed,setSeed]=useState(''),[codes,setCodes]=useState<string[]>([]),[error,setError]=useState('');
   const [busy,setBusy]=useState(true),[unavailable,setUnavailable]=useState(false),[expired,setExpired]=useState(false);
@@ -33,6 +35,7 @@ export default function Platform(){
     }catch(e){failure(e);}finally{setBusy(false);}
   }
   async function signOut(){setBusy(true);try{await browserRequest('platform/logout',{});setStatus(null);setIdentity(null);setSeed('');setCodes([]);setError('');setExpired(false);}catch(e){failure(e);}finally{setBusy(false);}}
+  if(replacementDone)return <main className="auth-card"><h1>Authenticator replaced</h1><p>Save these new recovery codes offline. All old sessions and device tokens were revoked. Sign in again with the new authenticator.</p><ul>{codes.map(c=><li key={c}>{c}</li>)}</ul><a href="/platform">Return to platform sign-in</a></main>;
   const password=<label>Current password<input name="password" type="password" required maxLength={72} autoComplete="current-password"/></label>;
   return <main className="auth-card"><p>NUVIKOZ Edu</p><h1>Platform security</h1><p>Separate platform authentication. Production access remains unavailable pending approved operator provisioning.</p>
     {unavailable?<section><h2>Platform access unavailable</h2><p>This environment or identity cannot use platform authentication. No school privileges are granted here.</p></section>:<>
@@ -46,6 +49,7 @@ export default function Platform(){
       {status.enrolled&&!seed&&<form onSubmit={submit} aria-busy={busy}><h3>Use a recovery code</h3><input name="action" type="hidden" value="mfa/recovery"/>{password}<label>Recovery code<input name="code" type="password" required minLength={32} maxLength={32} autoComplete="off"/></label><button disabled={busy}>Verify recovery code</button></form>}
     </section>}
     {identity&&<section><h2>Verified platform identity</h2><p>Identifier: {identity.user_id}</p><p>Context: {identity.context}</p><p>Supported capability: {identity.capabilities.join(', ')}</p><button disabled={busy} onClick={()=>refresh().catch(failure)}>Refresh identity</button></section>}
+    {status?.enrolled&&<MfaReplacement context="platform" onComplete={newCodes=>{setSeed('');setIdentity(null);setCodes(newCodes);setReplacementDone(true);}}/>}
     {codes.length>0&&<section aria-label="Platform recovery codes"><h2>Save recovery codes offline</h2><p>Shown once. Each code can be consumed once.</p><ul>{codes.map(c=><li key={c}>{c}</li>)}</ul><button onClick={()=>setCodes([])}>Dismiss codes</button></section>}
     </>}
     {busy&&<p role="status">Checking platform security…</p>}{error&&<p role="alert">{error}</p>}
