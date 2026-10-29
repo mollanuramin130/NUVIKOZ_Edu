@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AuditEvent;
 use App\Models\Membership;
 use App\Models\School;
 use App\Models\User;
@@ -122,5 +123,32 @@ class SecurityInventoryTest extends TestCase
         $this->assertDatabaseHas('sessions', ['id' => request()->session()->getId()]);
         $this->assertDatabaseHas('sessions', ['id' => 'foreign']);
         $this->assertDatabaseMissing('sessions', ['id' => 'other-owned']);
+    }
+
+    public function test_active_device_inventory_excludes_expired_and_unbounded_tokens(): void
+    {
+        $m = $this->member();
+        $this->browser($m);
+        $m->user->createToken('Expired', ['school:'.$m->school_id], now()->subSecond());
+        $m->user->createToken('Unbounded', ['school:'.$m->school_id]);
+        $m->user->createToken('Active', ['school:'.$m->school_id], now()->addDay());
+        $rows = app(SecurityInventory::class)->devices($m, request());
+        $this->assertCount(1, $rows);
+        $this->assertSame('Active', $rows[0]['name']);
+    }
+
+    public function test_failed_revocation_audit_rolls_back_token_and_session_changes(): void
+    {
+        $m = $this->member();
+        $this->browser($m);
+        $token = $m->user->createToken('Active', ['school:'.$m->school_id], now()->addDay());
+        AuditEvent::creating(fn () => throw new \RuntimeException('Synthetic audit failure'));
+        try {
+            app(SecurityInventory::class)->revoke($m, request(), 'Synthetic-Device-Password', 'device', app(SecurityInventory::class)->opaque('device', (string) $token->accessToken->id, $m->user_id));
+            $this->fail('Expected failure');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('Synthetic audit failure', $e->getMessage());
+        }
+        $this->assertDatabaseHas('personal_access_tokens', ['id' => $token->accessToken->id]);
     }
 }

@@ -114,7 +114,7 @@ class FoundationTest extends TestCase
 
     public function test_inactive_membership_is_rechecked(): void
     {
-        $m = $this->member($this->school());
+        $m = $this->member($this->school(), 'teacher');
         $this->auth($m);
         $m->update(['status' => 'inactive']);
         $this->getJson('/api/v1/schools/'.$m->school_id)->assertUnauthorized();

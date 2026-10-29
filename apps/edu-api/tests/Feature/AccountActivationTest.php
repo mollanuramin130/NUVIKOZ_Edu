@@ -104,6 +104,9 @@ class AccountActivationTest extends TestCase
         foreach (['issuer_role', 'issuer_inactive', 'issuer_password', 'target_inactive', 'identity_inactive', 'platform', 'school_suspended', 'school_archived', 'school_provisional', 'entitlement'] as $case) {
             $admin = $this->member('S'.substr(hash('sha256', $case), 0, 8));
             [$admin,$target,$proof] = $this->pending($admin);
+            if (in_array($case, ['issuer_role', 'issuer_inactive'], true)) {
+                $this->backupAdminFixture($admin);
+            }
             match ($case) {
                 'issuer_role' => $admin->update(['role' => 'principal']), 'issuer_inactive' => $admin->update(['status' => 'inactive']), 'issuer_password' => $admin->user->update(['password' => 'Changed-Authority-Password']),
                 'target_inactive' => $target->update(['status' => 'inactive']), 'identity_inactive' => $target->user->update(['status' => 'inactive']),
@@ -199,6 +202,7 @@ class AccountActivationTest extends TestCase
     public function test_restored_authority_cannot_resurrect_a_revoked_proof(): void
     {
         [$admin,$target,$proof] = $this->pending();
+        $this->backupAdminFixture($admin);
         $admin->update(['role' => 'principal']);
         $admin->update(['role' => 'school_admin']);
         $this->assertNotNull(DB::table('account_activations')->first()->invalidated_at);

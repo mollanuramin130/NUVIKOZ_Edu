@@ -102,4 +102,16 @@ class BrowserBoundaryTest extends TestCase
         DB::table('session_revocations')->insert(['session_hash' => hash('sha256', $session), 'user_id' => $user->id, 'created_at' => now()]);
         $this->getJson('https://localhost/api/v1/browser/me', ['Origin' => 'https://web.edu.test'])->assertUnauthorized();
     }
+
+    public function test_staff_family_and_absolute_session_limits_are_server_authoritative(): void
+    {
+        foreach ([['teacher', 1800, 100], ['student', 28800, 100], ['parent', 28800, 100], ['teacher', 10, 43200]] as $i => [$role, $idle, $age]) {
+            $school = School::create(['code' => 'TIME'.$i, 'name' => 'Synthetic', 'data_stage' => 'live', 'access_state' => 'live_enabled']);
+            $user = User::create(['name' => 'Synthetic', 'password' => 'Synthetic-Password']);
+            Membership::create(['school_id' => $school->id, 'user_id' => $user->id, 'role' => $role, 'login_identifier' => 'SYNTHETIC', 'status' => 'active']);
+            config(['browser.origins' => ['https://web.edu.test']]);
+            $this->actingAs($user, 'web')->withSession(['school_id' => $school->id, 'credential_hash' => hash('sha256', $user->password), 'issued_at' => time() - max($age, $idle), 'seen_at' => time() - $idle]);
+            $this->getJson('https://localhost/api/v1/browser/me', ['Origin' => 'https://web.edu.test'])->assertUnauthorized();
+        }
+    }
 }

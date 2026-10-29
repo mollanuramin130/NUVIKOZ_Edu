@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\BrowserAuthController;
+use App\Http\Requests\LoginRequest;
 use App\Models\AuditEvent;
 use App\Models\Membership;
 use App\Models\School;
@@ -11,9 +13,11 @@ use App\Services\AccountRecovery;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
@@ -128,6 +132,9 @@ class AccountRecoveryTest extends TestCase
             $a = $this->member('S'.substr(hash('sha256', $case), 0, 8));
             $t = $this->member($a->school->code, 'teacher', 'TARGET');
             $p = app(AccountRecovery::class)->issue($a, $t->id, $this->verification(), 'synthetic');
+            if (in_array($case, ['issuer_role', 'issuer_status'], true)) {
+                $this->backupAdminFixture($a);
+            }
             match ($case) {
                 'issuer_role' => $a->update(['role' => 'principal']), 'issuer_status' => $a->update(['status' => 'inactive']), 'issuer_password' => $a->user->update(['password' => 'Synthetic-Changed-Authority']),
                 'target_status' => $t->update(['status' => 'inactive']), 'identity' => $t->user->update(['status' => 'inactive']), 'platform' => $t->user->forceFill(['is_platform_admin' => true])->save(),
@@ -241,5 +248,31 @@ class AccountRecoveryTest extends TestCase
         } catch (HttpException $e) {
             $this->assertSame(429, $e->getStatusCode());
         }
+    }
+
+    public function test_recovery_preserves_enrolled_mfa_and_requires_it_after_new_password_login(): void
+    {
+        $admin = $this->member();
+        $target = $this->member('A', 'school_admin', 'TARGET_ADMIN');
+        $before = DB::table('mfa_credentials')->where('user_id', $target->user_id)->first();
+        $this->mfaFixture($admin);
+        $p = app(AccountRecovery::class)->issue($admin, $target->id, $this->verification(), 'mfa-reset-test');
+        Auth::guard('web')->logout();
+        app('auth')->forgetGuards();
+        app(AccountRecovery::class)->consume($this->data($p), 'reset-preserves-mfa');
+        $after = DB::table('mfa_credentials')->where('user_id', $target->user_id)->first();
+        $this->assertSame($before->secret_encrypted, $after->secret_encrypted);
+        $this->assertSame($before->version, $after->version);
+        $this->assertNotNull($after->confirmed_at);
+        // Exercise the real login controller with a validated synthetic request. The
+        // separate HTTPS suite exercises the cookie/CSRF boundary without mocking it.
+        $data = ['school_code' => 'A', 'identifier' => 'TARGET_ADMIN', 'password' => 'Synthetic-Recovered-Password'];
+        $request = new LoginRequest($data);
+        $request->setValidator(Validator::make($data, $request->rules()));
+        $request->setLaravelSession(request()->session());
+        $response = app(BrowserAuthController::class)->login($request);
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertTrue($response->getData(true)['data']['mfa_required']);
+
     }
 }
