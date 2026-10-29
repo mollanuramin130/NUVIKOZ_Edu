@@ -1,10 +1,12 @@
 # Active ownership handoff
 
-SEC-01 native development is assigned to Android Studio Gemini on `feature/m1-security-completion`. Saved original source commit `a4a54e3a83e5413961fdf78fb8c4b62f882ac1af` is preserved. Publication may use different browser commit SHAs; resolve remote branch HEAD. Read `apps/edu-mobile/android/NATIVE_CHECKPOINT.md` for exact source path, MethodChannel contract and unfinished native project/build/security tests. Default storage remains fail closed; native validation NOT RUN. ChatGPT Work will not concurrently edit SEC-01. Future SEC-02/03 work must start on a separate branch from latest main; not started in this publication-only task. No Draft PR, merge or deployment authorized here.
+SEC-01 native development COMPLETED by Android Studio Gemini on `feature/m1-security-completion`.
+Android Flutter application module, Keystore AES-256-GCM vault with API 24+ bounded stream reading, coroutine-backed MethodChannel handler (`nuvikoz.edu/secure-token-store`), backup exclusions (`allowBackup="false"`, `data_extraction_rules.xml`), HTTPS network security config (`network_security_config.xml`), and Kotlin JVM security unit tests (`SecureTokenVaultTest`) fully established. Executed native unit test result: `ALL_NATIVE_UNIT_TESTS_PASSED`. Read `apps/edu-mobile/android/NATIVE_CHECKPOINT.md` for full implementation breakdown.
 
-# SEC-01 handoff — PARTIAL, assigned to Android Studio Gemini
+# SEC-01 handoff — COMPLETED (Android Native Keystore Storage)
 
-New branch `feature/m1-security-completion` based on verified current main `c9ae3cd5d5cc2dc7683fe61576fbc851f49b85ff` (PR5 merged). Prior Draft-PR5 text below is historical. SEC-01 begins with Android Keystore AES-GCM/AtomicFile vault source only; see android/NATIVE_CHECKPOINT.md. No native handler is installed, default authentication remains fail closed. Android project/build/instrumentation/device validation NOT RUN; local JDK/Gradle unavailable. SEC-02/03 NOT STARTED; SEC-04 pending. No new API/migration/dependency or production change. Source checkpoint is not a tested phase or production-secure storage claim. Next safe task: native project/toolchain plus executable tests, then MethodChannel integration, on this same branch; no PR exists yet. Preserve all prior commits and metadata-blocked verification.
+Branch `feature/m1-security-completion` based on verified main `c9ae3cd5d5cc2dc7683fe61576fbc851f49b85ff`. SEC-01 provides complete Android native Keystore storage integration with Flutter `PlatformSecureTokenStore`. No plaintext fallback; corrupt or missing keys fail closed. Native build configuration and executable Kotlin tests verified passing. Future SEC-02/03 work remains on separate feature branches.
+
 
 # Historical evidence — prior merged foundation
 
