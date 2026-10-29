@@ -39,7 +39,7 @@ if ($memberA && in_array($command, ['disable-identity', 'disable-membership', 's
     exit;
 }
 if ($memberA) {
-    $memberA->user->update(['status' => 'active']);
+    $memberA->user->update(['status' => 'active', 'password' => 'Synthetic-Browser-Only-Password']); // Restore only this disposable fixture after password-recovery tests.
     $memberA->update(['status' => 'active']);
     $schoolA->update(['access_state' => 'live_enabled']);
 }
