@@ -14,7 +14,7 @@ use Illuminate\Support\Str;
 /** Synthetic-only internal flow; HTTP/public issuer is not enabled. */
 class PlatformMfa
 {
-    public function pendingIdentity(Request $r): User
+    private function contextIdentity(Request $r): User
     {
         abort_unless(app()->environment('testing') && config('platform.synthetic_auth') === true && $r->hasSession() && ! $r->hasHeader('Authorization') && ! $r->hasHeader('X-School-ID'), 403);
         $s = $r->session();
@@ -26,10 +26,33 @@ class PlatformMfa
             && ($c['user_id'] ?? null) === $u->id && ($c['credential'] ?? null) === hash('sha256', $u->password)
             && is_int($c['issued_at'] ?? null) && $c['issued_at'] <= $now && $now - $c['issued_at'] < 43200
             && is_int($c['seen_at'] ?? null) && $c['seen_at'] <= $now && $now - $c['seen_at'] < 1800
-            && is_int($c['challenge_expires_at'] ?? null) && $c['challenge_expires_at'] > $now
             && ! DB::table('session_revocations')->where('session_hash', hash('sha256', $s->getId()))->exists(), 403);
 
         return $u;
+    }
+
+    private function challengeOpen(Request $r): bool
+    {
+        $deadline = $r->session()->get('platform_context.challenge_expires_at');
+
+        return is_int($deadline) && $deadline > now()->timestamp;
+    }
+
+    public function pendingIdentity(Request $r): User
+    {
+        $user = $this->contextIdentity($r);
+        abort_unless($this->challengeOpen($r), 403);
+
+        return $user;
+    }
+
+    // Status/replacement accept an already verified context, never an expired pending challenge alone.
+    public function authenticatedIdentity(Request $r): User
+    {
+        $user = $this->contextIdentity($r);
+        abort_unless(app(PlatformAssurance::class)->allows($r, 'platform.health') || $this->challengeOpen($r), 403);
+
+        return $user;
     }
 
     private function mutate(Request $r, string $password, callable $action): array

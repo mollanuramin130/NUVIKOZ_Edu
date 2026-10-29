@@ -38,7 +38,7 @@ class MfaReplacement
                 app(PrivilegedMfa::class)->status($member, $r); // Current role, identity, school, credential and session checks.
                 $binding = app(PrivilegedMfa::class)->binding($member);
             } else {
-                $user = app(PlatformMfa::class)->pendingIdentity($r); // Testing-only issuer gate remains mandatory.
+                $user = app(PlatformMfa::class)->authenticatedIdentity($r); // Testing-only issuer gate remains mandatory.
                 $binding = hash('sha256', $user->id.'|'.$user->password.'|platform');
             }
             abort_unless(strlen($password) <= 72 && Hash::check($password, $user->password), 422);
