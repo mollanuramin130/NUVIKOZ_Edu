@@ -36,7 +36,9 @@ class BrowserAuthController extends Controller
 
         // Serialize credential checks with password changes, then recheck membership/access.
         return DB::transaction(function () use ($request, $data, $membership) {
+            School::whereKey($membership->school_id)->lockForUpdate()->firstOrFail();
             $user = User::whereKey($membership->user_id)->lockForUpdate()->firstOrFail();
+            Membership::whereKey($membership->id)->lockForUpdate()->firstOrFail();
             $current = $membership->fresh(['school']);
             if (! $current || $current->status !== 'active' || in_array($current->school->access_state, ['suspended', 'archived'], true) || $user->status !== 'active' || $user->is_platform_admin || $user->activation_required || $user->must_change_password || ! Hash::check($data['password'], $user->password)) {
                 return Api::error('INVALID_CREDENTIALS', 'Credentials could not be verified.', 401);

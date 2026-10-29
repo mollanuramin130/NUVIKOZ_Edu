@@ -28,9 +28,10 @@ class FoundationController extends Controller
         }
 
         return DB::transaction(function () use ($membership, $data) {
+            $school = School::whereKey($membership->school_id)->lockForUpdate()->firstOrFail();
             $user = User::whereKey($membership->user_id)->lockForUpdate()->firstOrFail();
-            $current = Membership::whereKey($membership->id)->where('status', 'active')->first();
-            if (! $current || $user->is_platform_admin || $user->activation_required || in_array(School::whereKey($current->school_id)->value('access_state'), ['suspended', 'archived'], true) || $user->status !== 'active' || ! Hash::check($data['password'], $user->password)) {
+            $current = Membership::whereKey($membership->id)->where('status', 'active')->lockForUpdate()->first();
+            if (! $current || $user->is_platform_admin || $user->activation_required || in_array($school->access_state, ['suspended', 'archived'], true) || $user->status !== 'active' || ! Hash::check($data['password'], $user->password)) {
                 return Api::error('INVALID_CREDENTIALS', 'Credentials could not be verified.', 401);
             }
             $expiry = $current->role === Role::SchoolAdmin ? now()->addHours(12) : now()->addDays(7);
