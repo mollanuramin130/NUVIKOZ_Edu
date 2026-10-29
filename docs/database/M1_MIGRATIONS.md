@@ -29,3 +29,7 @@ Only new browser proof provisioning sets activation_required. Existing accounts 
 ## AUTH-06 additive MFA migration
 
 `2026_10_29_000002_create_mfa_credentials.php` adds global identity-owned mfa_credentials (user PK/FK, authenticated encrypted seed, ULID enrollment version, pending expiry, confirmed time, last accepted counter) and mfa_recovery_codes (ULID PK, user FK, unique SHA-256 hash, consumption time). No existing identity/proof migration is rewritten. Down removes recovery codes before credentials. School/identity/membership locks precede credential/code locks. Two independent MariaDB races verify TOTP and recovery-code single-winner consumption. No platform credential issuer or production encryption key is created.
+
+## AUTH-07 session revocation tombstones
+
+`2026_10_29_000003_create_session_revocations.php` adds session_revocations: SHA-256 session-ID digest primary key, user FK, creation timestamp. No raw cookie/session payload is stored here. Deletion of a sessions row alone cannot defeat a concurrent session writer; this permanent denial marker is checked on protected browser requests and MFA assurance. Retention/cleanup is a future reviewed operational concern; no tombstone purge API is provided. Down drops only this new table. Existing sessions and Sanctum records remain the inventory source; unknown historical start/absolute-expiry metadata is not invented.
