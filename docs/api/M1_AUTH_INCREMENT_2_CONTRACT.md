@@ -79,6 +79,8 @@ Identity model security changes that remove eligibility (inactive status, platfo
 
 ## SEC-02 synthetic platform browser subset (testing only)
 
+This implemented subset supersedes earlier planned bearer-platform-health wording: the legacy `/api/v1/platform/health` bearer endpoint remains deliberately denied, never token-only platform authentication.
+
 Application configuration remains `platform.synthetic_auth=false`; production/staging issuer is unavailable even if configuration is changed because every platform service/policy also requires APP_ENV=testing. No public registration/operator bootstrap exists. The separate `scripts/platform-browser-router.php` disposable CI server enables the synthetic subset only for CLI-server, loopback requests and the `edu_test` database. It is never loaded by the public application entry point. Browser fixtures are CLI-only and satisfy the same environment/database restriction. Production-denial HTTPS tests use the ordinary public entry point with APP_ENV=production.
 
 Under `/api/v1/browser/platform`, all routes retain exact trusted Origin, HTTPS, host-only HttpOnly Secure SameSite=Lax database sessions, CSRF for POST, no-store and no Authorization/X-School-ID substitution:
