@@ -14,6 +14,7 @@ export default function ProtectedDashboard({ role }: { role: string }) {
       setIdentity(null); setError('');
       browserRequest<Identity>('me').then(data => {
         if (!active || current !== generation) return;
+        if (data.mfa_required) { router.replace('/profile/security'); return; }
         if (data.role !== role) { router.replace('/access-denied'); return; }
         setIdentity(data);
       }).catch(e => {
