@@ -23,9 +23,8 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/auth/logout', [C::class, 'logout']);
         Route::post('/auth/password', [C::class, 'password'])->middleware('throttle:5,1');
         Route::get('/platform/health', function (Request $r) {
-            abort_unless($r->user()->is_platform_admin && ! $r->user()->must_change_password && in_array('platform:admin', $r->user()->currentAccessToken()?->abilities ?? [], true), 403);
+            abort(403); // No approved platform MFA-aware issuer exists; tokens alone never suffice.
 
-            return Api::ok(['status' => 'ok']);
         });
         Route::middleware('tenant')->group(function (): void {
             Route::get('/schools/{school}', [C::class, 'school']);
