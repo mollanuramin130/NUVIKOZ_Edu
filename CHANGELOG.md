@@ -24,3 +24,7 @@ Added school-scoped database browser sessions, explicit CSRF and exact-origin cr
 ## AUTH-04 — secure account activation
 
 Added School Admin browser staff provisioning with single-use 30-minute activation proofs, authorized reissue, atomic first password setup, authority/tenant/state revalidation and audit events. Added additive proof migration and pending identity flag, mobile bypass denial for new proof accounts, local-only ephemeral handover, `/activate` UI, negative and independent MariaDB race tests. No recovery/MFA, production delivery, merge or deployment. See canonical handoff for actual CI evidence.
+
+## AUTH-05 — assisted password recovery
+
+Added tenant-bound, School Admin-authorized in-person recovery, hashed 15-minute single-use proofs, atomic credential replacement/revocation, scoped rate limits, audit events, and minimal Next.js recovery screens. Public requests are generic and do not fabricate verified contact delivery. Production issuance remains disabled; pending activation cannot use recovery. MFA and production deployment remain pending.
