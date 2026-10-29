@@ -1,3 +1,25 @@
+# SEC-02 / SEC-03 supported implementation and SEC-04 evidence — 2026-10-29
+
+Branch `feature/m1-platform-auth-recovery`; existing PR #6 remains DRAFT, no merge or deployment. Verified published implementation `8122b3e994eba27bdb61d45da508079d53c69dba` exactly matches local implementation `fc8ad349bfc76915a79b6d7f47696436205f1eef`. Saved checkpoints and remote ancestry are preserved; authenticated browser commits were used because connector writes/push credentials were unavailable. This documentation follow-up requires its own four-check verification; final actual SHA/run must be retrieved from PR6, not assumed from this earlier implementation SHA.
+
+SEC-02 supported synthetic browser journey IMPLEMENTED/TESTED: Next.js platform login/pending MFA/enrollment/confirmation/TOTP/recovery/identity/logout and expired/unavailable states; separate HTTPS/Origin/CSRF and context boundary. Secure-context-safe sender-tagged broadcasts retain cross-tab revalidation without clearing the originating page's newly issued recovery codes. Six SEC-02 HTTPS journeys passed. Production platform issuer/operator bootstrap remains DISABLED, so this is not production authentication completion.
+
+SEC-03 supported replacement IMPLEMENTED/TESTED: current eligible identity/context + password + old TOTP/unused recovery code; encrypted five-minute session/credential/version/membership-bound pending setup, old factor preserved until new TOTP confirmation; locked atomic activation, old factor/codes invalidated, eight new hash-only recovery codes, append-only appropriate school/global audit, previous assurance and all browser/device sessions revoked, fresh authentication required. Functional school/platform replacement UI. Independent lost-authenticator reset remains **BLOCKED/fail-closed**, with no password-only or unverified-contact override. AUTH-05 MFA preservation remains covered.
+
+SEC-04 supported backend/web verification PASSED on implementation8122b3e:
+- M1 Foundation run40856651888: API, Web, Flutter PASSED. Repository Integrity run40856652086 PASSED.
+- Real MariaDB: **139 tests / 971 assertions**, no skips; **21 independent-process concurrency cases** (13 prior plus8 replacement cases: school/platform concurrent start, concurrent confirmation, password-change race and identity-deactivation race). No weakened assertions or sequential substitution.
+- HTTPS browser: **25 passed** =17 pre-existing school journeys +6 SEC-02 platform journeys +1 school replacement +1 platform replacement. Seven new platform journeys in total. Actual Next.js/Laravel/HTTPS/cookie/CSRF boundaries, including ordinary production-entry-point denial.
+- Migration fresh/rollback/remigrate, Pint, Composer platform requirements/validation and blocking security audit passed; no Composer advisories. Web lint/typecheck/production build and blocking npm audit passed.
+- Unchanged metadata-blocked Flutter baseline: analysis clean, **16 tests passed**. This does NOT verify Gemini's native Keystore/device implementation.
+- Local SQLite final implementation: **118 passed / 793 assertions**,21 MariaDB-only cases skipped,139 discovered. Seven new replacement service/rollback/security tests:87 assertions. Final local Web checks and Repository Integrity passed.
+
+New migration000006 creates only transient mfa_replacements; no production database was touched. API contract and migration notes describe implemented fields/routes. No mobile/Android/Kotlin/MethodChannel/native test/Flutter isolation script or Gemini branch was modified. No real notifications, paid infrastructure, school impersonation, unrestricted platform access, DNS/Hostinger/Nursery changes, force-push or merge.
+
+NEXT SAFE TASK: verify this documentation-only follow-up's actual published HEAD and four CI checks, retain PR6 Draft for owner review. Address review findings narrowly. Production issuer/operator identity bootstrap and independent lost-factor recovery remain separate approval/prerequisite gates. Gemini SEC-01 integration/device verification is separate and not authorized by these backend/web test results.
+
+# Historical local SEC-03 checkpoint (superseded by actual hosted evidence above)
+
 # SEC-03 implementation checkpoint — local, awaiting MariaDB/HTTPS validation
 
 SEC-02 browser gate PASSED on published37ad7d320258a4c8e41b73a20b22a356042a0241 (same tree as localb712ea74d7d496ba3d34e1caa4e17ace7644a7f2). M1 run40854659014: API/Web/Flutter success; Integrity40854659010 success. Actual124 MariaDB tests/786 assertions, all13 independent races; all23 HTTPS journeys (SIX new platform +17 school), Composer audit clean, migration cycle/Pint/Web lint/typecheck/build passed. Unchanged metadata-blocked Flutter baseline passed; no Gemini native verification claim. Production issuer still disabled, so SEC-02 remains production-PARTIAL despite supported synthetic browser completion.
