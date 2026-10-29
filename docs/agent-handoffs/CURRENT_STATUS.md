@@ -1,3 +1,13 @@
+# AUTH-05 password recovery checkpoint — 2026-10-29
+
+Branch `feature/m1-auth05-password-recovery` starts from verified main `ed7268a18266c0dd19dcf1dfe1004874023aba8e` (AUTH-04 merged). Post-merge M1 run 40791513153 API/web/metadata-blocked Flutter and Repository Integrity run 40791513165 passed. Historical open-PR #3 statements below are obsolete.
+
+Implemented bounded assisted recovery: current same-school School Admin verifies holder in person against registered records, records restricted case evidence and submits opaque reference; only activated active nonplatform identities eligible. Random hashed 15-minute single-use proof, authority/subject revalidation, safe reissue, scoped throttles, locked atomic password/session/token/lifecycle-proof revocation and audit. Read the AUTH-05 contract addendum and migration note. No real messaging or production configuration. Verified-contact data model is absent, so public requests deliberately return identical generic results without lookup/delivery; automated email recovery remains a dependency. Do not invent contacts or use activation as recovery. Production synthetic handover fails closed. MFA/full device management remain pending.
+
+Local PHP suite at implementation checkpoint: 69 discovered, 67 passed / 305 assertions, two independent MariaDB races skipped under SQLite. Composer strict validation and blocking audit passed. Final source/CI evidence must be verified on the actual remote Draft PR HEAD; later evidence updates follow here. NEXT SAFE TASK: run current-head MariaDB and HTTPS integration CI, resolve any failures, owner review; no merge/deployment authorized. Preserve metadata-blocked Flutter and Nursery isolation.
+
+Earlier checkpoints are historical evidence only.
+
 # AUTH-04 policy correction checkpoint
 
 Existing branch `feature/m1-auth04-account-activation`, starting verified HEAD `930ac6387528ddb3cb4ae74d085cdb388681de7f`. ProvisionStaff now atomically creates activation-required identities and issues proofs for every entry point, including legacy POST /api/v1/accounts; AccountActivation.provision delegates to that single service. No temporary password handover remains. Existing activated-account device login/password rotation stays supported. Production delivery failure rolls back both HTTP and direct service provisioning. FoundationTest covers the legacy login/password bypass and positive post-activation compatibility. Local suite: 60 tests discovered, 59 passed / 240 assertions, one independent MariaDB race skipped on SQLite; Pint passed. Verify actual-tip MariaDB/browser CI on Draft PR #3 before owner review. No merge/deploy or AUTH-05/06 work.
