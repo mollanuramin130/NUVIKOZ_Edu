@@ -44,7 +44,7 @@ if ($memberA) {
     $schoolA->update(['access_state' => 'live_enabled']);
 }
 foreach (['A' => 'live_enabled', 'B' => 'live_enabled', 'S' => 'suspended'] as $code => $state) {
-    $school = School::firstOrCreate(['code' => $code], ['name' => 'Synthetic '.$code, 'data_stage' => 'live', 'access_state' => $state, 'entitlement_ends_at' => now()->addDays(30)]);
+    $school = School::firstOrCreate(['code' => $code], ['settings' => ['timezone' => 'Asia/Kolkata'], 'name' => 'Synthetic '.$code, 'data_stage' => 'live', 'access_state' => $state, 'entitlement_ends_at' => now()->addDays(30)]);
     if (! Membership::where('school_id', $school->id)->exists()) {
         $user = User::create(['name' => 'Synthetic browser fixture', 'password' => 'Synthetic-Browser-Only-Password']);
         Membership::create(['school_id' => $school->id, 'user_id' => $user->id, 'role' => 'teacher', 'login_identifier' => 'TEACHER', 'status' => 'active']);

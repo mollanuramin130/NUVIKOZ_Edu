@@ -1,5 +1,10 @@
 # Change log
 
+## Unreleased — M2 academic setup checkpoint
+
+- Browser future-session/class catalog, serialized tenant/MFA/entitlement checks, idempotent commands and audit rollback; no academic UI acceptance claimed.
+- Additive academic catalog migration, focused security/MariaDB race/HTTPS tests, dependency roadmap, progress register and proposed UI direction.
+
 ## 2026-10-28 — Gate3 initialization
 
 - Created owner-authorized private repository,default branch main.

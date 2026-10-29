@@ -1,3 +1,21 @@
+# Current checkpoint — milestone strategy / M2 academic setup slice A
+
+Updated2026-10-29. Sole developer: ChatGPT Work; Gemini no longer owns tasks. Owner approved milestone batches with continuous automated CI and periodic physical-device acceptance, preserving all prior rules and SDK versions.
+
+New independent branch `feature/m2-academic-setup` starts at actual main `c9ae3cd5d5cc2dc7683fe61576fbc851f49b85ff`. Resolve its actual live commit/PR/checks before continuing. No unmerged security source copied. Existing PR6 `3c34bc94a9d6a794cb3884ef7daed492542a6662`, PR7 `78e25234320f978bcf4bb1b79867ec7f3884c653`, PR8 `5276e20bf54b8e2d2d387cd8ca8edb389b84c663` are Draft/open; main unchanged. Their handoff statuses below are historical. PR6 run40869497184 passed; PR7 run40910552859 passed Foundation but runtime preflight40910552842 failed KVM permissions (no bypass); PR8 run40892765495 passed combined build/regression. Those are source-specific evidence, not M2 evidence.
+
+Slice A implements School Admin+MFA browser future-session/class catalog create/list, current-identity/tenant/entitlement revalidation, strict payloads, configured school timezone, future-only/nonoverlap, idempotency receipts, bounded Demo records and append-only audit rollback. One additive000007 migration. Actual API subset: `packages/contracts/m2-academic.openapi.json`; contract/migration details and `docs/milestones/M2_ACADEMIC_SETUP.md`. Classes/sections/subject offerings, staff, admission/guardian and domain UI/mobile are not complete. Global session defaults/approval and timezone onboarding remain explicit dependencies; no public timezone setter invented.
+
+Local execution: PHP8.4.1, 125 discovered /111 passed /601 assertions;14 MariaDB-only tests skipped (11 existing +3 new independent races). AcademicCatalogTest:13/13 passed,75 assertions. Pint passed. Actual hosted MariaDB/HTTPS results must be read on the new branch HEAD, not inferred from these SQLite results. No local Flutter invocation. Dependency locks unchanged.
+
+Owner-reported Vivo1951 Android11/API30 native vault6/6 + persistence write1/1 + force-stop +read1/1 passed. Real Flutter-engine MethodChannel remains DEVICE TEST PENDING; harness atPR7 compiled but no phone PASS claimed. Defer routine owner APK downloads to a relevant milestone/security checkpoint. Do not mark secure Flutter authentication accepted before this gate. Keep Flutter3.47.8/Dart3.13.7, metadata blocking, credential isolation and privilege dropping unchanged.
+
+Roadmap/dependencies: `M2_ACADEMIC_SETUP.md`; all43 source feature rows tracked in `docs/requirements/IMPLEMENTATION_PROGRESS.csv`. Planning estimate roughly13% overall (12.6% weighted initial estimate;198 effort points, subjective subset credits, not acceptance). M2 slice A at most20% after hosted integration passes; remaining offerings/UI/mobile and owner acceptance are pending. Premium UI specification `docs/ui-ux/ACADEMIC_SETUP_DIRECTION.md` is proposed, not applied or brand-wide approved.
+
+NEXT SAFE TASK: verify exact new Draft PR CI (including3 new MariaDB races and new18th HTTPS journey); address actual failures. Then add class offerings/sections and subject definitions with composite tenant FKs on this branch. Prepare concrete academic UI preview for owner visual-direction approval before broad styling; no approval needed for ordinary backend work. No main merge/deployment/production action authorized. Production platform issuer, privileged native MFA, independent lost-factor reset, real delivery/contact verification and hosting readiness remain fail-closed/deferred gates.
+
+# Historical evidence — previous M1 checkpoints
+
 # Current checkpoint — advanced authentication final owner review
 
 Existing branch `feature/m1-advanced-auth-security`; PR #5 https://github.com/mollanuramin130/NUVIKOZ_Edu/pull/5 remains **Draft**. Latest published implementation HEAD verified before this documentation-only update: `66bcdde57b64cb56a7c4120c2bd7fe2ed62e5f8d`. The documentation commit supersedes that HEAD without changing implementation; resolve the live PR head and its own checks for final review.

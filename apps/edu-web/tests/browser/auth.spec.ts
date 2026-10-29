@@ -253,3 +253,39 @@ test('School Admin permission UI grants and revokes a role-bounded capability fo
  expect((await recipient.request.post(`${api}/security/permissions/${target}`,{headers:{Origin:origin,'X-CSRF-TOKEN':await bootstrap(recipient)},data:{capability:'financial.export',allowed:true,version:3}})).status()).toBe(403);
  await recipient.close();
 });
+
+
+test('academic setup enforces actual HTTPS cookies, MFA, CSRF, idempotency and tenant isolation', async ({context, page, browser}) => {
+  expect((await login(context, 'A', 'ADMIN', password, false)).status()).toBe(200);
+  expect((await context.request.get(`${api}/academic/classes`, {headers: {Origin: origin}})).status()).toBe(403);
+  const csrf = await bootstrap(context);
+  const setup = await context.request.post(`${api}/security/mfa/enrollment`, {headers: {Origin: origin, 'X-CSRF-TOKEN': csrf}, data: {password}});
+  expect(setup.status()).toBe(200);
+  const seed = (await setup.json()).data.secret;
+  const confirm = await context.request.post(`${api}/security/mfa/enrollment/confirm`, {headers: {Origin: origin, 'X-CSRF-TOKEN': csrf}, data: {password, code: totp(seed)}});
+  expect(confirm.status()).toBe(200);
+  const token = (await confirm.json()).data.csrf_token;
+  await page.goto('/dashboard/school_admin');
+  const result = await page.evaluate(async ({url, token}) => {
+    const data = {name: 'Synthetic HTTPS class', grade_label: 'XII', sort_order: 12};
+    const send = async (body: object, headers: Record<string,string>) => {
+      const r = await fetch(url, {method: 'POST', credentials: 'include', headers: {'Content-Type': 'application/json', ...headers}, body: JSON.stringify(body)});
+      return {status: r.status, body: await r.json()};
+    };
+    const headers = {'X-CSRF-TOKEN': token, 'Idempotency-Key': 'synthetic-https-academic-01'};
+    return {missing: await send(data, {}), created: await send(data, headers), replay: await send(data, headers), changed: await send({...data, name: 'Different'}, headers)};
+  }, {url: `${api}/academic/classes`, token});
+  expect(result.missing.status).toBe(419);
+  expect(result.created.status).toBe(200);
+  expect(result.created.body.data.replayed).toBe(false);
+  expect(result.replay.body.data.replayed).toBe(true);
+  expect(result.replay.body.data.resource.id).toBe(result.created.body.data.resource.id);
+  expect(result.changed.status).toBe(409);
+  expect((await context.request.get(`${api}/academic/classes`, {headers: {Origin: origin, 'X-School-ID': 'foreign'}})).status()).toBe(403);
+  expect((await context.request.get(`${api}/academic/classes`, {headers: {Origin: 'https://hostile.invalid'}})).status()).toBe(403);
+  const teacher = await browser.newContext({ignoreHTTPSErrors: true});
+  try {
+    expect((await login(teacher, 'B')).status()).toBe(200);
+    expect((await teacher.request.get(`${api}/academic/classes`, {headers: {Origin: origin}})).status()).toBe(403);
+  } finally { await teacher.close(); }
+});

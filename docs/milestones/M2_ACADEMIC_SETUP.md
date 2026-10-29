@@ -1,0 +1,45 @@
+# M2 — Academic Setup (incremental, not accepted)
+
+Owner strategy: continuous automated verification; milestone physical-device acceptance. Existing approved v1.1 requirements remain authoritative. This roadmap is implementation sequencing, not a replacement SRS.
+
+## Dependencies and deliverables
+
+Identity + current tenant + entitlement + School Admin MFA → future sessions → class catalog → session class offerings/sections → subject offerings → staff assignments → admission/enrollment/guardian links → attendance/homework/notices → exams/fees/timetable → reports/storage/notifications.
+
+This milestone groups F015 (bounded future calendar), F018 (classes/sections/subjects) and the supporting workflow UI. Global rules, active-calendar review and school onboarding have separate platform/security dependencies and are not silently implemented here.
+
+| Slice | Deliverable | Acceptance gate | Status |
+|---|---|---|---|
+| A | Future session and class catalog backend | Current School Admin + MFA, tenant-scoped listing, strict payloads, expiry, Demo caps, audit rollback, idempotency and real MariaDB races | Implemented; actual-tip hosted checks required |
+| B | Session offerings, sections, subjects | Composite tenant FKs, optional class teacher, compulsory/optional subjects, no cross-session mixing | NOT STARTED |
+| C | Unified web academic setup | Approved visual direction, real API integration, responsive/keyboard/error/conflict states | NOT STARTED |
+| D | Flutter setup/read workflow | Same contract; secured CI; milestone APK and meaningful device journey | NOT STARTED |
+
+No edit/delete/activate/close API exists in slice A. Sessions always start in `future`; no automatic activation is implied. Current/active boundary changes remain unavailable until platform approval workflow exists. A missing valid IANA school timezone denies future-session creation; this branch does not invent onboarding/timezone configuration. Class catalog remains independent of sessions.
+
+Demo engineering defaults: at most 10 session records / 50 class records per school, checked under the school lock; zero files remains unchanged. Expired entitlement permits authorized catalog reads but no commands (including retries). No student, guardian or login accounts created.
+
+## Branch strategy and acceptance register
+
+`feature/m2-academic-setup` starts at actual main `c9ae3cd5d5cc2dc7683fe61576fbc851f49b85ff`. No merge/cherry-pick of PR6/7/8 is needed for this backend slice. Those Draft PRs remain independent; their production gates are still closed. Before later integration, verify actual branch tips and resolve source/document overlaps without stale-file replacement. No main merge is authorized.
+
+SEC-01 native vault 6/6 and two-process write/read 1/1 each are owner-reported physical Vivo1951 Android11/API30 results. Real-engine MethodChannel remains DEVICE TEST PENDING (PR7 harness compiled at78e25234320f978bcf4bb1b79867ec7f3884c653). Do not require another APK for this backend-only slice. Secure Flutter authentication acceptance remains blocked by that runtime gate. Flutter3.47.8/Dart3.13.7 and all lockfiles/isolation controls stay unchanged.
+
+Production platform issuer, privileged native MFA, independent lost-factor recovery, real credential delivery, verified-contact infrastructure and hosting verification remain separate approval/dependency gates.
+
+## Subsequent dependency groups
+
+1. Tenant readiness: registration review, private Demo lifecycle, explicit live entitlement and readiness conversion (F007–010). Build before accepting public onboarding; existing synthetic schools do not prove onboarding.
+2. Academic setup completion and staff effective-dated assignments (F015/018/019), then student profiles/enrollment/promotion and verified guardian links (F014/016/017).
+3. Daily operations: attendance/correction, homework Done, formal notice review (F020–023); immutable authorship and cutoff approval gates.
+4. Evaluation: exams/grading/results (F024); separate from later timetable/leave/substitution (F026/027).
+5. Separate money milestones: school fee ledger (F025), then platform subscriptions/manual verification/receipts (F011–013); never share ledgers.
+6. Private storage/quotas, scoped reports, notification outbox and privacy/operational acceptance (F028–031/035–043). Storage safeguards precede file-enabled workflows. Certificates remain later optional.
+
+See `docs/requirements/IMPLEMENTATION_PROGRESS.csv` for all source feature IDs. NOT STARTED means no executable domain workflow found, even if a designed contract exists.
+
+## Progress methodology
+
+Planning-only effort points and partial implementation credits are explicit per feature in the register. Overall estimate = sum(points × credit/100) / sum(points); credits are engineering estimates, not passed-test ratios or acceptance claims. Broad feature rows remain heavily discounted when only a subset exists. Recalibrate with measured work; no feature is accepted solely by this estimate.
+
+Current milestone planning weights: slice A 25%, B 35%, C 25%, D 15%. A may earn at most 80% of its weight after backend integration checks pass; owner review and later integration remain pending. Therefore even a green slice A is at most 20% of M2, not M2 completion. No physical milestone acceptance claimed.
