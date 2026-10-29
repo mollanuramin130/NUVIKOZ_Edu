@@ -1,3 +1,9 @@
+# Machine-readable implemented contract follow-up
+
+The documentation-only90935d8292dd7f0579f0bb76c4ed9c08d7ac5083 checkpoint passed all four jobs (M1 run40857530594, Integrity40857530616). Added additive m1-platform-replacement.openapi.json for the12 implemented SEC-02/03 operations and clarified the previous school subset description/README; canonical v1.1 design untouched. Contract contains no seeds/password/token examples or production issuer enablement. Local JSON parsing,21 reference resolutions and12 operation matches against actual Laravel route:list passed; full OpenAPI-validator execution NOT RUN (not installed). obtain NEW exact HEAD CI before claiming final readiness. Runtime code/tests unchanged from implementation8122b3e. Next: verify contract follow-up and owner review, no additional modules/merge/deploy.
+
+# Verified supported implementation evidence
+
 # SEC-02 / SEC-03 supported implementation and SEC-04 evidence — 2026-10-29
 
 Branch `feature/m1-platform-auth-recovery`; existing PR #6 remains DRAFT, no merge or deployment. Verified published implementation `8122b3e994eba27bdb61d45da508079d53c69dba` exactly matches local implementation `fc8ad349bfc76915a79b6d7f47696436205f1eef`. Saved checkpoints and remote ancestry are preserved; authenticated browser commits were used because connector writes/push credentials were unavailable. This documentation follow-up requires its own four-check verification; final actual SHA/run must be retrieved from PR6, not assumed from this earlier implementation SHA.
