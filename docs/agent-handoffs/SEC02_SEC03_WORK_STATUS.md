@@ -1,3 +1,15 @@
+# SEC-02 platform UI and HTTPS journeys — local implementation checkpoint
+
+Continues local a9807e241ca9fb24a5f4d554ca4f9f922ae43dfc and verified published dc8acad1042597daf3148882434b0d32c4e70fb7, same branch and Draft PR6. Added `/platform` UI using existing credentialed/CSRF client, with separate pending/enrollment/TOTP/recovery/identity/logout and unavailable/expired states. No client privilege toggle. API contract now describes actual synthetic HTTP subset.
+
+Added six platform Playwright tests (23 total including 17 existing school journeys): actual UI enrollment, existing TOTP challenge, single-use recovery, session rotation/stale-cookie/logout, expiry, CSRF/Origin/bearer/cross-context and ordinary production-entry-point issuer denial. These are NOT RUN locally yet; hosted CI must execute them before any SEC-02 browser completion claim or SEC-03 work. Separate loopback CLI-server harness is testing/edu_test-only; normal app config stays false and production services remain gated. Fixture mutations require CLI/testing/edu_test. Existing Flutter isolation script/mobile untouched.
+
+Local PHP:111 passed/698 assertions,13 MariaDB-only skips (124 discovered). Pint passed for new PHP scripts. Web lint and typecheck passed after fixing an initial effect lint error; production build passed before that effect-only correction and must be rerun on final tree. Repository Integrity passed. Real MariaDB/HTTPS and final-head hosted checks pending; do not reuse previous SHA's evidence. SEC-02 PARTIAL, SEC-03 NOT STARTED, SEC-04 PARTIAL. No merge/deploy/production enablement.
+
+NEXT SAFE TASK: finish local final-tree checks, publish coherent UI/harness/tests to existing branch/PR6, run all four hosted checks; fix genuine failures before advancing to secure MFA replacement. Lost-factor reset stays BLOCKED pending approved independent verification.
+
+# Historical published session-fix checkpoint
+
 # Published HTTP checkpoint and hosted evidence — 2026-10-29
 
 Existing branch `feature/m1-platform-auth-recovery`, Draft PR #6. Published source HEAD `da9171b05194777ef791a8bcf16059d36e70d677` exactly matches local code checkpoint `33f9bc58138c8ce9ce6e318140fd0f59fb2c7215` (all files, not only selected paths). Original saved commit `e17908953c711415d3e0d7183992e1af80bc5e48` and every earlier commit remain preserved. Browser-created commits were necessary because connector mutations/push credentials are unavailable; no force-push or history replacement.
