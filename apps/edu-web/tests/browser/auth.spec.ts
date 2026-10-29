@@ -137,3 +137,57 @@ test('authorized provisioning hands a single-use activation into secure browser 
  await page.getByRole('link',{name:'Continue to sign in'}).click();await page.getByLabel('School code').fill('A');await page.getByLabel('Account identifier').fill(identifier);await page.getByLabel('Password',{exact:true}).fill(password);await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page).toHaveURL(/dashboard\/teacher/);
  expect(await page.evaluate(()=>Object.keys(localStorage))).toEqual([]);
 });
+
+test('generic recovery requests preserve CSRF and origin protection without enumeration', async ({ context, page }) => {
+  const csrf = await bootstrap(context);
+  expect((await context.request.post(`${api}/recovery/request`, {headers:{Origin:origin},data:{school_code:'A',identifier:'TEACHER'}})).status()).toBe(419);
+  expect((await context.request.post(`${api}/recovery/consume`, {headers:{Origin:'https://hostile.edu.test','X-CSRF-TOKEN':csrf},data:{}})).status()).toBe(403);
+  const results: unknown[] = [];
+  for(const identifier of ['TEACHER','UNKNOWN','shared-phone','unverified@example.test','OTHER']) {
+    const result = await context.request.post(`${api}/recovery/request`, {headers:{Origin:origin,'X-CSRF-TOKEN':csrf},data:{school_code:'A',identifier}});
+    expect(result.status()).toBe(200); results.push((await result.json()).data);
+  }
+  expect(results.every(result => JSON.stringify(result) === JSON.stringify(results[0]))).toBe(true);
+  expect((await context.request.post(`${api}/recovery/request`, {headers:{Origin:origin,'X-CSRF-TOKEN':csrf},data:{school_code:'A',identifier:'UNKNOWN'}})).status()).toBe(429);
+  // Reset only the isolated fixture/throttle store before exercising the actual UI.
+  execFileSync('php',[fixture]);
+  await page.goto('/forgot-password');
+  await page.getByLabel('School code').fill('A'); await page.getByLabel('Account identifier').fill('UNKNOWN');
+  await page.getByRole('button',{name:'Request recovery',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Recovery request received'})).toBeVisible();
+  await expect(page.getByText('Automated contact delivery is not available yet. No email or message has been sent.')).toBeVisible();
+});
+
+test('assisted recovery resets through HTTPS UI and revokes another browser session', async ({ context, page, browser }) => {
+  const holder = await browser.newContext({ignoreHTTPSErrors:true});
+  expect((await login(holder)).status()).toBe(200);
+  const oldPage = await holder.newPage(); await oldPage.goto('https://web.edu.test:3443/dashboard/teacher');
+  await expect(oldPage.getByRole('heading',{name:'teacher dashboard'})).toBeVisible();
+  const admin = await login(context,'A','ADMIN'); expect(admin.status()).toBe(200);
+  const fixtureTarget = execFileSync('php',[fixture,'recovery-target'],{encoding:'utf8'}).trim();
+  await page.goto('/assisted-recovery');
+  await page.getByLabel('Target membership ID').fill(fixtureTarget);
+  await page.getByLabel('Verification case reference').fill('synthetic-browser-case-0001');
+  await page.getByRole('checkbox').check(); await page.getByRole('button',{name:'Authorize one-time recovery'}).click();
+  const handover=page.getByRole('region',{name:'One-time local recovery handover'});
+  await expect(handover).toBeVisible();
+  const values=await handover.locator('dd').allTextContents();
+  const proof={proof_id:values[0],secret:values[1]};
+  const adminData=(await admin.json()).data;
+  await context.request.post(`${api}/logout`,{headers:{Origin:origin,'X-CSRF-TOKEN':adminData.csrf_token},data:{}});
+  await page.goto('/reset-password');
+  await page.getByLabel('School code').fill('A'); await page.getByLabel('Recovery ID').fill(proof.proof_id);
+  await page.getByLabel('Recovery secret').fill('0'.repeat(64));
+  const newPassword='Synthetic-Recovered-Browser-Password';
+  await page.getByLabel('New password',{exact:true}).fill(newPassword); await page.getByLabel('Confirm password').fill(newPassword);
+  await page.getByRole('button',{name:'Reset password',exact:true}).click();
+  await expect(page.getByRole('main').getByRole('alert')).toContainText('invalid, expired');
+  await page.getByLabel('Recovery secret').fill(proof.secret); await page.getByRole('button',{name:'Reset password',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Password reset',exact:true})).toBeVisible();
+  expect((await holder.request.get(`${api}/me`,{headers:{Origin:origin}})).status()).toBe(401);
+  const csrf=await bootstrap(context);
+  expect((await context.request.post(`${api}/recovery/consume`,{headers:{Origin:origin,'X-CSRF-TOKEN':csrf},data:{school_code:'A',...proof,password:newPassword,password_confirmation:newPassword}})).status()).toBe(422);
+  expect((await login(context,'A','TEACHER',newPassword)).status()).toBe(200);
+  expect(await page.evaluate(()=>Object.keys(localStorage))).toEqual([]);
+  await holder.close();
+});

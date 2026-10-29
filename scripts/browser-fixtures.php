@@ -22,6 +22,10 @@ if (($argv[1] ?? '') === 'expire') {
 $command = $argv[1] ?? '';
 $schoolA = School::where('code', 'A')->first();
 $memberA = $schoolA ? Membership::where('school_id', $schoolA->id)->where('login_identifier', 'TEACHER')->first() : null;
+if ($command === 'recovery-target' && $memberA) {
+    echo $memberA->id;
+    exit;
+}
 if ($memberA && in_array($command, ['disable-identity', 'disable-membership', 'suspend-school'], true)) {
     if ($command === 'disable-identity') {
         $memberA->user->update(['status' => 'inactive']);

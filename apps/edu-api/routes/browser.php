@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ActivationController;
 use App\Http\Controllers\BrowserAuthController as Browser;
+use App\Http\Controllers\RecoveryController;
 use App\Http\Middleware\BrowserSession;
 use Illuminate\Support\Facades\Route;
 
@@ -18,4 +19,10 @@ Route::prefix('api/v1/browser')->group(function (): void {
         Route::post('/accounts', [ActivationController::class, 'provision']);
         Route::post('/accounts/{membership}/activation/reissue', [ActivationController::class, 'reissue'])->middleware('throttle:5,1,activation-reissue:');
     });
+});
+
+Route::prefix('api/v1/browser')->group(function (): void {
+    Route::post('/recovery/request', [RecoveryController::class, 'request'])->middleware('throttle:5,1,recovery-request:');
+    Route::post('/recovery/consume', [RecoveryController::class, 'consume'])->middleware('throttle:5,1,recovery-consume:');
+    Route::post('/accounts/{membership}/recovery', [RecoveryController::class, 'issue'])->middleware(['auth:sanctum', BrowserSession::class, 'throttle:5,1,recovery-assisted:']);
 });

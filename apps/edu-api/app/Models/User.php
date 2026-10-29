@@ -21,9 +21,11 @@ class User extends Authenticatable
     {
         static::updating(function (self $user): void {
             if ($user->isDirty(['password', 'status', 'is_platform_admin', 'must_change_password', 'activation_required'])) {
-                DB::table('account_activations')->whereNull('consumed_at')->whereNull('invalidated_at')->where(function ($query) use ($user): void {
-                    $query->where('user_id', $user->id)->orWhereIn('issuer_membership_id', DB::table('memberships')->select('id')->where('user_id', $user->id));
-                })->update(['invalidated_at' => now(), 'updated_at' => now()]);
+                foreach (['account_activations', 'account_recoveries'] as $table) {
+                    DB::table($table)->whereNull('consumed_at')->whereNull('invalidated_at')->where(function ($query) use ($user): void {
+                        $query->where('user_id', $user->id)->orWhereIn('issuer_membership_id', DB::table('memberships')->select('id')->where('user_id', $user->id));
+                    })->update(['invalidated_at' => now(), 'updated_at' => now()]);
+                }
             }
         });
     }
