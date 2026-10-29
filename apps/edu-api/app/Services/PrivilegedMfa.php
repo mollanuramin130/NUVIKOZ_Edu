@@ -27,7 +27,7 @@ class PrivilegedMfa
 
     public function verified(Membership $m, Request $r): bool
     {
-        if (! $r->hasSession() || $m->user->status !== 'active' || $m->status !== 'active' || $m->user->activation_required || $m->user->must_change_password || $m->user->is_platform_admin || in_array($m->school->access_state, ['suspended', 'archived'], true) || ! hash_equals((string) $r->session()->get('credential_hash', ''), hash('sha256', $m->user->password)) || now()->timestamp - $r->session()->get('issued_at', 0) >= 43200 || now()->timestamp - $r->session()->get('seen_at', 0) >= 1800 || Auth::guard('web')->id() !== $m->user_id || $r->session()->get('school_id') !== $m->school_id) {
+        if (! $r->hasSession() || DB::table('session_revocations')->where('session_hash', hash('sha256', $r->session()->getId()))->exists() || $m->user->status !== 'active' || $m->status !== 'active' || $m->user->activation_required || $m->user->must_change_password || $m->user->is_platform_admin || in_array($m->school->access_state, ['suspended', 'archived'], true) || ! hash_equals((string) $r->session()->get('credential_hash', ''), hash('sha256', $m->user->password)) || now()->timestamp - $r->session()->get('issued_at', 0) >= 43200 || now()->timestamp - $r->session()->get('seen_at', 0) >= 1800 || Auth::guard('web')->id() !== $m->user_id || $r->session()->get('school_id') !== $m->school_id) {
             return false;
         }
         $proof = $r->session()->get('mfa_assurance');
@@ -44,7 +44,7 @@ class PrivilegedMfa
     private function eligible(Membership $m, Request $r): Membership
     {
         $current = Membership::whereKey($m->id)->where('school_id', $m->school_id)->where('user_id', $m->user_id)->with(['user', 'school'])->firstOrFail();
-        abort_unless($r->hasSession() && Auth::guard('web')->id() === $current->user_id && $r->session()->get('school_id') === $current->school_id && hash_equals((string) $r->session()->get('credential_hash', ''), hash('sha256', $current->user->password)) && $current->role === Role::SchoolAdmin && $current->status === 'active' && $current->user->status === 'active' && ! $current->user->activation_required && ! $current->user->must_change_password && ! $current->user->is_platform_admin && ! in_array($current->school->access_state, ['suspended', 'archived'], true) && now()->timestamp - $r->session()->get('issued_at', 0) < 43200 && now()->timestamp - $r->session()->get('seen_at', 0) < 1800, 403);
+        abort_unless($r->hasSession() && ! DB::table('session_revocations')->where('session_hash', hash('sha256', $r->session()->getId()))->exists() && Auth::guard('web')->id() === $current->user_id && $r->session()->get('school_id') === $current->school_id && hash_equals((string) $r->session()->get('credential_hash', ''), hash('sha256', $current->user->password)) && $current->role === Role::SchoolAdmin && $current->status === 'active' && $current->user->status === 'active' && ! $current->user->activation_required && ! $current->user->must_change_password && ! $current->user->is_platform_admin && ! in_array($current->school->access_state, ['suspended', 'archived'], true) && now()->timestamp - $r->session()->get('issued_at', 0) < 43200 && now()->timestamp - $r->session()->get('seen_at', 0) < 1800, 403);
 
         return $current;
     }
