@@ -32,3 +32,7 @@ Added tenant-bound, School Admin-authorized in-person recovery, hashed 15-minute
 ## Advanced M1 batch — AUTH-06 checkpoint
 
 Added School Admin TOTP enrollment/challenges, hashed recovery codes, short-lived server assurance, service-level privileged enforcement, `/profile/security`, RFC-vector/negative/race/browser tests. Legacy device provisioning and platform token health are fail-closed until safe MFA-aware transports exist. AUTH-07–10 remain pending on the coordinated branch; no merge/deploy or production messaging.
+
+## AUTH-07 — server-backed session/device checkpoint
+
+Added owner-only opaque inventories, password/MFA-protected revocation, current/other session/device controls, session resurrection tombstones, security-change hooks and `/profile/sessions`. Ordinary device tokens now use the seven-day baseline; privileged tokens remain twelve hours and cannot bypass MFA. Full AUTH-07 concurrency acceptance and AUTH-08–10 continuation remain pending.
