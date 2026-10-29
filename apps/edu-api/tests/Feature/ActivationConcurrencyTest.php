@@ -24,6 +24,7 @@ class ActivationConcurrencyTest extends TestCase
         $school = School::create(['code' => 'RACE', 'name' => 'Synthetic race', 'data_stage' => 'live', 'access_state' => 'live_enabled', 'entitlement_ends_at' => now()->addDay()]);
         $user = User::create(['name' => 'Synthetic admin', 'password' => 'Synthetic-Admin-Password']);
         $admin = Membership::create(['school_id' => $school->id, 'user_id' => $user->id, 'role' => 'school_admin', 'login_identifier' => 'ADMIN', 'status' => 'active']);
+        $this->mfaFixture($admin);
         $result = app(AccountActivation::class)->provision($admin, ['name' => 'Synthetic subject', 'role' => 'teacher', 'login_identifier' => 'SUBJECT'], 'race-provision', 'synthetic-race-key-0001');
         $proof = $result['local_handover'];
         $data = ['school_code' => 'RACE', 'proof_id' => $proof['proof_id'], 'secret' => $proof['secret'], 'password' => 'Synthetic-Race-Password', 'password_confirmation' => 'Synthetic-Race-Password'];

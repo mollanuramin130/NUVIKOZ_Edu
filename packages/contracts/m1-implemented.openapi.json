@@ -3,7 +3,7 @@
   "info": {
     "title": "NUVIKOZ Edu M1 implemented subset",
     "version": "0.1.0",
-    "description": "Implemented foundation device-token subset; approved target remains openapi.json. School tokens carry school:<ULID>; exact capability plus active membership/access required. Platform health needs platform:admin and platform identity. Browser/lifecycle flows remain pending."
+    "description": "Implemented foundation device-token subset. Browser/lifecycle contracts are separate m1-activation, m1-recovery and m1-security files. Ordinary school tokens require exact school capability plus current identity/membership/access; privileged token powers remain closed without an MFA-aware issuer."
   },
   "servers": [
     {
@@ -51,7 +51,70 @@
         "security": [],
         "responses": {
           "200": {
-            "description": "Foundation envelope or current command result"
+            "description": "Foundation envelope or current command result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "required": [
+                        "token",
+                        "expires_at",
+                        "must_change_password",
+                        "school_id",
+                        "membership_id",
+                        "user_id",
+                        "role",
+                        "abilities"
+                      ],
+                      "properties": {
+                        "token": {
+                          "type": "string",
+                          "description": "Sensitive Sanctum credential; never log/cache outside verified OS secure storage."
+                        },
+                        "expires_at": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "must_change_password": {
+                          "type": "boolean"
+                        },
+                        "school_id": {
+                          "type": "string"
+                        },
+                        "membership_id": {
+                          "type": "string"
+                        },
+                        "user_id": {
+                          "type": "string"
+                        },
+                        "role": {
+                          "type": "string",
+                          "enum": [
+                            "school_admin",
+                            "principal",
+                            "teacher",
+                            "student",
+                            "parent"
+                          ]
+                        },
+                        "abilities": {
+                          "type": "array",
+                          "minItems": 1,
+                          "maxItems": 1,
+                          "items": {
+                            "type": "string",
+                            "pattern": "^school:[0-9A-HJKMNP-TV-Z]{26}$"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
           "403": {
             "description": "Forbidden/disabled;Demo file denial always server enforced"

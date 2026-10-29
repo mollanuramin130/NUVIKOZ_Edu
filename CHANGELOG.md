@@ -28,3 +28,18 @@ Added School Admin browser staff provisioning with single-use 30-minute activati
 ## AUTH-05 — assisted password recovery
 
 Added tenant-bound, School Admin-authorized in-person recovery, hashed 15-minute single-use proofs, atomic credential replacement/revocation, scoped rate limits, audit events, and minimal Next.js recovery screens. Public requests are generic and do not fabricate verified contact delivery. Production issuance remains disabled; pending activation cannot use recovery. MFA and production deployment remain pending.
+
+## Advanced M1 batch — AUTH-06 checkpoint
+
+Added School Admin TOTP enrollment/challenges, hashed recovery codes, short-lived server assurance, service-level privileged enforcement, `/profile/security`, RFC-vector/negative/race/browser tests. Legacy device provisioning and platform token health are fail-closed until safe MFA-aware transports exist. AUTH-07–10 remain pending on the coordinated branch; no merge/deploy or production messaging.
+
+## AUTH-07 — server-backed session/device checkpoint
+
+Added owner-only opaque inventories, password/MFA-protected revocation, current/other session/device controls, session resurrection tombstones, security-change hooks and `/profile/sessions`. Ordinary device tokens now use the seven-day baseline; privileged tokens remain twelve hours and cannot bypass MFA. Full AUTH-07 concurrency acceptance and AUTH-08–10 continuation remain pending.
+
+## Advanced authentication continuation (Draft PR #5)
+
+- AUTH-07 active expiry filtering, atomic credential/membership mutation revocation and independent issuance/revocation races; explicit staff/family/absolute boundary tests.
+- AUTH-08 school-bound fixed capability registry, versioned grant/revoke and audit, minimal permission UI, live stale-authority checks and serialized last-active-SA membership guards.
+- AUTH-09 typed device login context, bounded HTTPS transport and Flutter auth states/UI/tests. OS persistence handler remains absent and fails closed; no native build/live device verification claimed.
+- AUTH-10 recovery-with-enrolled-MFA and real HTTPS session/permission regressions. Current evidence/remaining dependencies are in the canonical handoff.

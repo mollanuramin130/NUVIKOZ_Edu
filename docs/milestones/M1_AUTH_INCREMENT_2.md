@@ -1,6 +1,10 @@
+# Advanced batch continuation
+
+AUTH-01–05 are merged through `42405d34ce5a6a6b812c38c7e2a6c4a80f4e44df`. Resume `feature/m1-advanced-auth-security` for AUTH-06→07→08→09→10 in one Draft PR. Current actual feature/test evidence and per-phase status are in the canonical handoff; earlier branch/PR statuses below are historical. Platform login/reset and real verified-contact delivery remain unavailable.
+
 # M1 increment 2 — Browser authentication and account lifecycle
 
-PR #2 is merged at `248917192c9d118c9e2ff3630a9e530a3e1c630a`. AUTH-04 is implemented on `feature/m1-auth04-account-activation`; test/CI evidence is in the canonical handoff. AUTH-05 onward remain pending. Do not reuse the former browser branch or merge this increment without owner authorization.
+PR #2 is merged at `248917192c9d118c9e2ff3630a9e530a3e1c630a`. AUTH-04 is implemented on `feature/m1-auth04-account-activation`; test/CI evidence is in the canonical handoff. AUTH-05 is merged; advanced AUTH-06–10 work continues in Draft PR #5 as recorded above. Do not reuse the former browser branch or merge this increment without owner authorization.
 
 The first increment has health/token/tenant/provisioning foundations. This separate increment implements the following bounded work, in dependency order. All records and notification transports used in tests are synthetic/local. No paid SMS, production email or new infrastructure is required.
 
@@ -18,3 +22,7 @@ The first increment has health/token/tenant/provisioning foundations. This separ
 | AUTH-10 Review and handoff | All above | Current-head CI on MariaDB, actual browser integration tests and safe Flutter checks; update contracts/migrations/ADR/status with exact evidence. No automatic merge/deploy. Separate review of privileged flows before real users. |
 
 Do not treat account activation/reset/MFA as complete because a route or schema exists. Their acceptance gate includes replay/concurrency/negative tests and actual browser cookie/CSRF integration. Preserve Demo 30 days/zero files, Free 5 MB/50 PDFs/10 per day/500 MB, configurable paid policy and disabled student homework uploads unchanged.
+
+## Advanced supported scope checkpoint
+
+AUTH-07 lifecycle, inventory, expiry and independent concurrency acceptance are implemented. AUTH-08 registry, role ceilings, delegation/revoke UI, live evaluation, versioned audit and serialized last-active-SA membership mutation are implemented; no academic domain module is claimed. AUTH-09 source auth/transport/UI tests are implemented with an explicit uninstalled native secure-store handler dependency, therefore PARTIAL for actual device persistence. AUTH-06 remains PARTIAL for platform issuer/native privileged MFA/independently verified MFA reset. AUTH-10 requires actual final-head four-job CI and owner review. Consult the canonical handoff for exact executable evidence; do not treat old phase labels below as current.

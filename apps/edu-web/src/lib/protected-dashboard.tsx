@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AuthError, browserRequest, logout, onSessionChange, type Identity } from './browser-auth';
 export default function ProtectedDashboard({ role }: { role: string }) {
@@ -14,6 +15,7 @@ export default function ProtectedDashboard({ role }: { role: string }) {
       setIdentity(null); setError('');
       browserRequest<Identity>('me').then(data => {
         if (!active || current !== generation) return;
+        if (data.mfa_required) { router.replace('/profile/security'); return; }
         if (data.role !== role) { router.replace('/access-denied'); return; }
         setIdentity(data);
       }).catch(e => {
@@ -39,5 +41,5 @@ export default function ProtectedDashboard({ role }: { role: string }) {
   }
   if (error) return <main><h1>Unable to verify access</h1><p role="alert">{error}</p><button onClick={signOut}>Retry sign out</button><a href="/login">Sign in</a></main>;
   if (!identity) return <main><p role="status">Checking your session…</p></main>;
-  return <main><p>NUVIKOZ Edu</p><h1>{role.replaceAll('_', ' ')} dashboard</h1><p>School context: {identity.school_id}</p><p>Academic modules are not yet connected.</p>{role === 'school_admin' && <a href="/assisted-recovery">Assisted password recovery</a>}<button onClick={signOut}>Sign out</button></main>;
+  return <main><p>NUVIKOZ Edu</p><h1>{role.replaceAll('_', ' ')} dashboard</h1><p>School context: {identity.school_id}</p><p>Academic modules are not yet connected.</p>{role === 'school_admin' && <><a href="/assisted-recovery">Assisted password recovery</a><Link href="/security/permissions">School permissions</Link></>}<Link href="/profile/sessions">Sessions and devices</Link><button onClick={signOut}>Sign out</button></main>;
 }

@@ -14,7 +14,7 @@ Public modular monorepo for an Indian school/institute management SaaS. Correcte
 
 - apps/edu-api: Laravel13.39.0/PHP REST foundation;see apps/edu-api/README.md.
 - apps/edu-web: unified Next.js16.4.3/TypeScript six-role scaffold;typecheck/build executed.
-- apps/edu-mobile: minimal Flutter/Dart source scaffold; dependency resolution, analysis and three tests passed in metadata-blocked CI. Android platform generation/build remains pending.
+- apps/edu-mobile: Flutter/Dart authentication source integration with fail-closed secure-storage adapter; native OS handler and Android/iOS platform builds remain pending. Actual metadata-blocked CI evidence is in the canonical handoff.
 - packages/contracts: approved target contract plus the implemented 14-route M1 API subset; no generated clients claimed.
 - docs: approved design, governance, task plan and clearly separated historical evidence.
 - assets/demo-samples: seven synthetic shared read-only PDF assets; no real personal data.

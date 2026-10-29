@@ -22,7 +22,7 @@ if (($argv[1] ?? '') === 'expire') {
 $command = $argv[1] ?? '';
 $schoolA = School::where('code', 'A')->first();
 $memberA = $schoolA ? Membership::where('school_id', $schoolA->id)->where('login_identifier', 'TEACHER')->first() : null;
-if ($command === 'recovery-target' && $memberA) {
+if (in_array($command, ['recovery-target', 'permission-target'], true) && $memberA) {
     echo $memberA->id;
     exit;
 }
@@ -39,7 +39,7 @@ if ($memberA && in_array($command, ['disable-identity', 'disable-membership', 's
     exit;
 }
 if ($memberA) {
-    $memberA->user->update(['status' => 'active']);
+    $memberA->user->update(['status' => 'active', 'password' => 'Synthetic-Browser-Only-Password']); // Restore only this disposable fixture after password-recovery tests.
     $memberA->update(['status' => 'active']);
     $schoolA->update(['access_state' => 'live_enabled']);
 }
@@ -57,4 +57,11 @@ $school = School::where('code', 'A')->first();
 if (! Membership::where('school_id', $school->id)->where('login_identifier', 'ADMIN')->exists()) {
     $admin = User::create(['name' => 'Synthetic activation admin', 'password' => 'Synthetic-Browser-Only-Password']);
     Membership::create(['school_id' => $school->id, 'user_id' => $admin->id, 'role' => 'school_admin', 'login_identifier' => 'ADMIN', 'status' => 'active']);
+}
+
+// Reset only the synthetic admin MFA fixture between integration tests.
+if ($command === '') {
+    $adminMember = Membership::where('school_id', $school->id)->where('login_identifier', 'ADMIN')->firstOrFail();
+    DB::table('mfa_recovery_codes')->where('user_id', $adminMember->user_id)->delete();
+    DB::table('mfa_credentials')->where('user_id', $adminMember->user_id)->delete();
 }

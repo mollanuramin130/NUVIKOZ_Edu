@@ -1,6 +1,8 @@
 import { test, expect, request as httpRequest, type BrowserContext } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
+import {createHmac} from 'node:crypto';
+function totp(seed:string) { const alphabet='ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'; const bits=[...seed].map(c=>alphabet.indexOf(c).toString(2).padStart(5,'0')).join(''); const key=Buffer.from(bits.match(/.{8}/g)!.map(b=>parseInt(b,2)));const counter=Buffer.alloc(8);counter.writeBigUInt64BE(BigInt(Math.floor(Date.now()/30000)));const digest=createHmac('sha1',key).update(counter).digest();const offset=digest[19]&15;return String((digest.readUInt32BE(offset)&0x7fffffff)%1000000).padStart(6,'0'); }
 const api = 'https://api.edu.test:8443/api/v1/browser';
 const origin = 'https://web.edu.test:3443';
 const fixture = path.resolve('../../scripts/browser-fixtures.php');
@@ -10,9 +12,16 @@ async function bootstrap(context: BrowserContext) {
   expect(r.status()).toBe(200);
   return (await r.json()).data.csrf_token as string;
 }
-async function login(context: BrowserContext, code = 'A', identifier = 'TEACHER', secret = password) {
+async function login(context: BrowserContext, code = 'A', identifier = 'TEACHER', secret = password, autoMfa = true) {
   const token = await bootstrap(context);
-  return context.request.post(`${api}/login`, { headers: { Origin: origin, 'X-CSRF-TOKEN': token }, data: { school_code: code, identifier, password: secret } });
+  const response=await context.request.post(`${api}/login`, { headers: { Origin: origin, 'X-CSRF-TOKEN': token }, data: { school_code: code, identifier, password: secret } });
+  if(identifier==='ADMIN' && autoMfa && response.status()===200){
+    const csrf=(await response.json()).data.csrf_token;
+    const setup=await context.request.post(`${api}/security/mfa/enrollment`,{headers:{Origin:origin,'X-CSRF-TOKEN':csrf},data:{password:secret}});expect(setup.status()).toBe(200);
+    const result=await setup.json();
+    const confirm=await context.request.post(`${api}/security/mfa/enrollment/confirm`,{headers:{Origin:origin,'X-CSRF-TOKEN':csrf},data:{password:secret,code:totp(result.data.secret)}});expect(confirm.status()).toBe(200);
+  }
+  return response;
 }
 test.beforeEach(() => { execFileSync('php', [fixture], { stdio: 'pipe' }); });
 test('CSRF and exact CORS reject missing tokens and hostile origins', async ({ context }) => {
@@ -118,7 +127,7 @@ test('production web refuses credential submission from HTTP before contacting A
 
 test('authorized provisioning hands a single-use activation into secure browser login', async ({ context, page }) => {
  const adminLogin=await login(context,'A','ADMIN');expect(adminLogin.status()).toBe(200);
- const admin= (await adminLogin.json()).data;
+ const admin= (await adminLogin.json()).data;admin.csrf_token=await bootstrap(context);
  const identifier=`ACT_${Date.now()}`;
  const provision=await context.request.post(`${api}/accounts`,{headers:{Origin:origin,'X-CSRF-TOKEN':admin.csrf_token,'Idempotency-Key':`activation-${Date.now()}`},data:{name:'Synthetic activation user',login_identifier:identifier,role:'teacher'}});
  expect(provision.status()).toBe(201);const result=(await provision.json()).data;
@@ -173,7 +182,7 @@ test('assisted recovery resets through HTTPS UI and revokes another browser sess
   await expect(handover).toBeVisible();
   const values=await handover.locator('dd').allTextContents();
   const proof={proof_id:values[0],secret:values[1]};
-  const adminData=(await admin.json()).data;
+  const adminData=(await admin.json()).data;adminData.csrf_token=await bootstrap(context);
   await context.request.post(`${api}/logout`,{headers:{Origin:origin,'X-CSRF-TOKEN':adminData.csrf_token},data:{}});
   await page.goto('/reset-password');
   await page.getByLabel('School code').fill('A'); await page.getByLabel('Recovery ID').fill(proof.proof_id);
@@ -190,4 +199,57 @@ test('assisted recovery resets through HTTPS UI and revokes another browser sess
   expect((await login(context,'A','TEACHER',newPassword)).status()).toBe(200);
   expect(await page.evaluate(()=>Object.keys(localStorage))).toEqual([]);
   await holder.close();
+});
+
+test('School Admin cannot provision before actual MFA enrollment and recovery challenge',async({context,page})=>{
+ const response=await login(context,'A','ADMIN',password,false);expect(response.status()).toBe(200);
+ const data=(await response.json()).data;expect(data.mfa_required).toBe(true);const pendingCookie=(await context.cookies()).find(c=>c.name==='edu_browser_session')!;
+ const denied=await context.request.post(`${api}/accounts`,{headers:{Origin:origin,'X-CSRF-TOKEN':data.csrf_token,'Idempotency-Key':'synthetic-mfa-denied-0001'},data:{name:'Denied',role:'teacher',login_identifier:'DENIED'}});expect(denied.status()).toBe(403);
+ await page.goto('/dashboard/school_admin');await expect(page).toHaveURL(/profile\/security/);
+ await page.getByLabel('Current password',{exact:true}).fill(password);await page.getByRole('button',{name:'Begin enrollment',exact:true}).click();
+ const seed=await page.getByTestId('mfa-seed').innerText();
+ await page.getByLabel('Current password',{exact:true}).fill(password);await page.getByLabel('Authenticator code').fill(totp(seed));
+ await page.getByRole('button',{name:'Confirm enrollment',exact:true}).click();
+ await expect(page.getByRole('region',{name:'New recovery codes'})).toBeVisible();
+ const codes=await page.getByRole('region',{name:'New recovery codes'}).locator('li').allTextContents();expect(codes.length).toBe(8);const stale=await httpRequest.newContext({ignoreHTTPSErrors:true});expect((await stale.get(`${api}/me`,{headers:{Origin:origin,Cookie:`edu_browser_session=${pendingCookie.value}`}})).status()).toBe(401);await stale.dispose();
+ const csrf=await bootstrap(context);
+ expect((await context.request.post(`${api}/security/mfa/challenge`,{headers:{Origin:origin,'X-CSRF-TOKEN':csrf},data:{password,code:totp(seed)}})).status()).toBe(422);
+ await page.getByRole('link',{name:'Continue to dashboard'}).click();await expect(page).toHaveURL(/dashboard\/school_admin/);
+ await page.getByRole('button',{name:'Sign out',exact:true}).click();
+ await page.getByLabel('School code').fill('A');await page.getByLabel('Account identifier').fill('ADMIN');await page.getByLabel('Password',{exact:true}).fill(password);await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page).toHaveURL(/profile\/security/);
+ const recovery=page.locator('form').filter({has:page.getByRole('button',{name:'Verify recovery code',exact:true})});
+ await recovery.getByLabel('Current password',{exact:true}).fill(password);await recovery.getByLabel('Recovery code',{exact:true}).fill(codes[0]);await recovery.getByRole('button',{name:'Verify recovery code',exact:true}).click();
+ await expect(page.getByRole('link',{name:'Continue to dashboard'})).toBeVisible();
+ const token=await bootstrap(context);expect((await context.request.post(`${api}/security/mfa/recovery-code`,{headers:{Origin:origin,'X-CSRF-TOKEN':token},data:{password,code:codes[0]}})).status()).toBe(422);
+ expect(await page.evaluate(()=>Object.keys(localStorage))).toEqual([]);
+});
+
+test('session inventory revokes another actual browser context without exposing its cookie',async({context,page,browser})=>{
+ const other=await browser.newContext({ignoreHTTPSErrors:true});expect((await login(other)).status()).toBe(200);expect((await login(context)).status()).toBe(200);
+ const inventory=await context.request.get(`${api}/security/sessions`,{headers:{Origin:origin}});expect(inventory.status()).toBe(200);const rows=(await inventory.json()).data.sessions;expect(rows.length).toBeGreaterThanOrEqual(2);
+ const otherInventory=await other.request.get(`${api}/security/sessions`,{headers:{Origin:origin}});expect(otherInventory.status()).toBe(200);const otherId=(await otherInventory.json()).data.sessions.find((r:{current:boolean})=>r.current).id;
+ const target=rows.find((r:{id:string})=>r.id===otherId);expect(target).toBeTruthy();
+ const foreignCookie=(await other.cookies()).find(c=>c.name==='edu_browser_session')!;expect(JSON.stringify(rows)).not.toContain(foreignCookie.value);
+ const csrf=await bootstrap(context);expect((await context.request.post(`${api}/security/sessions/${target.id}/revoke`,{headers:{Origin:origin,'X-CSRF-TOKEN':csrf},data:{password}})).status()).toBe(200);
+ expect((await other.request.get(`${api}/me`,{headers:{Origin:origin}})).status()).toBe(401);
+ expect((await context.request.get(`${api}/me`,{headers:{Origin:origin}})).status()).toBe(200);
+ await page.goto('/profile/sessions');await expect(page.getByRole('heading',{name:'Sessions and devices'})).toBeVisible();await expect(page.getByRole('heading',{name:'Current browser',exact:true})).toBeVisible();
+ await other.close();
+});
+
+test('School Admin permission UI grants and revokes a role-bounded capability for an existing session',async({context,page,browser})=>{
+ const recipient=await browser.newContext({ignoreHTTPSErrors:true});expect((await login(recipient)).status()).toBe(200);
+ expect((await recipient.request.get(`${api}/security/capabilities/marks.enter/probe`,{headers:{Origin:origin}})).status()).toBe(403);
+ expect((await login(context,'A','ADMIN')).status()).toBe(200);
+ const target=execFileSync('php',[fixture,'permission-target'],{encoding:'utf8'}).trim();
+ page.on('dialog',dialog=>dialog.accept());await page.goto('/security/permissions');
+ await page.getByLabel('Target membership').selectOption(target);await expect(page.getByText(/Role: teacher; version: [1-9]\d*/)).toBeVisible();await page.getByLabel('Capability',{exact:true}).selectOption('marks.enter');
+ await page.getByRole('button',{name:'Confirm permission change'}).click();
+ await expect(page.getByRole('main').getByRole('status')).toContainText('Permission updated');
+ const permitted=await recipient.request.get(`${api}/security/capabilities/marks.enter/probe`,{headers:{Origin:origin}});expect(permitted.status()).toBe(200);expect((await permitted.json()).data.domain_implemented).toBe(false);
+ await page.getByLabel('Change',{exact:true}).selectOption('revoke');await page.getByRole('button',{name:'Confirm permission change'}).click();
+ await expect(page.getByText('Assignments: marks.enter: revoked')).toBeVisible();
+ expect((await recipient.request.get(`${api}/security/capabilities/marks.enter/probe`,{headers:{Origin:origin}})).status()).toBe(403);
+ expect((await recipient.request.post(`${api}/security/permissions/${target}`,{headers:{Origin:origin,'X-CSRF-TOKEN':await bootstrap(recipient)},data:{capability:'financial.export',allowed:true,version:3}})).status()).toBe(403);
+ await recipient.close();
 });

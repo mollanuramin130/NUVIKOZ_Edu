@@ -11,6 +11,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -26,7 +27,10 @@ class AccountActivationTest extends TestCase
         $s = School::firstOrCreate(['code' => $code], ['name' => 'Synthetic '.$code, 'data_stage' => 'live', 'access_state' => 'live_enabled', 'entitlement_ends_at' => now()->addDays(30)]);
         $u = User::create(['name' => 'Synthetic user', 'password' => 'Synthetic-Admin-Password']);
 
-        return Membership::create(['school_id' => $s->id, 'user_id' => $u->id, 'role' => $role, 'login_identifier' => $identifier, 'status' => 'active']);
+        $member = Membership::create(['school_id' => $s->id, 'user_id' => $u->id, 'role' => $role, 'login_identifier' => $identifier, 'status' => 'active']);
+        $this->mfaFixture($member);
+
+        return $member;
     }
 
     private function pending(?Membership $admin = null): array
@@ -100,6 +104,9 @@ class AccountActivationTest extends TestCase
         foreach (['issuer_role', 'issuer_inactive', 'issuer_password', 'target_inactive', 'identity_inactive', 'platform', 'school_suspended', 'school_archived', 'school_provisional', 'entitlement'] as $case) {
             $admin = $this->member('S'.substr(hash('sha256', $case), 0, 8));
             [$admin,$target,$proof] = $this->pending($admin);
+            if (in_array($case, ['issuer_role', 'issuer_inactive'], true)) {
+                $this->backupAdminFixture($admin);
+            }
             match ($case) {
                 'issuer_role' => $admin->update(['role' => 'principal']), 'issuer_inactive' => $admin->update(['status' => 'inactive']), 'issuer_password' => $admin->user->update(['password' => 'Changed-Authority-Password']),
                 'target_inactive' => $target->update(['status' => 'inactive']), 'identity_inactive' => $target->user->update(['status' => 'inactive']),
@@ -185,6 +192,8 @@ class AccountActivationTest extends TestCase
         $user->password = 'Known-Synthetic-Initial-Password';
         $user->save();
         $this->postJson('/api/v1/auth/login', ['school_code' => 'A', 'identifier' => 'NEW', 'password' => 'Known-Synthetic-Initial-Password'])->assertUnauthorized();
+        Auth::guard('web')->logout();
+        app('auth')->forgetGuards();
         $token = $user->createToken('synthetic', ['school:'.$admin->school_id])->plainTextToken;
         $this->withHeader('Authorization', 'Bearer '.$token)->postJson('/api/v1/auth/password', ['current_password' => 'Known-Synthetic-Initial-Password', 'password' => 'Synthetic-New-Password-123', 'password_confirmation' => 'Synthetic-New-Password-123'])->assertForbidden();
         $this->assertTrue($user->fresh()->activation_required);
@@ -193,6 +202,7 @@ class AccountActivationTest extends TestCase
     public function test_restored_authority_cannot_resurrect_a_revoked_proof(): void
     {
         [$admin,$target,$proof] = $this->pending();
+        $this->backupAdminFixture($admin);
         $admin->update(['role' => 'principal']);
         $admin->update(['role' => 'school_admin']);
         $this->assertNotNull(DB::table('account_activations')->first()->invalidated_at);

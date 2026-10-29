@@ -14,7 +14,7 @@ void main() {
 
   test('accepts HTTPS and explicit local HTTP development origins', () {
     for (final url in ['https://school.example', 'http://127.0.0.1:8000']) {
-      final client = EduApiClient(Uri.parse(url));
+      final client = EduApiClient(Uri.parse(url),allowLocalHttp:url.startsWith('http://127.0.0.1'));
       client.close();
     }
   });

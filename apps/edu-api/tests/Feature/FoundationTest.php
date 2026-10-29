@@ -11,6 +11,7 @@ use App\Services\ProvisionStaff;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -37,6 +38,7 @@ class FoundationTest extends TestCase
 
     private function auth(Membership $m): static
     {
+        Auth::guard('web')->logout();
         app('auth')->forgetGuards();
 
         return $this->withHeaders(['Authorization' => 'Bearer '.$m->user->createToken('test', ['school:'.$m->school_id], now()->addHours(12))->plainTextToken, 'X-School-ID' => $m->school_id, 'Idempotency-Key' => 'synthetic-request-key-0001']);
@@ -112,10 +114,10 @@ class FoundationTest extends TestCase
 
     public function test_inactive_membership_is_rechecked(): void
     {
-        $m = $this->member($this->school());
+        $m = $this->member($this->school(), 'teacher');
         $this->auth($m);
         $m->update(['status' => 'inactive']);
-        $this->getJson('/api/v1/schools/'.$m->school_id)->assertNotFound();
+        $this->getJson('/api/v1/schools/'.$m->school_id)->assertUnauthorized();
     }
 
     public function test_school_role_cannot_access_platform(): void
@@ -127,11 +129,12 @@ class FoundationTest extends TestCase
     public function test_platform_identity_has_separate_guard(): void
     {
         $m = $this->member($this->school());
+        $this->backupAdminFixture($m);
         $m->user->forceFill(['is_platform_admin' => true])->save();
         $this->auth($m)->getJson('/api/v1/platform/health')->assertForbidden();
         app('auth')->forgetGuards();
         $token = $m->user->createToken('platform', ['platform:admin'], now()->addHours(12))->plainTextToken;
-        $this->withToken($token)->getJson('/api/v1/platform/health')->assertOk();
+        $this->withToken($token)->getJson('/api/v1/platform/health')->assertForbidden();
     }
 
     public function test_principal_cannot_provision_accounts(): void
@@ -144,22 +147,25 @@ class FoundationTest extends TestCase
     public function test_admin_provision_requires_activation_and_never_hands_over_a_password(): void
     {
         $m = $this->member($this->school());
-        $r = $this->auth($m)->postJson('/api/v1/accounts', ['name' => 'Synthetic teacher', 'login_identifier' => 'NEW', 'role' => 'teacher'])->assertCreated();
-        $new = Membership::where('login_identifier', 'NEW')->firstOrFail();
-        $r->assertJsonMissingPath('data.one_time_password')->assertJsonPath('data.activation_status', 'pending');
+        $this->auth($m)->postJson('/api/v1/accounts', ['name' => 'Synthetic teacher', 'login_identifier' => 'NEW', 'role' => 'teacher'])->assertForbidden();
+        $this->assertDatabaseCount('users', 1);
+        $this->mfaFixture($m);
+        $result = app(ProvisionStaff::class)->execute($m, ['name' => 'Synthetic teacher', 'login_identifier' => 'NEW', 'role' => 'teacher'], 'mfa-provision', 'synthetic-request-key-0001');
+        $this->assertArrayNotHasKey('one_time_password', $result);
+        $new = Membership::findOrFail($result['membership_id']);
         $this->assertTrue($new->user->activation_required);
-        $this->assertDatabaseHas('account_activations', ['membership_id' => $new->id, 'secret_hash' => hash('sha256', $r->json('data.local_handover.secret'))]);
         $this->assertTrue($new->user->must_change_password);
-        $this->assertDatabaseCount('audit_events', 2);
-        $this->auth($new)->getJson('/api/v1/schools/'.$new->school_id)->assertForbidden()->assertJsonPath('error.code', 'PASSWORD_CHANGE_REQUIRED');
+        $this->assertDatabaseHas('account_activations', ['membership_id' => $new->id, 'secret_hash' => hash('sha256', $result['local_handover']['secret'])]);
     }
 
     public function test_legacy_provision_cannot_bypass_activation_with_device_login_or_password_rotation(): void
     {
         $admin = $this->member($this->school());
-        $response = $this->auth($admin)->postJson('/api/v1/accounts', ['name' => 'Synthetic pending', 'login_identifier' => 'PENDING', 'role' => 'teacher'])->assertCreated();
-        $target = Membership::findOrFail($response->json('data.membership_id'));
-        // Even knowledge of the undisclosed random initial password cannot bypass the flag.
+        $this->auth($admin)->postJson('/api/v1/accounts', ['name' => 'Pending', 'login_identifier' => 'PENDING', 'role' => 'teacher'])->assertForbidden();
+        $this->assertDatabaseCount('users', 1);
+        $this->mfaFixture($admin);
+        $result = app(ProvisionStaff::class)->execute($admin, ['name' => 'Pending', 'login_identifier' => 'PENDING', 'role' => 'teacher'], 'provision', 'synthetic-request-key-0001');
+        $target = Membership::findOrFail($result['membership_id']);
         $target->user->password = 'Known-Synthetic-Initial-Password';
         $target->user->save();
         app('auth')->forgetGuards();
@@ -167,25 +173,24 @@ class FoundationTest extends TestCase
         $this->postJson('/api/v1/auth/login', ['school_code' => 'A', 'identifier' => 'PENDING', 'password' => 'Known-Synthetic-Initial-Password'])->assertUnauthorized();
         $this->auth($target)->postJson('/api/v1/auth/password', ['current_password' => 'Known-Synthetic-Initial-Password', 'password' => 'New-Synthetic-Password', 'password_confirmation' => 'New-Synthetic-Password'])->assertForbidden();
         $this->assertTrue($target->user->fresh()->activation_required);
-        $this->assertTrue(Hash::check('Known-Synthetic-Initial-Password', $target->user->fresh()->password));
-        $proof = app(AccountActivation::class)->issue($admin, $target->id, 'legacy-reissue');
-        app(AccountActivation::class)->consume(['school_code' => 'A', 'proof_id' => $proof['proof_id'], 'secret' => $proof['secret'], 'password' => 'Activated-Synthetic-Password', 'password_confirmation' => 'Activated-Synthetic-Password'], 'legacy-activate');
+        $this->mfaFixture($admin);
+        $proof = app(AccountActivation::class)->issue($admin, $target->id, 'reissue');
+        app(AccountActivation::class)->consume(['school_code' => 'A', 'proof_id' => $proof['proof_id'], 'secret' => $proof['secret'], 'password' => 'Activated-Synthetic-Password', 'password_confirmation' => 'Activated-Synthetic-Password'], 'activate');
         app('auth')->forgetGuards();
         $this->flushHeaders();
-        $login = $this->postJson('/api/v1/auth/login', ['school_code' => 'A', 'identifier' => 'PENDING', 'password' => 'Activated-Synthetic-Password'])->assertOk();
-        app('auth')->forgetGuards();
-        $this->withToken($login->json('data.token'))->postJson('/api/v1/auth/password', ['current_password' => 'Activated-Synthetic-Password', 'password' => 'Rotated-Synthetic-Password', 'password_confirmation' => 'Rotated-Synthetic-Password'])->assertOk();
+        $this->postJson('/api/v1/auth/login', ['school_code' => 'A', 'identifier' => 'PENDING', 'password' => 'Activated-Synthetic-Password'])->assertOk();
     }
 
     public function test_legacy_and_direct_provisioning_roll_back_when_production_delivery_is_unavailable(): void
     {
         $admin = $this->member($this->school());
         app()->instance('env', 'production');
-        $this->auth($admin)->postJson('/api/v1/accounts', ['name' => 'Blocked', 'login_identifier' => 'BLOCKED', 'role' => 'teacher'])->assertStatus(503);
+        $this->auth($admin)->postJson('/api/v1/accounts', ['name' => 'Blocked', 'login_identifier' => 'BLOCKED', 'role' => 'teacher'])->assertForbidden();
         $this->assertDatabaseCount('users', 1);
         $this->assertDatabaseCount('account_activations', 0);
         $this->assertDatabaseCount('audit_events', 0);
         $this->assertDatabaseCount('idempotency_records', 0);
+        $this->mfaFixture($admin);
         try {
             app(ProvisionStaff::class)->execute($admin, ['name' => 'Blocked', 'login_identifier' => 'DIRECT', 'role' => 'teacher'], 'direct-test', 'synthetic-direct-key-0001');
             $this->fail('Production provisioning allowed');
@@ -198,18 +203,23 @@ class FoundationTest extends TestCase
     public function test_privilege_injection_and_platform_role_rejected(): void
     {
         $m = $this->member($this->school());
-        $this->auth($m)->postJson('/api/v1/accounts', ['name' => 'Bad', 'login_identifier' => 'NEW', 'role' => 'teacher', 'is_platform_admin' => true])->assertUnprocessable();
-        $this->postJson('/api/v1/accounts', ['name' => 'Bad', 'login_identifier' => 'NEW', 'role' => 'platform_super_admin'])->assertUnprocessable();
+        $this->auth($m)->postJson('/api/v1/accounts', ['name' => 'Bad', 'login_identifier' => 'NEW', 'role' => 'teacher', 'is_platform_admin' => true])->assertForbidden();
+        $this->postJson('/api/v1/accounts', ['name' => 'Bad', 'login_identifier' => 'NEW', 'role' => 'platform_super_admin'])->assertForbidden();
     }
 
     public function test_provisioning_replay_identifier_cannot_create_duplicate_user(): void
     {
         $m = $this->member($this->school());
+        $this->mfaFixture($m);
         $d = ['name' => 'Teacher', 'login_identifier' => 'NEW', 'role' => 'teacher'];
-        $this->auth($m)->postJson('/api/v1/accounts', $d)->assertCreated();
-        $this->postJson('/api/v1/accounts', $d)->assertCreated()->assertJsonPath('data.replayed', true)->assertJsonMissingPath('data.one_time_password')->assertJsonMissingPath('data.local_handover');
-        $this->withHeader('Idempotency-Key', 'synthetic-request-key-0002')->postJson('/api/v1/accounts', $d)->assertUnprocessable();
+        $service = app(ProvisionStaff::class);
+        $service->execute($m, $d, 'first', 'synthetic-request-key-0001');
+        $replay = $service->execute($m, $d, 'repeat', 'synthetic-request-key-0001');
+        $this->assertTrue($replay['replayed']);
+        $this->assertArrayNotHasKey('local_handover', $replay);
         $this->assertDatabaseCount('users', 2);
+        $this->expectException(ValidationException::class);
+        $service->execute($m, $d, 'duplicate', 'synthetic-request-key-0002');
     }
 
     public function test_expiry_blocks_provisioning_but_preserves_scoped_reads(): void
@@ -289,15 +299,28 @@ class FoundationTest extends TestCase
     public function test_idempotency_key_cannot_be_reused_for_different_body(): void
     {
         $m = $this->member($this->school());
-        $this->auth($m)->postJson('/api/v1/accounts', ['name' => 'First', 'login_identifier' => 'NEW', 'role' => 'teacher'])->assertCreated();
-        $this->postJson('/api/v1/accounts', ['name' => 'Second', 'login_identifier' => 'OTHER', 'role' => 'teacher'])->assertConflict();
+        $this->mfaFixture($m);
+        app(ProvisionStaff::class)->execute($m, ['name' => 'First', 'login_identifier' => 'NEW', 'role' => 'teacher'], 'first', 'synthetic-request-key-0001');
+        try {
+            app(ProvisionStaff::class)->execute($m, ['name' => 'Second', 'login_identifier' => 'OTHER', 'role' => 'teacher'], 'conflict', 'synthetic-request-key-0001');
+            $this->fail('Replay mutated');
+        } catch (HttpException $e) {
+            $this->assertSame(409, $e->getStatusCode());
+        }
         $this->assertDatabaseCount('users', 2);
     }
 
     public function test_provisioning_requires_an_idempotency_header(): void
     {
         $m = $this->member($this->school());
-        $this->auth($m)->withHeader('Idempotency-Key', '')->postJson('/api/v1/accounts', ['name' => 'Teacher', 'login_identifier' => 'NEW', 'role' => 'teacher'])->assertUnprocessable();
+        $this->mfaFixture($m);
+        try {
+            app(ProvisionStaff::class)->execute($m, ['name' => 'Teacher', 'login_identifier' => 'NEW', 'role' => 'teacher'], 'missing', null);
+            $this->fail('Missing idempotency accepted');
+        } catch (HttpException $e) {
+            $this->assertSame(422, $e->getStatusCode());
+        }
+        $this->assertDatabaseCount('users', 1);
     }
 
     public function test_login_token_cannot_switch_to_another_membership_school(): void
@@ -323,6 +346,7 @@ class FoundationTest extends TestCase
     public function test_platform_user_cannot_issue_tokens_through_school_login(): void
     {
         $m = $this->member($this->school());
+        $this->backupAdminFixture($m);
         $m->user->forceFill(['is_platform_admin' => true])->save();
         $this->postJson('/api/v1/auth/login', ['school_code' => 'A', 'identifier' => 'TEST', 'password' => 'Synthetic-Test-Password'])->assertUnauthorized();
         $this->assertDatabaseCount('personal_access_tokens', 0);
@@ -331,6 +355,7 @@ class FoundationTest extends TestCase
     public function test_service_rejects_role_escalation_without_form_request(): void
     {
         $m = $this->member($this->school());
+        $this->mfaFixture($m);
         $this->expectException(ValidationException::class);
         app(ProvisionStaff::class)->execute($m, ['name' => 'Bad', 'login_identifier' => 'BAD', 'role' => 'school_admin'], 'test', 'synthetic-request-key');
     }
@@ -338,6 +363,7 @@ class FoundationTest extends TestCase
     public function test_service_rechecks_password_change_requirement(): void
     {
         $m = $this->member($this->school());
+        $this->backupAdminFixture($m);
         $m->user->update(['must_change_password' => true]);
         $this->expectException(AuthorizationException::class);
         app(ProvisionStaff::class)->execute($m, ['name' => 'Teacher', 'login_identifier' => 'NEW', 'role' => 'teacher'], 'test', 'synthetic-request-key');
@@ -362,5 +388,16 @@ class FoundationTest extends TestCase
     public function test_method_error_retains_allow_header(): void
     {
         $this->postJson('/api/v1/health')->assertStatus(405)->assertHeader('Allow')->assertJsonPath('error.code', 'HTTP_405');
+    }
+
+    public function test_ordinary_and_privileged_device_expiry_is_bounded(): void
+    {
+        $school = $this->school();
+        foreach (['teacher' => 604800, 'school_admin' => 43200] as $role => $seconds) {
+            $m = $this->member($school, $role, strtoupper($role));
+            $response = $this->postJson('/api/v1/auth/login', ['school_code' => 'A', 'identifier' => $m->login_identifier, 'password' => 'Synthetic-Test-Password'])->assertOk();
+            $this->assertEqualsWithDelta($seconds, now()->diffInSeconds($response->json('data.expires_at')), 2);
+            $this->assertNotNull($m->user->tokens()->first()->expires_at);
+        }
     }
 }

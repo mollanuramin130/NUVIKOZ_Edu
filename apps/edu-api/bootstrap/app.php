@@ -29,7 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias(['identity.active' => ActiveIdentity::class, 'tenant' => TenantContext::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->dontFlash(['current_password', 'password', 'password_confirmation', 'secret']);
+        $exceptions->dontFlash(['current_password', 'password', 'password_confirmation', 'secret', 'code']);
         $exceptions->shouldRenderJsonWhen(fn (Request $request) => true);
         $exceptions->render(function (Throwable $e, Request $request) {
             if ($e instanceof ValidationException) {

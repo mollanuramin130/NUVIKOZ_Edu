@@ -1,3 +1,77 @@
+# Current checkpoint — advanced authentication final owner review
+
+Existing branch `feature/m1-advanced-auth-security`; PR #5 https://github.com/mollanuramin130/NUVIKOZ_Edu/pull/5 remains **Draft**. Latest published implementation HEAD verified before this documentation-only update: `66bcdde57b64cb56a7c4120c2bd7fe2ed62e5f8d`. The documentation commit supersedes that HEAD without changing implementation; resolve the live PR head and its own checks for final review.
+
+The Last Admin locking-current-read correction is published. Both previously failing tests now pass: `test_independent_identity_deactivations_cannot_remove_both_administrators` and `test_identity_deactivation_racing_membership_demotion_preserves_an_admin`. Concurrent membership demotions and session/token lifecycle races also pass. No earlier failure is an unresolved current result.
+
+Verified evidence at the implementation HEAD: **109 MariaDB tests / 595 assertions**, including **all 11 independent-process concurrency tests**; **17 real HTTPS browser tests**; metadata-blocked Flutter analysis and **16 Flutter tests**. API, Web, Flutter and Repository Integrity all passed. M1 run https://github.com/mollanuramin130/NUVIKOZ_Edu/actions/runs/40825377210 ; Integrity run40825377214. Migration fresh/rollback/remigrate, PHP formatting/platform checks, web audit/lint/typecheck/build and blocking Composer audit passed; no security advisories. Composer strict validation also passed locally. The new documentation HEAD requires its own four successful checks; do not transfer these results to an unverified later commit.
+
+| Task | Current precise status |
+|---|---|
+| AUTH-06 | **PARTIAL** — School Admin browser MFA implemented and tested. Platform issuer, native privileged-device MFA and independently verified MFA reset remain deferred and fail closed. |
+| AUTH-07 | Supported scope implemented and tested, including session/device revocation, expiry, ownership/tenant isolation and independent concurrency. No invented session metadata or indefinite refresh tokens. |
+| AUTH-08 | Current permission foundation implemented and tested: delegated capabilities, fixed role ceilings, live authorization, version conflicts, audit and Last Active School Admin protection. Future academic/finance integrations are not claimed. |
+| AUTH-09 | **PARTIAL** — Flutter API client, auth state, secure storage interface and tests implemented. Native OS-backed token storage, actual device build and production authentication remain unavailable and fail closed. Test memory storage is not production persistence; no SharedPreferences fallback. |
+| AUTH-10 | Supported-scope integration and regression tests passed. Owner final review pending; this is not merge/deployment approval. |
+
+Production activation/recovery delivery, real verified-contact recovery infrastructure, platform issuer, privileged native MFA and independently verified MFA reset remain disabled/unavailable. No real notifications, deployment, main merge, Hostinger/DNS/production database or Nursery modification performed. Keep PR Draft. NEXT SAFE TASK: verify the documentation commit's exact published SHA and four CI conclusions, then owner independent final review. Native secure storage and deferred dependencies require separately bounded work; do not claim complete production M1.
+
+# Historical evidence — superseded checkpoints
+
+The following sections preserve earlier execution evidence. Their pending/failure/NOT STARTED labels describe those historical checkpoints and do not override the current status above.
+
+# Interrupted verification checkpoint
+
+Published remote HEAD ce3e70f139d418966a4245b55b87015539f88fb9: run40804615076 API FAILED two last-admin identity concurrency assertions; Web/Flutter/Integrity passed. Do not approve/merge or mark AUTH08 complete. Local correction changes LastAdminGuard eligibility/count reads to locking current reads (MariaDB REPEATABLE READ snapshot must not survive the school lock wait). Local strengthened lifecycle tests and this correction are committed but NOT YET PUBLISHED/CI VERIFIED. Next task: publish LastAdminGuard.php, LifecycleConcurrencyTest.php, lifecycle-race-worker.php and this handoff on existing branch/PR5, execute all eleven MariaDB races and final four CI jobs. Previous green106/559,17 browser,16 Flutter evidence belongs only to2d75e92. Native secure store still absent/fail closed.
+
+# Current checkpoint — AUTH-07–10 continuation, 2026-10-29
+
+Branch `feature/m1-advanced-auth-security`, existing Draft PR #5 https://github.com/mollanuramin130/NUVIKOZ_Edu/pull/5 . Main remains `42405d34ce5a6a6b812c38c7e2a6c4a80f4e44df`. Earlier NOT STARTED/PR-open phase statements below are historical.
+
+Verified published checkpoint `2d75e920a54b397e2c2c2527734a226ff683cf68`: M1 run40803886106 passed API (106 MariaDB tests/559 assertions, nine independent-process concurrency tests, fresh/rollback/remigrate, Pint/platform checks/blocking Composer audit),17 real HTTPS browser tests, web audit/lint/typecheck/build, and metadata-blocked Flutter analyze plus16 tests. Integrity run40803886115 passed. A subsequent last-admin identity-guard change and two additional MariaDB races are being verified; do not transfer the older green result to a later HEAD. Local expanded suite:109 discovered,98 passed/522 assertions,11 independent MariaDB tests skipped under SQLite. Web lint/typecheck/build passed locally. Actual final-head CI must be inspected after publishing the final documentation.
+
+AUTH-06 PARTIAL: School Admin browser TOTP/recovery codes and required assurance are implemented/tested, including recovery retaining enrollment and pre-MFA cookie rejection after elevation. Public platform issuer, native privileged-device MFA, independently verified MFA reset remain explicit closed dependencies. No bypass/reset issuer.
+
+AUTH-07 supported scope implemented: expiry-filtered active devices, owner/school scoped inventories/revocation, actual credential/membership changes atomically revoke contexts, tombstones prevent late session resurrection, staff/family/absolute limits and issuance/revocation races. No invented historical timestamps or indefinite refresh tokens. Completion requires final expanded-suite hosted acceptance.
+
+AUTH-08 implemented: fixed capability registry/role ceilings, current same-school SA+MFA grant/revoke, version409 conflicts, immutable before/after audit details, live permission re-evaluation, minimal `/security/permissions` UI and synthetic probe (no academic modules). School-locked last-eligible-SA guards protect ordinary role/status mutations and identity deactivation/eligibility flags; membership deletion denied. Initial bootstrap distinct. Internal audited mutation service exists; no public bulk/global identity API. Raw privileged SQL/query-builder administration lies outside model guards. No student/guardian/contact infrastructure is invented.
+
+AUTH-09 PARTIAL: actual login DTO context, bounded HTTPS/no-redirect transport, school-scoped token/session model, restoration revalidation, expiry/revocation/logout/context-change protection, UI and16 isolated Flutter tests implemented. Default MethodChannel secure-store adapter is fail closed because the source-only scaffold lacks Android/iOS native handlers. Native persistence, platform build/emulator/device/live backend verification NOT IMPLEMENTED/NOT RUN. Memory storage exists only in automated tests. No unverified plugin or insecure fallback added.
+
+AUTH-10 supported cross-feature regression extended. New migration `2026_10_29_000004_add_permission_version_and_audit_details.php`; existing MFA/tombstone migrations retained. Machine security/device contracts, API/migration notes, ADR-023, milestone, changelog and mobile instructions updated. No merge/deploy/production/Nursery modifications. Production activation/recovery delivery and verified-contact infrastructure stay disabled/deferred.
+
+NEXT SAFE TASK: verify actual final PR HEAD and all four jobs, inspect the11 MariaDB race outcomes and17 HTTPS/16 Flutter tests, fix any real failures, then owner independent review of this supported scope. Keep Draft; do not merge. Native OS storage and deferred privileged MFA/delivery need separate bounded implementation, never a mock completion claim. GitHub connector writes were insufficient; authorized browser uploads publish local exact bytes, then fetch/tree comparison verifies them.
+
+Previous checkpoints follow as history only.
+
+# Current execution evidence — advanced batch restart
+
+Tested AUTH-06 checkpoint3f701e8feab2e881946f4ff0bdb0c7bd61669f47 passed80 MariaDB tests/409 assertions and15 HTTPS browser tests (run40797487540). AUTH-07 checkpointa0d64d699e37bb3d5310e6d623760c0536de2b50 passed87 MariaDB tests/448 assertions and migrations; its new sixteenth browser test exposed a disposable fixture password that an earlier recovery test intentionally changed. The correction restores only the synthetic teacher password before each independent browser test and selects the exact other browser's opaque session reference. Real password-recovery behavior is unchanged. Current local PHP83 passed/420 assertions; four MariaDB-only races skipped locally. Pint, Composer strict validation/platform checks/audit, web lint/typecheck/build and integrity passed. Current-head hosted CI must be verified after this correction. Machine contract: packages/contracts/m1-security.openapi.json.
+
+This is a continuation checkpoint, not completion of AUTH-06–10. Finish the remaining AUTH-07 concurrency/complete acceptance matrix, then AUTH-08/09 and full AUTH-10 on the same branch and Draft PR5. No merge/deployment is authorized. Resolve actual remote tip and CI; earlier evidence timestamps are historical.
+
+# Advanced batch continuation — AUTH-07 checkpoint
+
+Same branch `feature/m1-advanced-auth-security`, Draft PR5 https://github.com/mollanuramin130/NUVIKOZ_Edu/pull/5 . Verified AUTH-06 checkpoint `3f701e8feab2e881946f4ff0bdb0c7bd61669f47`: CI run40797487540 passed 80 MariaDB tests/409 assertions, four independent lifecycle/MFA races and15 HTTPS browser tests; web, metadata-blocked Flutter and Integrity40797487541 passed. Baseline main42405d34ce5a6a6b812c38c7e2a6c4a80f4e44df remains untouched.
+
+AUTH-07 adds real sessions/Sanctum inventories, owner/school-scoped opaque references, password-confirmed revocation, audit, session resurrection tombstones, identity/membership security revocation hooks, seven-day ordinary/twelve-hour privileged device expiry, and `/profile/sessions`. Browser inventory is identity-wide; membership security changes conservatively revoke that identity's browser sessions because school metadata is not indexed. No raw cookie/token/payload is exposed. One additive session_revocations migration. See contract and migration addenda. Actual final-head hosted evidence must be checked after publishing this checkpoint.
+
+Phase status: AUTH-06 PARTIAL (School Admin browser implementation tested; platform issuer/native privileged-device/reset dependencies explicitly closed); AUTH-07 PARTIAL (functional inventory/revocation, remaining multi-process issuance/revocation/complete acceptance matrix pending); AUTH-08 NOT STARTED; AUTH-09 NOT STARTED; AUTH-10 PARTIAL (existing regression extended). Do not claim all five tasks complete. No MFA bypass, real delivery, deploy, merge or Nursery changes.
+
+NEXT SAFE TASK: verify current-tip MariaDB/HTTPS CI, finish AUTH-07 concurrency/expiration acceptance, commit that phase, then AUTH-08 capability registry/role ceilings and last-active-SA serialized mutation service. Only then extend Flutter authentication using the same API and existing metadata-blocked verification. Resume this branch/PR, not a new one. Guardian/contact infrastructure remains absent; do not fabricate it.
+
+Prior checkpoints follow as history.
+
+# Advanced M1 coordinated batch — AUTH-06 checkpoint
+
+Branch `feature/m1-advanced-auth-security`, baseline main `42405d34ce5a6a6b812c38c7e2a6c4a80f4e44df` (AUTH-05 merged). Main post-merge M1 run40794264739 and Integrity run40794264734 passed. Old open-PR4/pending-AUTH05 text below is historical.
+
+AUTH-06: encrypted TOTP, expiring enrollment, password reauthentication, replay counter, one-time hashed recovery codes, atomic audit, current-school/session/credential-bound assurance and privilege/session rotation; SchoolAccess enforces MFA on provisioning/reissue/recovery issuance, while proof redemption rechecks issuer identity independently. Minimal `/profile/security` enrollment/challenge/recovery UI. Legacy privileged device provisioning and platform health remain closed without reviewed MFA-aware issuers. No insecure reset/seed replacement or production delivery. Read ADR-022 and contract addendum. One additive MFA migration. Local PHP:80 discovered,76 passed/381 assertions; four MariaDB-only races skipped under SQLite. Web lint/TypeScript/production build and blocking Composer audit passed. Actual-head MariaDB/browser CI must pass before claiming this phase complete.
+
+AUTH-06 PARTIAL pending hosted integration acceptance and independent review; AUTH-07 NOT STARTED; AUTH-08 NOT STARTED; AUTH-09 NOT STARTED; AUTH-10 PARTIAL (existing regression harness extended). Continue in dependency order on this same branch and one Draft PR. Commit each tested coherent phase. Do not invent guardians/contacts or claim the batch complete. NEXT SAFE TASK: verify MFA MariaDB/concurrency/HTTPS CI and fix failures, then AUTH-07 actual server session/device inventory and revocation. No merge/deploy/Nursery changes.
+
+Earlier evidence follows as history.
+
 # AUTH-05 password recovery checkpoint — 2026-10-29
 
 Branch `feature/m1-auth05-password-recovery` starts from verified main `ed7268a18266c0dd19dcf1dfe1004874023aba8e` (AUTH-04 merged). Post-merge M1 run 40791513153 API/web/metadata-blocked Flutter and Repository Integrity run 40791513165 passed. Historical open-PR #3 statements below are obsolete.

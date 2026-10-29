@@ -107,7 +107,7 @@ class AccountRecovery
                 $deny();
             }
             try {
-                app(SchoolAccess::class)->requireAdmin($issuer);
+                app(SchoolAccess::class)->requireAdminIdentity($issuer);
             } catch (AuthorizationException) {
                 $deny();
             }

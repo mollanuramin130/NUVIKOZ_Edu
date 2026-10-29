@@ -25,6 +25,7 @@ class RecoveryConcurrencyTest extends TestCase
         $school = School::create(['code' => 'RACE', 'name' => 'Synthetic race', 'data_stage' => 'live', 'access_state' => 'live_enabled', 'entitlement_ends_at' => now()->addDay()]);
         $user = User::create(['name' => 'Synthetic admin', 'password' => 'Synthetic-Admin-Password']);
         $admin = Membership::create(['school_id' => $school->id, 'user_id' => $user->id, 'role' => 'school_admin', 'login_identifier' => 'ADMIN', 'status' => 'active']);
+        $this->mfaFixture($admin);
         Cache::flush();
         $targetUser = User::create(['name' => 'Synthetic subject', 'password' => 'Synthetic-Original-Password']);
         $target = Membership::create(['school_id' => $school->id, 'user_id' => $targetUser->id, 'role' => 'teacher', 'login_identifier' => 'SUBJECT', 'status' => 'active']);

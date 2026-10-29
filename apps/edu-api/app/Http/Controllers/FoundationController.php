@@ -28,15 +28,16 @@ class FoundationController extends Controller
         }
 
         return DB::transaction(function () use ($membership, $data) {
+            $school = School::whereKey($membership->school_id)->lockForUpdate()->firstOrFail();
             $user = User::whereKey($membership->user_id)->lockForUpdate()->firstOrFail();
-            $current = Membership::whereKey($membership->id)->where('status', 'active')->first();
-            if (! $current || $user->is_platform_admin || $user->activation_required || in_array(School::whereKey($current->school_id)->value('access_state'), ['suspended', 'archived'], true) || $user->status !== 'active' || ! Hash::check($data['password'], $user->password)) {
+            $current = Membership::whereKey($membership->id)->where('status', 'active')->lockForUpdate()->first();
+            if (! $current || $user->is_platform_admin || $user->activation_required || in_array($school->access_state, ['suspended', 'archived'], true) || $user->status !== 'active' || ! Hash::check($data['password'], $user->password)) {
                 return Api::error('INVALID_CREDENTIALS', 'Credentials could not be verified.', 401);
             }
-            $expiry = in_array($current->role, [Role::Student, Role::Parent], true) ? now()->addDays(7) : now()->addHours(12);
+            $expiry = $current->role === Role::SchoolAdmin ? now()->addHours(12) : now()->addDays(7);
             $token = $user->createToken($data['device_name'] ?? 'device', ['school:'.$current->school_id], $expiry);
 
-            return Api::ok(['token' => $token->plainTextToken, 'expires_at' => $expiry->toIso8601String(), 'must_change_password' => $user->must_change_password]);
+            return Api::ok(['token' => $token->plainTextToken, 'expires_at' => $expiry->toIso8601String(), 'school_id' => $current->school_id, 'membership_id' => $current->id, 'user_id' => $user->id, 'role' => $current->role->value, 'abilities' => $token->accessToken->abilities, 'must_change_password' => $user->must_change_password]);
         });
     }
 
@@ -85,6 +86,8 @@ class FoundationController extends Controller
 
     public function provision(ProvisionRequest $request, ProvisionStaff $service)
     {
+        abort(403); // Privileged device provisioning is closed until MFA-aware device assurance exists.
+
         return Api::ok($service->execute($request->attributes->get('membership'), $request->validated(), $request->attributes->get('request_id'), $request->header('Idempotency-Key')), 201);
     }
 

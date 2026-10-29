@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\FoundationController as C;
+use App\Http\Controllers\SecurityInventoryController;
 use App\Support\Api;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -23,11 +24,12 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/auth/logout', [C::class, 'logout']);
         Route::post('/auth/password', [C::class, 'password'])->middleware('throttle:5,1');
         Route::get('/platform/health', function (Request $r) {
-            abort_unless($r->user()->is_platform_admin && ! $r->user()->must_change_password && in_array('platform:admin', $r->user()->currentAccessToken()?->abilities ?? [], true), 403);
+            abort(403); // No approved platform MFA-aware issuer exists; tokens alone never suffice.
 
-            return Api::ok(['status' => 'ok']);
         });
         Route::middleware('tenant')->group(function (): void {
+            Route::get('/security/devices', [SecurityInventoryController::class, 'devices']);
+            Route::post('/security/devices/{id}/revoke', [SecurityInventoryController::class, 'revokeDevice'])->middleware('throttle:10,1,device-revoke:');
             Route::get('/schools/{school}', [C::class, 'school']);
             Route::post('/accounts', [C::class, 'provision']);
             Route::post('/storage/reservations', [C::class, 'fileDenied']);
