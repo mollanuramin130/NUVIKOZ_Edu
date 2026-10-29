@@ -1,0 +1,1520 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "NUVIKOZ Edu SEC-02 synthetic platform and SEC-03 replacement implemented subset",
+    "version": "0.1.0",
+    "description": "Additive implemented subset. Production platform issuer/bootstrap remains disabled: testing environment AND explicit server-side synthetic configuration required. The disposable CLI-server harness is not a production enablement path. Existing HTTPS/Origin/CSRF/host-only Secure HttpOnly SameSite=Lax database cookies remain mandatory. No bearer substitution, school impersonation or independently unverified lost-factor reset. Read docs/api/M1_AUTH_INCREMENT_2_CONTRACT.md for current scope and recovery gates."
+  },
+  "paths": {
+    "/api/v1/browser/platform/login": {
+      "post": {
+        "description": "Synthetic eligible global identity/password only; rotates session/CSRF and starts five-minute pending MFA. Grants no authority.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Exact configured first-party HTTPS origin; never wildcard."
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Session-bound token from existing /api/v1/browser/csrf handshake."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope; sensitive data is authorized and no-store.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "private and no-store directives; ordering is immaterial."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/FirstFactor"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "request_id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "request_id"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication/session expired."
+          },
+          "403": {
+            "description": "Transport, Origin, current identity/context or disabled platform issuer denied."
+          },
+          "404": {
+            "description": "Resource unavailable."
+          },
+          "409": {
+            "description": "Unexpired replacement already exists; never silently overwrite it."
+          },
+          "419": {
+            "description": "Missing/stale CSRF; bootstrap again, never automatically replay mutation."
+          },
+          "422": {
+            "description": "Invalid/expired/replayed proof or validation failure; no partial mutation."
+          },
+          "429": {
+            "description": "Rate limited."
+          },
+          "500": {
+            "description": "Transaction/encryption/audit failure; fail closed."
+          }
+        },
+        "x-testing-only": true,
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlatformLogin"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/browser/platform/logout": {
+      "post": {
+        "description": "Audited platform logout/tombstone. Destroys session/assurance; school context is denied.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Exact configured first-party HTTPS origin; never wildcard."
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Session-bound token from existing /api/v1/browser/csrf handshake."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope; sensitive data is authorized and no-store.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "private and no-store directives; ordering is immaterial."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Logout"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "request_id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "request_id"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication/session expired."
+          },
+          "403": {
+            "description": "Transport, Origin, current identity/context or disabled platform issuer denied."
+          },
+          "404": {
+            "description": "Resource unavailable."
+          },
+          "409": {
+            "description": "Unexpired replacement already exists; never silently overwrite it."
+          },
+          "419": {
+            "description": "Missing/stale CSRF; bootstrap again, never automatically replay mutation."
+          },
+          "422": {
+            "description": "Invalid/expired/replayed proof or validation failure; no partial mutation."
+          },
+          "429": {
+            "description": "Rate limited."
+          },
+          "500": {
+            "description": "Transaction/encryption/audit failure; fail closed."
+          }
+        },
+        "x-testing-only": true
+      }
+    },
+    "/api/v1/browser/platform/status": {
+      "get": {
+        "description": "Current eligible platform context: pending first-factor challenge strictly before five minutes, OR valid session/credential/enrollment-version-bound15-minute MFA assurance. Idle30min and absolute12h limits/nonrevocation remain mandatory.",
+        "security": [
+          {
+            "browserCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Exact configured first-party HTTPS origin; never wildcard."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope; sensitive data is authorized and no-store.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "private and no-store directives; ordering is immaterial."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Status"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "request_id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "request_id"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication/session expired."
+          },
+          "403": {
+            "description": "Transport, Origin, current identity/context or disabled platform issuer denied."
+          },
+          "404": {
+            "description": "Resource unavailable."
+          },
+          "409": {
+            "description": "Unexpired replacement already exists; never silently overwrite it."
+          },
+          "419": {
+            "description": "Missing/stale CSRF; bootstrap again, never automatically replay mutation."
+          },
+          "422": {
+            "description": "Invalid/expired/replayed proof or validation failure; no partial mutation."
+          },
+          "429": {
+            "description": "Rate limited."
+          },
+          "500": {
+            "description": "Transaction/encryption/audit failure; fail closed."
+          }
+        },
+        "x-testing-only": true
+      }
+    },
+    "/api/v1/browser/platform/identity": {
+      "get": {
+        "description": "Confirmed MFA plus current credential/version/session-bound assurance, up to15min. No school/student/billing access.",
+        "security": [
+          {
+            "browserCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Exact configured first-party HTTPS origin; never wildcard."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope; sensitive data is authorized and no-store.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "private and no-store directives; ordering is immaterial."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Identity"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "request_id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "request_id"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication/session expired."
+          },
+          "403": {
+            "description": "Transport, Origin, current identity/context or disabled platform issuer denied."
+          },
+          "404": {
+            "description": "Resource unavailable."
+          },
+          "409": {
+            "description": "Unexpired replacement already exists; never silently overwrite it."
+          },
+          "419": {
+            "description": "Missing/stale CSRF; bootstrap again, never automatically replay mutation."
+          },
+          "422": {
+            "description": "Invalid/expired/replayed proof or validation failure; no partial mutation."
+          },
+          "429": {
+            "description": "Rate limited."
+          },
+          "500": {
+            "description": "Transaction/encryption/audit failure; fail closed."
+          }
+        },
+        "x-testing-only": true
+      }
+    },
+    "/api/v1/browser/platform/mfa/enrollment": {
+      "post": {
+        "description": "Encrypted10min pending enrollment. Confirmed factors cannot be overwritten.",
+        "security": [
+          {
+            "browserCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Exact configured first-party HTTPS origin; never wildcard."
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Session-bound token from existing /api/v1/browser/csrf handshake."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope; sensitive data is authorized and no-store.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "private and no-store directives; ordering is immaterial."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Enrollment"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "request_id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "request_id"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication/session expired."
+          },
+          "403": {
+            "description": "Transport, Origin, current identity/context or disabled platform issuer denied."
+          },
+          "404": {
+            "description": "Resource unavailable."
+          },
+          "409": {
+            "description": "Unexpired replacement already exists; never silently overwrite it."
+          },
+          "419": {
+            "description": "Missing/stale CSRF; bootstrap again, never automatically replay mutation."
+          },
+          "422": {
+            "description": "Invalid/expired/replayed proof or validation failure; no partial mutation."
+          },
+          "429": {
+            "description": "Rate limited."
+          },
+          "500": {
+            "description": "Transaction/encryption/audit failure; fail closed."
+          }
+        },
+        "x-testing-only": true,
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Password"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/browser/platform/mfa/confirm": {
+      "post": {
+        "description": "Confirm actual TOTP; rotate recovery codes and revoke old contexts. Rotate session before binding assurance.",
+        "security": [
+          {
+            "browserCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Exact configured first-party HTTPS origin; never wildcard."
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Session-bound token from existing /api/v1/browser/csrf handshake."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope; sensitive data is authorized and no-store.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "private and no-store directives; ordering is immaterial."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Verification"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "request_id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "request_id"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication/session expired."
+          },
+          "403": {
+            "description": "Transport, Origin, current identity/context or disabled platform issuer denied."
+          },
+          "404": {
+            "description": "Resource unavailable."
+          },
+          "409": {
+            "description": "Unexpired replacement already exists; never silently overwrite it."
+          },
+          "419": {
+            "description": "Missing/stale CSRF; bootstrap again, never automatically replay mutation."
+          },
+          "422": {
+            "description": "Invalid/expired/replayed proof or validation failure; no partial mutation."
+          },
+          "429": {
+            "description": "Rate limited."
+          },
+          "500": {
+            "description": "Transaction/encryption/audit failure; fail closed."
+          }
+        },
+        "x-testing-only": true,
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Factor"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/browser/platform/mfa/challenge": {
+      "post": {
+        "description": "Replay-protected existing TOTP/password challenge within pending deadline; rotates session/CSRF.",
+        "security": [
+          {
+            "browserCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Exact configured first-party HTTPS origin; never wildcard."
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Session-bound token from existing /api/v1/browser/csrf handshake."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope; sensitive data is authorized and no-store.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "private and no-store directives; ordering is immaterial."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Verification"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "request_id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "request_id"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication/session expired."
+          },
+          "403": {
+            "description": "Transport, Origin, current identity/context or disabled platform issuer denied."
+          },
+          "404": {
+            "description": "Resource unavailable."
+          },
+          "409": {
+            "description": "Unexpired replacement already exists; never silently overwrite it."
+          },
+          "419": {
+            "description": "Missing/stale CSRF; bootstrap again, never automatically replay mutation."
+          },
+          "422": {
+            "description": "Invalid/expired/replayed proof or validation failure; no partial mutation."
+          },
+          "429": {
+            "description": "Rate limited."
+          },
+          "500": {
+            "description": "Transaction/encryption/audit failure; fail closed."
+          }
+        },
+        "x-testing-only": true,
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Factor"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/browser/platform/mfa/recovery": {
+      "post": {
+        "description": "Atomic single-use hashed recovery-code/password challenge; rotates session/CSRF.",
+        "security": [
+          {
+            "browserCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Exact configured first-party HTTPS origin; never wildcard."
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Session-bound token from existing /api/v1/browser/csrf handshake."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope; sensitive data is authorized and no-store.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "private and no-store directives; ordering is immaterial."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Verification"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "request_id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "request_id"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication/session expired."
+          },
+          "403": {
+            "description": "Transport, Origin, current identity/context or disabled platform issuer denied."
+          },
+          "404": {
+            "description": "Resource unavailable."
+          },
+          "409": {
+            "description": "Unexpired replacement already exists; never silently overwrite it."
+          },
+          "419": {
+            "description": "Missing/stale CSRF; bootstrap again, never automatically replay mutation."
+          },
+          "422": {
+            "description": "Invalid/expired/replayed proof or validation failure; no partial mutation."
+          },
+          "429": {
+            "description": "Rate limited."
+          },
+          "500": {
+            "description": "Transaction/encryption/audit failure; fail closed."
+          }
+        },
+        "x-testing-only": true,
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Factor"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/browser/security/mfa/replacement/start": {
+      "post": {
+        "description": "Current password plus existing TOTP/unused recovery code. Atomic possession proof, five-minute encrypted intent bound to subject/session/credential/MFA version/context and school membership where applicable. Old factor remains active.",
+        "security": [
+          {
+            "browserCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Exact configured first-party HTTPS origin; never wildcard."
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Session-bound token from existing /api/v1/browser/csrf handshake."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope; sensitive data is authorized and no-store.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "private and no-store directives; ordering is immaterial."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/PendingReplacement"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "request_id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "request_id"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication/session expired."
+          },
+          "403": {
+            "description": "Transport, Origin, current identity/context or disabled platform issuer denied."
+          },
+          "404": {
+            "description": "Resource unavailable."
+          },
+          "409": {
+            "description": "Unexpired replacement already exists; never silently overwrite it."
+          },
+          "419": {
+            "description": "Missing/stale CSRF; bootstrap again, never automatically replay mutation."
+          },
+          "422": {
+            "description": "Invalid/expired/replayed proof or validation failure; no partial mutation."
+          },
+          "429": {
+            "description": "Rate limited."
+          },
+          "500": {
+            "description": "Transaction/encryption/audit failure; fail closed."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplacementStart"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/browser/security/mfa/replacement/confirm": {
+      "post": {
+        "description": "Revalidate current context and password, confirm NEW authenticator. Atomically rotate credential/version/codes, consume intent, append audit and revoke all old browser/device credentials. Fresh login required; no implicit assurance.",
+        "security": [
+          {
+            "browserCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Exact configured first-party HTTPS origin; never wildcard."
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Session-bound token from existing /api/v1/browser/csrf handshake."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope; sensitive data is authorized and no-store.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "private and no-store directives; ordering is immaterial."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ReplacementComplete"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "request_id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "request_id"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication/session expired."
+          },
+          "403": {
+            "description": "Transport, Origin, current identity/context or disabled platform issuer denied."
+          },
+          "404": {
+            "description": "Resource unavailable."
+          },
+          "409": {
+            "description": "Unexpired replacement already exists; never silently overwrite it."
+          },
+          "419": {
+            "description": "Missing/stale CSRF; bootstrap again, never automatically replay mutation."
+          },
+          "422": {
+            "description": "Invalid/expired/replayed proof or validation failure; no partial mutation."
+          },
+          "429": {
+            "description": "Rate limited."
+          },
+          "500": {
+            "description": "Transaction/encryption/audit failure; fail closed."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplacementConfirm"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/browser/platform/mfa/replacement/start": {
+      "post": {
+        "description": "Current password plus existing TOTP/unused recovery code. Atomic possession proof, five-minute encrypted intent bound to subject/session/credential/MFA version/context and school membership where applicable. Old factor remains active. After the five-minute first-factor deadline, valid current PlatformAssurance is mandatory; no expired-pending fallback. Existing password/factor and pending-intent proof requirements remain unchanged.",
+        "security": [
+          {
+            "browserCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Exact configured first-party HTTPS origin; never wildcard."
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Session-bound token from existing /api/v1/browser/csrf handshake."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope; sensitive data is authorized and no-store.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "private and no-store directives; ordering is immaterial."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/PendingReplacement"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "request_id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "request_id"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication/session expired."
+          },
+          "403": {
+            "description": "Transport, Origin, current identity/context or disabled platform issuer denied."
+          },
+          "404": {
+            "description": "Resource unavailable."
+          },
+          "409": {
+            "description": "Unexpired replacement already exists; never silently overwrite it."
+          },
+          "419": {
+            "description": "Missing/stale CSRF; bootstrap again, never automatically replay mutation."
+          },
+          "422": {
+            "description": "Invalid/expired/replayed proof or validation failure; no partial mutation."
+          },
+          "429": {
+            "description": "Rate limited."
+          },
+          "500": {
+            "description": "Transaction/encryption/audit failure; fail closed."
+          }
+        },
+        "x-testing-only": true,
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplacementStart"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/browser/platform/mfa/replacement/confirm": {
+      "post": {
+        "description": "Revalidate current context and password, confirm NEW authenticator. Atomically rotate credential/version/codes, consume intent, append audit and revoke all old browser/device credentials. Fresh login required; no implicit assurance. After the five-minute first-factor deadline, valid current PlatformAssurance is mandatory; no expired-pending fallback. Existing password/factor and pending-intent proof requirements remain unchanged.",
+        "security": [
+          {
+            "browserCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Exact configured first-party HTTPS origin; never wildcard."
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Session-bound token from existing /api/v1/browser/csrf handshake."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope; sensitive data is authorized and no-store.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "private and no-store directives; ordering is immaterial."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ReplacementComplete"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "request_id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "request_id"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication/session expired."
+          },
+          "403": {
+            "description": "Transport, Origin, current identity/context or disabled platform issuer denied."
+          },
+          "404": {
+            "description": "Resource unavailable."
+          },
+          "409": {
+            "description": "Unexpired replacement already exists; never silently overwrite it."
+          },
+          "419": {
+            "description": "Missing/stale CSRF; bootstrap again, never automatically replay mutation."
+          },
+          "422": {
+            "description": "Invalid/expired/replayed proof or validation failure; no partial mutation."
+          },
+          "429": {
+            "description": "Rate limited."
+          },
+          "500": {
+            "description": "Transaction/encryption/audit failure; fail closed."
+          }
+        },
+        "x-testing-only": true,
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplacementConfirm"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "browserCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "edu_browser_session"
+      }
+    },
+    "schemas": {
+      "PlatformLogin": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "identifier",
+          "password"
+        ],
+        "properties": {
+          "identifier": {
+            "type": "string",
+            "format": "ulid"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 72,
+            "writeOnly": true,
+            "description": "Current password, at most72 bytes. Never logged or persisted in plaintext."
+          }
+        }
+      },
+      "Password": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "password"
+        ],
+        "properties": {
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 72,
+            "writeOnly": true,
+            "description": "Current password, at most72 bytes. Never logged or persisted in plaintext."
+          }
+        }
+      },
+      "Factor": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "password",
+          "code"
+        ],
+        "properties": {
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 72,
+            "writeOnly": true,
+            "description": "Current password, at most72 bytes. Never logged or persisted in plaintext."
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 32,
+            "writeOnly": true
+          }
+        }
+      },
+      "ReplacementStart": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "password",
+          "method",
+          "code"
+        ],
+        "properties": {
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 72,
+            "writeOnly": true,
+            "description": "Current password, at most72 bytes. Never logged or persisted in plaintext."
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "totp",
+              "recovery"
+            ]
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 32,
+            "writeOnly": true
+          }
+        }
+      },
+      "ReplacementConfirm": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "password",
+          "replacement_id",
+          "code"
+        ],
+        "properties": {
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 72,
+            "writeOnly": true,
+            "description": "Current password, at most72 bytes. Never logged or persisted in plaintext."
+          },
+          "replacement_id": {
+            "type": "string",
+            "format": "ulid"
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 32,
+            "writeOnly": true
+          }
+        }
+      },
+      "FirstFactor": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "mfa_required",
+          "csrf_token"
+        ],
+        "properties": {
+          "mfa_required": {
+            "const": true
+          },
+          "csrf_token": {
+            "type": "string"
+          }
+        }
+      },
+      "Status": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "user_id",
+          "enrolled",
+          "verified"
+        ],
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "format": "ulid"
+          },
+          "enrolled": {
+            "type": "boolean"
+          },
+          "verified": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Enrollment": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "secret",
+          "expires_in"
+        ],
+        "properties": {
+          "secret": {
+            "type": "string",
+            "readOnly": true,
+            "description": "Sensitive ephemeral authenticator seed; no browser storage/logs."
+          },
+          "expires_in": {
+            "const": 600
+          }
+        }
+      },
+      "Verification": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "verified",
+          "recovery_codes",
+          "csrf_token"
+        ],
+        "properties": {
+          "verified": {
+            "const": true
+          },
+          "recovery_codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Eight codes at enrollment confirmation; empty for later challenges. Display once."
+          },
+          "csrf_token": {
+            "type": "string"
+          }
+        }
+      },
+      "Identity": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "user_id",
+          "context",
+          "capabilities"
+        ],
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "format": "ulid"
+          },
+          "context": {
+            "const": "platform"
+          },
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "const": "platform.health"
+            }
+          }
+        }
+      },
+      "Logout": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "revoked",
+          "csrf_token"
+        ],
+        "properties": {
+          "revoked": {
+            "const": true
+          },
+          "csrf_token": {
+            "type": "string"
+          }
+        }
+      },
+      "PendingReplacement": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "replacement_id",
+          "secret",
+          "expires_in"
+        ],
+        "properties": {
+          "replacement_id": {
+            "type": "string",
+            "format": "ulid"
+          },
+          "secret": {
+            "type": "string",
+            "readOnly": true,
+            "description": "Sensitive authorized no-store setup response only."
+          },
+          "expires_in": {
+            "const": 300
+          }
+        }
+      },
+      "ReplacementComplete": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "recovery_codes",
+          "reauthentication_required",
+          "csrf_token"
+        ],
+        "properties": {
+          "recovery_codes": {
+            "type": "array",
+            "minItems": 8,
+            "maxItems": 8,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "description": "New once-only codes, returned only after atomic commit."
+          },
+          "reauthentication_required": {
+            "const": true
+          },
+          "csrf_token": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

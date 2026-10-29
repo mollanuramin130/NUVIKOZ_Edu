@@ -4,7 +4,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 const key = fs.readFileSync(process.env.EDU_TEST_KEY);
 const cert = fs.readFileSync(process.env.EDU_TEST_CERT);
-for (const [port, upstream] of [[3443, 3000], [8443, 8000]]) {
+for (const [port, upstream] of [[3443, 3000], [8443, 8000], [8444, 8001]]) {
   https.createServer({ key, cert }, (req, res) => {
     const proxy = http.request({ hostname: '127.0.0.1', port: upstream, method: req.method, path: req.url, headers: { ...req.headers, host: req.headers.host, 'x-forwarded-proto': 'https' } }, response => {
       res.writeHead(response.statusCode, response.headers); response.pipe(res);
