@@ -52,5 +52,11 @@ sudo setpriv --no-new-privs --bounding-set=-all --inh-caps=-all --ambient-caps=-
     flutter build apk --debug --no-pub
     echo "=== DEBUG APK ASSEMBLY EVIDENCE ==="
     ls -lh build/app/outputs/flutter-apk/app-debug.apk
-    sha256sum build/app/outputs/flutter-apk/app-debug.apk
+    stat -c "%s bytes %n" build/app/outputs/flutter-apk/app-debug.apk
+    sha256sum build/app/outputs/flutter-apk/app-debug.apk | tee build/app/outputs/flutter-apk/app-debug.apk.sha256
+    # Compile the device-test APK and run JVM tests inside the same restricted process.
+    # Compilation is NOT execution of AndroidKeyStore instrumentation.
+    cd android
+    ./gradlew --no-daemon testDebugUnitTest assembleDebugAndroidTest
+    echo "=== NATIVE TEST APK COMPILED; DEVICE INSTRUMENTATION NOT RUN ==="
   ' isolated-flutter "$GITHUB_WORKSPACE"

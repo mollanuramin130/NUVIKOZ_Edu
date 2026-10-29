@@ -1,3 +1,28 @@
+# SEC-01 Android build recovery — current checkpoint
+
+ChatGPT Work is now the sole development owner, including Android/Flutter/native security. Prior Gemini ownership assignments below are historical. PR7 remains Draft; no merge/deployment.
+
+Confirmed AndroidX failure at2a1f130 was fixed by android/gradle.properties containing only android.useAndroidX=true. No Jetifier or speculative version changes. Published5b65d0fb0c5d190b661c33298a4445c0b60a9936 passed all four checks in M1 run40890574983 / Integrity40890575000. Flutter3.47.8/Dart3.13.7, Gradle8.14/AGP8.11.1/Kotlin2.2.20/Java17. Actual flutter build apk --debug --no-pub succeeded; path apps/edu-mobile/build/app/outputs/flutter-apk/app-debug.apk; log size144M; SHA25605d91fb852610a13d2e69cef4fbbf023763ee72692d091f1006ebe0fefade7c3. This evidence belongs only to5b65d0fb; later checkpoints need their own CI.
+
+This follow-up prepares six tests invoking the actual AndroidKeyStore/vault (AES-GCM, round trip/reopen, random ciphertext/no plaintext, tampering, missing keys, interrupted AtomicFile write, failed payload preservation and secure clear), plus an explicit two-instrumentation-process persistence procedure. Existing five JVM tests only check constants/duplicated validation; they are not vault security verification. CI now runs JVM tests and compiles the instrumentation APK inside the existing metadata-blocked, env-clean, no-new-privileges/capability-free process. It does NOT execute device instrumentation. Seven-day artifacts contain only debug application/test APKs and the actual APK checksum. Release signing no longer reuses the debug key.
+
+AndroidKeyStore instrumentation and MethodChannel read/write/clear runtime: NOT RUN (no adb, emulator or device in Work). Actual activity recreation, device-invalidated key behavior and injected filesystem failure coverage remain incomplete; new vault-object reopening and staged-write interruption must not be described as those stronger checks. No full native security acceptance claim.
+
+Device procedure (DISPOSABLE debug install only; tests erase the app vault; never use real credentials): download the same-head artifact, verify the checksum, install app-debug.apk and app-debug-androidTest.apk with adb install -r. Run:
+
+```sh
+adb shell am instrument -w -e class com.nuvikoz.edu.SecureTokenVaultInstrumentedTest com.nuvikoz.edu.test/androidx.test.runner.AndroidJUnitRunner
+adb shell am instrument -w -e class com.nuvikoz.edu.VaultProcessPersistenceTest -e phase write com.nuvikoz.edu.test/androidx.test.runner.AndroidJUnitRunner
+adb shell am force-stop com.nuvikoz.edu
+adb shell am instrument -w -e class com.nuvikoz.edu.VaultProcessPersistenceTest -e phase read com.nuvikoz.edu.test/androidx.test.runner.AndroidJUnitRunner
+```
+
+Capture runner reports, Android API/device model and both process runs. MethodChannel runtime still requires a real Flutter-engine/device journey using synthetic data; native vault tests alone cannot prove Dart/channel dispatch.
+
+NEXT SAFE TASK: verify this follow-up exact-head hosted APK/JVM/instrumentation compilation, then refresh existing PR8 by a fast-forward merge commit of this PR7 history and verify all combined jobs. Preserve metadata isolation and production platform/lost-factor gates. No main merge, Hostinger/Nursery/DNS/live database or messaging changes.
+
+# Historical SEC-01 evidence
+
 # Active ownership handoff
 
 SEC-01 native source implementation COMPLETED by Android Studio Gemini on `feature/m1-security-completion` (Draft PR #7).
