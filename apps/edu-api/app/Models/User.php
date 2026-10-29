@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\ImmutableIdentity;
+use App\Services\LastAdminGuard;
 use App\Services\SecurityRevocation;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -41,7 +42,23 @@ class User extends Authenticatable
         }
 
         return DB::transaction(function () use ($options) {
+            // Eligibility-losing identity changes must not bypass the membership
+            // guard. Ordinary credential rotation does not acquire extra schools.
+            $losesEligibility = ($this->isDirty('status') && $this->status !== 'active')
+                || ($this->isDirty('is_platform_admin') && $this->is_platform_admin)
+                || ($this->isDirty('activation_required') && $this->activation_required)
+                || ($this->isDirty('must_change_password') && $this->must_change_password);
+            if ($losesEligibility) {
+                $schools = DB::table('memberships')->where('user_id', $this->id)->where('role', 'school_admin')->where('status', 'active')->pluck('school_id');
+                DB::table('schools')->whereIn('id', $schools)->orderBy('id')->lockForUpdate()->get();
+            }
             DB::table('users')->where('id', $this->id)->lockForUpdate()->first();
+
+            if ($losesEligibility) {
+                foreach (DB::table('memberships')->where('user_id', $this->id)->where('role', 'school_admin')->where('status', 'active')->orderBy('school_id')->lockForUpdate()->get() as $member) {
+                    app(LastAdminGuard::class)->removing($member, 'school_admin', 'inactive');
+                }
+            }
 
             return parent::save($options);
         }, 3);
