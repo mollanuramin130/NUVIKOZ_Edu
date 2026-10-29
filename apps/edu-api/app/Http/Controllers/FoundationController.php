@@ -33,7 +33,7 @@ class FoundationController extends Controller
             if (! $current || $user->is_platform_admin || $user->activation_required || in_array(School::whereKey($current->school_id)->value('access_state'), ['suspended', 'archived'], true) || $user->status !== 'active' || ! Hash::check($data['password'], $user->password)) {
                 return Api::error('INVALID_CREDENTIALS', 'Credentials could not be verified.', 401);
             }
-            $expiry = in_array($current->role, [Role::Student, Role::Parent], true) ? now()->addDays(7) : now()->addHours(12);
+            $expiry = $current->role === Role::SchoolAdmin ? now()->addHours(12) : now()->addDays(7);
             $token = $user->createToken($data['device_name'] ?? 'device', ['school:'.$current->school_id], $expiry);
 
             return Api::ok(['token' => $token->plainTextToken, 'expires_at' => $expiry->toIso8601String(), 'must_change_password' => $user->must_change_password]);
