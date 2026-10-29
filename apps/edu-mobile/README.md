@@ -1,5 +1,7 @@
-# Flutter foundation
+# Flutter authentication foundation
 
-Non-production Dart/Flutter shell and public health client. Official Flutter 3.47.8 / Dart 3.13.7 were checksum-verified in metadata-blocked hosted CI. Dependency resolution, static analysis and three widget/client tests passed. No Android/iOS platform project, emulator test, release build or store publication is claimed.
+Non-production source scaffold: typed school-scoped login DTO, bounded HTTPS/no-redirect JSON transport, authenticated identity/school display, expiry/revocation/error states, logout and fresh login for school switching. API configuration uses EDU_API_BASE_URL. Local HTTP requires an explicit test option and loopback/emulator host. No academic data or privileged-device MFA is invented.
 
-Do not execute the old unrestricted local SDK command. Follow `scripts/verify_flutter_isolated.sh` and the metadata investigation document. Network denial must precede SDK execution and remain in force. The client accepts HTTPS, explicit local HTTP development hosts and no URL credentials. Protected mobile auth/OS secure storage integration is a later increment.
+`PlatformSecureTokenStore` defines a fail-closed MethodChannel (`nuvikoz.edu/secure-token-store`) read/write/clear contract. No Android/iOS platform handler is installed. Default authentication therefore stops before sending credentials when storage is unavailable. Memory storage exists only in tests. Do not substitute SharedPreferences/files or claim production-secure persistence. Native project generation, keychain/keystore implementation, emulator/device integration and release build remain dependencies.
+
+Run analysis/tests only through `scripts/verify_flutter_isolated.sh` in hosted CI: checksum-verified Flutter3.47.8/Dart3.13.7, kernel metadata denial, capabilities dropped, no unnecessary credentials. Never run an unrestricted local SDK or probe metadata. Actual passing evidence belongs in the canonical handoff, not an assumed platform build.
