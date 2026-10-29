@@ -1,5 +1,9 @@
 # Change log
 
+## M1 SEC-02/SEC-03 supported security completion — 2026-10-29
+
+Added synthetic-only platform browser UI/HTTPS integration and context-bound authenticator replacement for School Admin/global synthetic platform identities. Replacement requires password plus an old factor, confirms a new encrypted authenticator before atomic activation, rotates recovery codes and revokes existing browser/device access with append-only audit. Added000006 transient pending-replacement migration, eight real MariaDB race cases, rollback/negative tests and both replacement UI journeys. Verified implementation8122b3e:139 MariaDB tests/971 assertions,25 HTTPS browser tests and all four CI checks passed. Production platform issuance and independent lost-factor recovery remain disabled; Gemini SEC-01/native storage integration remains separate. No merge/deployment.
+
 ## 2026-10-28 — Gate3 initialization
 
 - Created owner-authorized private repository,default branch main.
