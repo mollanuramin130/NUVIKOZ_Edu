@@ -10,7 +10,7 @@ This milestone groups F015 (bounded future calendar), F018 (classes/sections/sub
 
 | Slice | Deliverable | Acceptance gate | Status |
 |---|---|---|---|
-| A | Future session and class catalog backend | Current School Admin + MFA, tenant-scoped listing, strict payloads, expiry, Demo caps, audit rollback, idempotency and real MariaDB races | Implemented; actual-tip hosted checks required |
+| A | Future session and class catalog backend | Current School Admin + MFA, tenant-scoped listing, strict payloads, expiry, Demo caps, audit rollback, idempotency and real MariaDB races | INTEGRATION VERIFIED for supported backend slice atd0534d3; owner review pending |
 | B | Session offerings, sections, subjects | Composite tenant FKs, optional class teacher, compulsory/optional subjects, no cross-session mixing | NOT STARTED |
 | C | Unified web academic setup | Approved visual direction, real API integration, responsive/keyboard/error/conflict states | NOT STARTED |
 | D | Flutter setup/read workflow | Same contract; secured CI; milestone APK and meaningful device journey | NOT STARTED |
@@ -43,3 +43,7 @@ See `docs/requirements/IMPLEMENTATION_PROGRESS.csv` for all source feature IDs. 
 Planning-only effort points and partial implementation credits are explicit per feature in the register. Overall estimate = sum(points × credit/100) / sum(points); credits are engineering estimates, not passed-test ratios or acceptance claims. Broad feature rows remain heavily discounted when only a subset exists. Recalibrate with measured work; no feature is accepted solely by this estimate.
 
 Current milestone planning weights: slice A 25%, B 35%, C 25%, D 15%. A may earn at most 80% of its weight after backend integration checks pass; owner review and later integration remain pending. Therefore even a green slice A is at most 20% of M2, not M2 completion. No physical milestone acceptance claimed.
+
+## Executed slice A evidence
+
+Implementation d0534d33a8b4c2b85c01eda373ce2f64ba70b70d: run40921807983 API/Web/Flutter passed and Integrity40921808036 passed. Real MariaDB125/698 (all14 concurrency cases),18 HTTPS Chromium journeys,16 isolated Flutter tests, migration fresh/rollback/remigrate, Pint and dependency audits passed. Evidence-only successors need their own CI. Main-based counts exclude unmerged PR6/7 additions; no security tests were removed. Slice A earns20% of the milestone planning weight; full M2 and domain UI/mobile remain unaccepted.
