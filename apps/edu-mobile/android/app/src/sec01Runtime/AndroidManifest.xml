@@ -2,7 +2,7 @@
     xmlns:tools="http://schemas.android.com/tools">
     <!-- Target UID cannot access external, host, metadata or production services. -->
     <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
-    <application android:label="NUVIKOZ SEC-01 Test">
+    <application android:label="NUVIKOZ SEC-01 Test" tools:replace="android:label">
         <activity android:name="com.nuvikoz.edu.MainActivity" android:enabled="false" />
         <activity android:name="com.nuvikoz.edu.SecureStoreRuntimeActivity"
             android:exported="false" android:theme="@style/LaunchTheme"
