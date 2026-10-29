@@ -1,3 +1,15 @@
+# Published HTTP checkpoint and hosted evidence — 2026-10-29
+
+Existing branch `feature/m1-platform-auth-recovery`, Draft PR #6. Published source HEAD `da9171b05194777ef791a8bcf16059d36e70d677` exactly matches local code checkpoint `33f9bc58138c8ce9ce6e318140fd0f59fb2c7215` (all files, not only selected paths). Original saved commit `e17908953c711415d3e0d7183992e1af80bc5e48` and every earlier commit remain preserved. Browser-created commits were necessary because connector mutations/push credentials are unavailable; no force-push or history replacement.
+
+Hosted verification on that exact published source HEAD: M1 Foundation run `40839517931` — API, Web and Flutter PASSED; Repository Integrity run `40839517894` PASSED. API: **124 MariaDB tests / 786 assertions**, no skips, including all **13 independent-process concurrency tests**; migration fresh/rollback/remigrate, Pint and blocking Composer audit passed (no advisories). Existing HTTPS Next.js/Laravel school browser suite: **17 passed**. Web: lint, typecheck, build and audit passed. Unchanged metadata-blocked Flutter baseline: analysis clean, **16 tests passed**; no claim of native Gemini implementation verification. Local SQLite: **111 passed / 698 assertions, 13 MariaDB-only skips**, 124 discovered. Seven new real middleware/database/cookie platform HTTP tests: **112 assertions** locally. This documentation-only follow-up must still receive its own final-head CI; do not transfer prior run status implicitly.
+
+The platform protected identity regression is resolved with NO production assurance-policy weakening: JSON HTTP tests now explicitly send credentialed cookies and recreate per-request guards/session stores, eliminating retained in-process state. Root-cause details and coverage below. SEC-02 remains PARTIAL (Next.js platform UI and genuine platform Playwright journeys missing); SEC-03 NOT STARTED; SEC-04 PARTIAL. Production issuer/bootstrap and unapproved lost-factor reset remain unavailable/fail-closed. PR remains Draft. No merge/deploy or Gemini SEC-01/mobile/native/isolation changes.
+
+NEXT SAFE TASK: verify this documentation follow-up's exact remote HEAD and four checks, then continue SEC-02 minimal platform UI and genuine HTTPS browser journeys. Do not reopen the fixed session mismatch or start SEC-03 ahead of verified SEC-02 boundary integration. Production enablement still requires separate owner authorization and fulfilled operator prerequisites.
+
+# Historical local HTTP checkpoint (superseded by published evidence above)
+
 # SEC-02 HTTP session regression resolved — 2026-10-29
 
 Branch `feature/m1-platform-auth-recovery`, existing Draft PR #6. Continues saved local `e17908953c711415d3e0d7183992e1af80bc5e48`; last published service checkpoint `251e910a7ad9a58ffcc76e4470a40749ca9eb4ea`. This update is the HTTP checkpoint, not completed SEC-02 or SEC-03. Remote SHA and hosted results must be retrieved after publication, not inferred from local commits.
