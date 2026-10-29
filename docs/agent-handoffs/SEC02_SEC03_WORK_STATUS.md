@@ -1,3 +1,11 @@
+# SEC-02 secure-context broadcast compatibility correction
+
+Second UI HEAD bc556c8f441910b8d84f7c563fdab2c6020b4e56, run40843406462: all SIX platform HTTPS journeys passed;22 total browser tests passed. One existing school test failed because unconditional top-level crypto.randomUUID() was unavailable on insecure HTTP, preventing the login page from rendering its HTTPS-required error. Sender ID creation is now gated by isSecureContext; insecure pages still cannot submit credentials because the existing browserRequest HTTPS guard remains unchanged. No insecure random credential/storage fallback introduced. All four jobs must be verified on the new publication before SEC-03. Previous full PHP/MariaDB124/786 passed; no transfer of CI conclusions to new SHA.
+
+NEXT SAFE TASK: publish the one-line client compatibility fix plus this checkpoint, rerun all23 real browser tests and four checks. SEC-03 remains NOT STARTED until gate passes; SEC-01 untouched. Preserve same branch/Draft PR6; no merge/deploy.
+
+# Historical UI race correction checkpoint
+
 # SEC-02 HTTPS acceptance correction — awaiting new-head CI
 
 Initial UI publication a388104c84e6ee756e980d0fe27f61afcb3dd52d matched local a5bac78. M1 run40842498667: Web/Flutter/Integrity passed; API PHP/MariaDB passed but browser suite failed 3 platform cases (20 passed, including all 17 school journeys). Actual UI defect: BroadcastChannel notifications also reached a different channel instance in the originating document, racing refresh/secret cleanup with MFA confirmation/logout. The browser client now tags notifications with an ephemeral per-document random sender and ignores its own messages; cross-tab listeners still revalidate. No session/MFA policy change. Playwright waits explicitly for recovery-code rendering and completed logout. Expired assurance correctly returns to pending MFA with no protected identity; test now asserts that actual safe UX and retains API denial.
