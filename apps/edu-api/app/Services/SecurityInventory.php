@@ -53,7 +53,7 @@ class SecurityInventory
         $accessToken = $r->user()->currentAccessToken();
         $current = $accessToken instanceof PersonalAccessToken ? $accessToken->getKey() : null;
 
-        return $m->user->tokens()->orderByDesc('id')->get()->filter(fn ($token) => in_array('school:'.$m->school_id, $token->abilities, true))->map(fn ($token) => ['id' => $this->opaque('device', (string) $token->id, $m->user_id), 'name' => mb_substr(preg_replace('/[\x00-\x1f\x7f]/u', '', $token->name), 0, 80), 'current' => (string) $token->id === (string) $current, 'issued_at' => $token->created_at?->toIso8601String(), 'last_used_at' => $token->last_used_at?->toIso8601String(), 'expires_at' => $token->expires_at?->toIso8601String()])->values()->all();
+        return $m->user->tokens()->whereNotNull('expires_at')->where('expires_at', '>', now())->orderByDesc('id')->get()->filter(fn ($token) => in_array('school:'.$m->school_id, $token->abilities, true))->map(fn ($token) => ['id' => $this->opaque('device', (string) $token->id, $m->user_id), 'name' => mb_substr(preg_replace('/[\x00-\x1f\x7f]/u', '', $token->name), 0, 80), 'current' => (string) $token->id === (string) $current, 'issued_at' => $token->created_at?->toIso8601String(), 'last_used_at' => $token->last_used_at?->toIso8601String(), 'expires_at' => $token->expires_at?->toIso8601String()])->values()->all();
     }
 
     public function revoke(Membership $m, Request $r, string $password, string $kind, string $id): array
