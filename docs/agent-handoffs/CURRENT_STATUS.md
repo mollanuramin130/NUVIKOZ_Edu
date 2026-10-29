@@ -1,3 +1,7 @@
+# Interrupted verification checkpoint
+
+Published remote HEAD ce3e70f139d418966a4245b55b87015539f88fb9: run40804615076 API FAILED two last-admin identity concurrency assertions; Web/Flutter/Integrity passed. Do not approve/merge or mark AUTH08 complete. Local correction changes LastAdminGuard eligibility/count reads to locking current reads (MariaDB REPEATABLE READ snapshot must not survive the school lock wait). Local strengthened lifecycle tests and this correction are committed but NOT YET PUBLISHED/CI VERIFIED. Next task: publish LastAdminGuard.php, LifecycleConcurrencyTest.php, lifecycle-race-worker.php and this handoff on existing branch/PR5, execute all eleven MariaDB races and final four CI jobs. Previous green106/559,17 browser,16 Flutter evidence belongs only to2d75e92. Native secure store still absent/fail closed.
+
 # Current checkpoint — AUTH-07–10 continuation, 2026-10-29
 
 Branch `feature/m1-advanced-auth-security`, existing Draft PR #5 https://github.com/mollanuramin130/NUVIKOZ_Edu/pull/5 . Main remains `42405d34ce5a6a6b812c38c7e2a6c4a80f4e44df`. Earlier NOT STARTED/PR-open phase statements below are historical.
