@@ -33,7 +33,10 @@ class AccountRecoveryTest extends TestCase
         $s = School::firstOrCreate(['code' => $code], ['name' => 'Synthetic '.$code, 'data_stage' => 'live', 'access_state' => 'live_enabled', 'entitlement_ends_at' => now()->addDay()]);
         $u = User::create(['name' => 'Synthetic recovery identity', 'password' => 'Synthetic-Original-Password']);
 
-        return Membership::create(['school_id' => $s->id, 'user_id' => $u->id, 'role' => $role, 'login_identifier' => $identifier, 'status' => 'active']);
+        $member = Membership::create(['school_id' => $s->id, 'user_id' => $u->id, 'role' => $role, 'login_identifier' => $identifier, 'status' => 'active']);
+        $this->mfaFixture($member);
+
+        return $member;
     }
 
     private function verification(): array
@@ -148,6 +151,7 @@ class AccountRecoveryTest extends TestCase
                 $this->assertTrue(true);
             }
         }
+        $this->mfaFixture($a);
         foreach ([[], ['identity_verified' => false], ['verification_method' => 'phone_guess'], ['verification_reference' => 'short']] as $change) {
             try {
                 app(AccountRecovery::class)->issue($a, $t->id, $change === [] ? [] : array_merge($this->verification(), $change), 'denied');
