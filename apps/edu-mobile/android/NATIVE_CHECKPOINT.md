@@ -1,3 +1,21 @@
+# SEC-01 real Flutter MethodChannel device harness — current checkpoint
+
+Owner-reported physical evidence: Vivo1951, Android11/API30; actual-vault instrumentation OK(6 tests), persistence write OK(1 test), process force-stop, persistence read OK(1 test). Eight successful native test executions were reported by the owner; this is distinct from agent-observed hosted compilation and does not establish MethodChannel runtime success.
+
+A minimal optional debug harness now builds com.nuvikoz.edu.sec01test and its matching com.nuvikoz.edu.sec01test.test instrumentation APK. It uses test_driver/secure_store_runtime.dart (no API/client imports), an explicit sec01RuntimeHarness Gradle property and conditional debug-only Android source sets. MainActivity is open solely so a non-exported debug harness activity can reuse the ACTUAL configureFlutterEngine/secure-token-store handler. Normal application source sets and release behavior do not include the harness activity/control channel. Harness launcher is disabled, Internet permission is removed, and both CI APK inspection and device tests require it absent. Separate package/UID prevents replacement or alteration of the ordinary installed app/vault.
+
+FlutterMethodChannelRuntimeTest launches a real FlutterActivity/engine; Dart calls the actual production MethodChannel and adapter. The contract phase performs15 checks: synthetic write/read/clear, ciphertext-only inspection, empty/oversized payload rejection with previous value preserved, missing-key native errors with redacted code/message/details, adapter SecureStorageUnavailable and final clear. Test-only key deletion and result reporting exist only in the non-exported, debug-only separate application. No mock messenger, storage fallback, login, production API or external service. Each result is bound to a fresh nonce/phase. Two additional phases persist-write/persist-read require a force-stop between instrumentation processes; they verify actual new-engine persistence and cleanup. A missing result or timeout fails, never counts as success.
+
+Existing metadata-blocked SDK/checksum/credential-free/NoNewPrivs/capability controls remain unchanged. CI builds normal APKs first, separately builds the harness and its matching test APK, verifies package IDs/no Internet permission, and exports sec01-channel-runtime artifact with both APK hashes and exact checkout SOURCE_COMMIT. It restores ordinary artifacts after the second build so original checksums remain paired. CI compilation is not device execution. Hosted KVM preflight remains separately BLOCKED under unchanged permissions.
+
+STATUS: harness device execution NOT RUN. Await exact-head hosted compilation and artifact evidence. Do not claim MethodChannel PASS before owner returns real Vivo instrumentation output. No new device-install instructions have been issued; report artifact URL/checksums first, then guide ONE Terminal/ADB step at a time.
+
+Planned device phases (do not execute as a batch): confirm one authorized Vivo device; verify downloaded APK SHA256SUMS; install separate harness APK and test APK; run FlutterMethodChannelRuntimeTest contract phase; then persist-write, force-stop com.nuvikoz.edu.sec01test, persist-read. Record each command/output and count skipped tests as NOT RUN. Uninstall only the two .sec01test packages after completed verification. No macOS Flutter SDK needed.
+
+PR7 only. Main/PR6/PR8 unchanged; all PRs remain Draft/unmerged. No production activation, independent lost-factor reset, merge or deployment. NEXT SAFE TASK: verify exact-head hosted APKs, provide artifact URL and actual hashes, then wait for the owner after each single device step.
+
+# Historical SEC-01 evidence
+
 # SEC-01 Android build recovery — current checkpoint
 
 ChatGPT Work is now the sole development owner, including Android/Flutter/native security. Prior Gemini ownership assignments below are historical. PR7 remains Draft; no merge/deployment.

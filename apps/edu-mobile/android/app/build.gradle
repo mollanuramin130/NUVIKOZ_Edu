@@ -4,6 +4,11 @@ plugins {
     id "dev.flutter.flutter-gradle-plugin"
 }
 
+def sec01RuntimeHarness = providers.gradleProperty("sec01RuntimeHarness").orNull == "true"
+if (sec01RuntimeHarness && gradle.startParameter.taskNames.any { it.toLowerCase().contains("release") || it.toLowerCase().contains("profile") }) {
+    throw new GradleException("SEC-01 harness is debug-only")
+}
+
 android {
     namespace "com.nuvikoz.edu"
     compileSdk 35
@@ -30,6 +35,7 @@ android {
 
     buildTypes {
         debug {
+            if (sec01RuntimeHarness) applicationIdSuffix ".sec01test"
             signingConfig signingConfigs.debug
             minifyEnabled false
             shrinkResources false
@@ -39,6 +45,16 @@ android {
             minifyEnabled false
             shrinkResources false
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+        }
+    }
+
+    sourceSets {
+        if (sec01RuntimeHarness) {
+            debug {
+                java.srcDir "src/sec01Runtime/kotlin"
+                manifest.srcFile "src/sec01Runtime/AndroidManifest.xml"
+            }
+            androidTest.java.srcDir "src/sec01RuntimeAndroidTest/kotlin"
         }
     }
 }
