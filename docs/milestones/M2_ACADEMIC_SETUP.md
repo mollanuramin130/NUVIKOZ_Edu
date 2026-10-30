@@ -12,7 +12,7 @@ This milestone groups F015 (bounded future calendar), F018 (classes/sections/sub
 |---|---|---|---|
 | A | Future session and class catalog backend | Current School Admin + MFA, tenant-scoped listing, strict payloads, expiry, Demo caps, audit rollback, idempotency and real MariaDB races | INTEGRATION VERIFIED for supported backend slice atd0534d3; owner review pending |
 | B | Session offerings, sections, subjects | Composite tenant FKs, nullable deferred teacher, compulsory/optional subjects, no cross-session mixing | INTEGRATION VERIFIED at884ec68; teacher assignment deferred; full UI/mobile/owner acceptance pending |
-| C | Unified web academic setup | Approved A+B Hybrid; real API integration; responsive/keyboard/error/conflict states | IMPLEMENTED — hosted UI integration pending |
+| C | Unified web academic setup | Approved A+B Hybrid; real API integration; responsive/keyboard/error/conflict states | INTEGRATION VERIFIED atfdd7bee; actual UI screenshot review captured; owner acceptance pending |
 | D | Flutter setup/read workflow | Same contract; secured CI; milestone APK and meaningful device journey | NOT STARTED |
 
 No edit/delete/activate/close API exists in slice A. Sessions always start in `future`; no automatic activation is implied. Current/active boundary changes remain unavailable until platform approval workflow exists. A missing valid IANA school timezone denies future-session creation; this branch does not invent onboarding/timezone configuration. Class catalog remains independent of sessions.
@@ -69,3 +69,7 @@ Local web lint/typecheck/build and7 isolated client tests passed. Hosted8 new UI
 Planning credit after supported Slice C hosted integration passes: C80% ×25%=20%, added to A20+B28 gives M2~68%. F01835→60% partial planning credit and F0155→10% would yield overall~14.1% with denominator198 unchanged; not feature acceptance. Do not count Flutter academic UI, actual teacher assignment or missing platform calendar/onboarding prerequisites as complete.
 
 Slice D prerequisites: preserve SEC-01 MethodChannel device acceptance pending; define/review mobile academic authorization and privileged mobile MFA before introducing any school-admin token endpoints. Existing APIs are browser-only, so do not alias them to mobile bearer tokens or treat browser cookies as mobile credentials. Once those dependencies are approved and implemented, build typed Flutter academic workflows under unchanged isolated CI and group one meaningful device journey/APK checkpoint. No extra phone download for Slice C.
+
+## Executed Slice C acceptance evidence
+
+Implementationfdd7bee706ab724ace4bba02e2b257e945db2889: M1 run40939278449 API/Web/Flutter passed; Integrity40939278352 passed.149 MariaDB/994 assertions and24 independent races retained;28 real HTTPS journeys (8 new actual UI cases),7 isolated client tests,16 isolated Flutter tests, audits, formatting, migration cycle and web build passed. Actual desktop/mobile screenshots visually inspected and checksummed; tablet/mobile overflow and focused accessibility checks passed. No full accessibility certification, device or production acceptance inferred. See M2_SLICE_C_RESULTS.md. Current planning estimate M2~68%, overall~14.1%; UI owner review and Slice D remain pending. Final copy/handoff successor needs its own CI.
