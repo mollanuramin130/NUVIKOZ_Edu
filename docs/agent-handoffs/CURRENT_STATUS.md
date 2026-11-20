@@ -1,4 +1,13 @@
-# Current checkpoint — M2 Slice C web integration verified
+# Current checkpoint — M2 web review and dependency security refresh
+
+Updated 2026-11-20 (owner local date). Work is on `feature/m2-academic-setup`, [Draft PR #9](https://github.com/mollanuramin130/NUVIKOZ_Edu/pull/9). The prior published implementation `6863ba6` passed its own Foundation and Integrity runs. Desktop and mobile Sections screenshots were recovered from that run's API log, matched to the SHA-256 checksums in PR #9, and visually inspected. The screenshots show the selected session and class, section listing, and create form. This review covers the captured screens. Owner acceptance and a full accessibility review remain pending.
+
+- `380ef20` adds a Playwright regression in `apps/edu-web/tests/browser/academic.spec.ts` for revalidation on window focus, clearing unsaved academic form inputs, and the absence of a saved row. All 29 real HTTPS tests passed in [run 44785609722](https://github.com/mollanuramin130/NUVIKOZ_Edu/actions/runs/44785609722). That run's API job failed on the Composer dependency audit.
+- `d10e06deec0c8570f404c851201e91d5274a607e` updates `apps/edu-api/composer.lock` with Laravel 13.43.0 and Symfony HttpFoundation, HttpKernel and Routing 8.1.11. Composer updated only those four packages. Local `composer validate --strict` and `composer audit --locked` passed with zero advisories. Local PHPUnit discovered 149 tests, passed 125 with 817 assertions, and skipped the 24 MariaDB-only cases. This work includes no schema migration. Verify API, Web, Flutter and Repository Integrity on the published documentation successor before marking this checkpoint fully verified.
+
+Next task after CI is green: prepare the bounded school registration and review workflow (F007) from the approved requirements and tenant-readiness roadmap. Define its states, permissions, API contract and acceptance tests before implementation. The feature branch can continue independently of a merge. Separately, SEC-01 still needs real Android Flutter MethodChannel acceptance before privileged native academic workflows. No production deployment is authorized.
+
+# Historical evidence — M2 Slice C web integration
 
 Updated2026-10-30 (owner local date). Existing branch `feature/m2-academic-setup`, Draft PR9 https://github.com/mollanuramin130/NUVIKOZ_Edu/pull/9 remains Draft/unmerged. Verified implementation HEAD `fdd7bee706ab724ace4bba02e2b257e945db2889`; actual hosted M1 run40939278449 and Integrity40939278352 all passed. Local source mirrorc889006 has identical source tree; original Slice B local history remains in checkpoint/m2-slice-b-local-65a0d8a. Resolve actual remote HEAD/lease before any future publication; no force-push or stale file replacement. Final handoff/copy successor must pass its own CI.
 
