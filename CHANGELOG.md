@@ -1,5 +1,20 @@
 # Change log
 
+## Unreleased — M2 Slice C
+
+- Owner-approved hybrid academic workspace: secure real API sessions/classes/offerings/sections/subjects forms and lists, reusable responsive components and scoped design tokens.
+- Extend browser client with typed filters, cursor/key validation, in-memory idempotent intent and cancellation; add client boundary and actual UI HTTPS tests with synthetic screenshot evidence.
+
+## Unreleased — M2 Slice B
+
+- Add same-school future class offerings, sections, subject catalogs and required/optional subject offerings with composite FKs, idempotency, audit, bounded Demo caps and scoped cursor filters.
+- Defer actual teacher assignment; extend negative/security, independent MariaDB race and HTTPS browser coverage.
+
+## Unreleased — M2 academic setup checkpoint
+
+- Browser future-session/class catalog, serialized tenant/MFA/entitlement checks, idempotent commands and audit rollback; no academic UI acceptance claimed.
+- Additive academic catalog migration, focused security/MariaDB race/HTTPS tests, dependency roadmap, progress register and proposed UI direction.
+
 ## 2026-10-28 — Gate3 initialization
 
 - Created owner-authorized private repository,default branch main.

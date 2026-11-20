@@ -32,3 +32,6 @@ key.properties
 apps/edu-api/storage/**
 !apps/edu-api/storage/README.md
 apps/edu-api/bootstrap/cache/**
+
+# Synthetic UI evidence is uploaded by secured CI, never committed.
+/artifacts/academic-ui/

@@ -41,5 +41,5 @@ export default function ProtectedDashboard({ role }: { role: string }) {
   }
   if (error) return <main><h1>Unable to verify access</h1><p role="alert">{error}</p><button onClick={signOut}>Retry sign out</button><a href="/login">Sign in</a></main>;
   if (!identity) return <main><p role="status">Checking your session…</p></main>;
-  return <main><p>NUVIKOZ Edu</p><h1>{role.replaceAll('_', ' ')} dashboard</h1><p>School context: {identity.school_id}</p><p>Academic modules are not yet connected.</p>{role === 'school_admin' && <><a href="/assisted-recovery">Assisted password recovery</a><Link href="/security/permissions">School permissions</Link></>}<Link href="/profile/sessions">Sessions and devices</Link><button onClick={signOut}>Sign out</button></main>;
+  return <main><p>NUVIKOZ Edu</p><h1>{role.replaceAll('_', ' ')} dashboard</h1><p>School context: {identity.school_id}</p><p>{role === 'school_admin' ? 'Academic setup is available for your verified school context.' : 'Academic modules for this role are not yet connected.'}</p>{role === 'school_admin' && <><Link href="/academic">Academic setup</Link><a href="/assisted-recovery">Assisted password recovery</a><Link href="/security/permissions">School permissions</Link></>}<Link href="/profile/sessions">Sessions and devices</Link><button onClick={signOut}>Sign out</button></main>;
 }
