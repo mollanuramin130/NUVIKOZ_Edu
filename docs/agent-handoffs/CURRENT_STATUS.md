@@ -1,4 +1,14 @@
-# Current checkpoint — M2 web review and dependency security refresh
+# Current checkpoint — F007 registration intake
+
+Updated 2026-11-21 (owner local date). Branch: `feature/f007-registration-intake`, based on the verified Academic Setup branch at `491385b8a085049bb4162448f9cb98043d103bd2`. Verify the published branch head and hosted results before continuing.
+
+Implemented opt-in HTTPS application submission and private token-scoped status. The controller validates the current notice version, inserts a single registration request, and returns a one-time tracking token. Migration `2026_11_21_000009_create_registration_requests.php` adds the registration table plus unique tracking and duplicate digests. Route, configuration, local feature tests and intake API behavior are documented in [F007 registration intake](../api/F007_REGISTRATION_INTAKE.md). No school or account gets created.
+
+Local PHP 8.4.12 with disposable SQLite: Pint passed. PHPUnit discovered 152 tests, passed 128 with 840 assertions, and skipped 24 MariaDB-only tests. All three new intake cases passed. Hosted MariaDB and browser results are tracked in the pull request checks.
+
+Next task: implement the staff review queue and append-only review history using a current Platform Super Admin MFA context. Review the platform authentication dependency before assigning real review privileges. Public form, contact verification, privacy notice content, retention and production intake activation are still pending.
+
+# Prior checkpoint — M2 web review and dependency security refresh
 
 Updated 2026-11-20 (owner local date). Work is on `feature/m2-academic-setup`, [Draft PR #9](https://github.com/mollanuramin130/NUVIKOZ_Edu/pull/9). The prior published implementation `6863ba6` passed its own Foundation and Integrity runs. Desktop and mobile Sections screenshots were recovered from that run's API log, matched to the SHA-256 checksums in PR #9, and visually inspected. The screenshots show the selected session and class, section listing, and create form. This review covers the captured screens. Owner acceptance and a full accessibility review remain pending.
 
