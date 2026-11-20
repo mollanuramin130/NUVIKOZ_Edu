@@ -100,3 +100,25 @@ test('another tab context change discards a delayed private response and clears 
 test('revoked School Admin membership removes the actual academic workspace on revalidation',async({page,context})=>{
  await apiAdmin(context);await page.goto('/academic/subjects');await expect(page.getByRole('heading',{name:'Subjects & assignments'})).toBeVisible();execFileSync('php',[fixture,'academic-ui-revoke']);await page.evaluate(()=>window.dispatchEvent(new Event('focus')));await expect(page).toHaveURL(/session-expired/);await expect(page.getByRole('heading',{name:'Subjects & assignments'})).toHaveCount(0);
 });
+
+test('returning to the tab revalidates the session and clears the unsaved academic form', async ({page, context}) => {
+  await apiAdmin(context);
+  await page.goto('/academic/subjects');
+
+  const codeField = page.getByLabel('Subject code', {exact: true});
+  const nameField = page.getByLabel('Subject name', {exact: true});
+  await codeField.fill('UNSAVED_FOCUS');
+  await nameField.fill('Synthetic unsaved subject');
+  await expect(codeField).toHaveValue('UNSAVED_FOCUS');
+
+  const revalidation = page.waitForResponse(response =>
+    response.url() === `${api}/me` && response.request().method() === 'GET'
+  );
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  expect((await revalidation).status()).toBe(200);
+
+  await expect(codeField).toBeVisible();
+  await expect(codeField).toHaveValue('');
+  await expect(nameField).toHaveValue('');
+  await expect(page.getByRole('row').filter({hasText: 'UNSAVED_FOCUS'})).toHaveCount(0);
+});
