@@ -1,3 +1,9 @@
+# Phase 01 local PDF storage and conversion review
+
+2026-11-22 (Asia/Kolkata). WORK-P01-006 on `feature/m3-pdf-storage-lifecycle` directly from `c56784b89e388a4ba39497cae80ee27e56536212`. Adds local-only private PDF inspection, a capacity lock and recoverable inventory journal, expired quarantine cleanup, and academic record manifest checks for Demo conversion. The Platform application detail shows conflict and reservation counts. See the [implemented API contract](../api/F008_F010_ENTITLEMENTS_V1.md) for the migration and security boundary.
+
+PR #21 M1 Foundation and Repository Integrity passed, including 38 HTTPS browser tests on its test merge. This branch's local browser harness stopped at missing sudo. Production storage, malware isolation, verified purge and real activation delivery are pending. NEXT SAFE TASK: publish the reviewed branch and run exact-commit hosted CI without deployment.
+
 # Phase 01 Demo conversion and PDF reservation
 
 2026-11-22 (Asia/Kolkata). WORK-P01-005, branch `feature/m3-demo-live-lifecycle-completion`, directly based on `bf8b0e3897f1a1d583d2819d324181a4bffa5bf7`. Platform registration detail and entitlement service now support read-only preview and explicitly confirmed Demo conversion. School access stays suspended pending a separate enable action. Migration `2026_11_22_000015_create_school_pdf_reservations` adds internal pending, settlement and cancellation accounting. See the [implemented API contract](../api/F008_F010_ENTITLEMENTS_V1.md).

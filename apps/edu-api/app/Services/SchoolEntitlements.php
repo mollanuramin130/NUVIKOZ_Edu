@@ -45,7 +45,7 @@ class SchoolEntitlements
             'policy' => $grant?->policy,
             'starts_at' => $grant?->starts_at,
             'ends_at' => $grant?->ends_at,
-            'quota' => $grant?->policy === self::FREE['version'] ? self::FREE + $this->usage($school) : null,
+            'quota' => $grant?->policy === self::FREE['version'] ? self::FREE + $this->quotaSummary($school) : null,
             'history' => $this->events($school)->latest('sequence')->limit(25)->get(['action', 'actor_id', 'sequence', 'starts_at', 'ends_at', 'policy']),
         ];
     }
@@ -56,13 +56,51 @@ class SchoolEntitlements
         $eligible = $school->data_stage === 'demo' && $grant?->policy === 'demo-v1'
             && in_array($school->access_state, ['provisional', 'suspended'], true);
         $expires = now()->addMinutes(10)->timestamp;
-        $snapshot = $this->conversionSnapshot($school, $grant);
+        $review = $eligible ? $this->conversionRecords($school) : ['digest' => '', 'counts' => [], 'conflicts' => []];
+        $eligible = $eligible && $review['conflicts'] === [];
+        $snapshot = [$this->conversionSnapshot($school, $grant), $review['digest']];
 
         return [
             'eligible' => $eligible, 'demo_state' => $grant?->policy !== 'demo-v1' ? 'unassigned' : ($this->current($grant) ? 'current' : 'expired'),
+            'record_counts' => $review['counts'], 'conflicts' => $review['conflicts'],
             'access_after' => 'suspended', 'policy_after' => self::FREE['version'],
             'preview' => $eligible ? Crypt::encryptString(json_encode([$actor, $snapshot, $expires], JSON_THROW_ON_ERROR)) : null,
         ];
+    }
+
+    private function conversionRecords(School $school, bool $lock = false): array
+    {
+        $relationships = [
+            'academic_sessions' => [], 'classes' => [], 'subjects' => [],
+            'class_offerings' => ['session_id' => 'academic_sessions', 'class_id' => 'classes'],
+            'sections' => ['class_offering_id' => 'class_offerings'],
+            'subject_offerings' => ['class_offering_id' => 'class_offerings', 'subject_id' => 'subjects'],
+        ];
+        $hash = hash_init('sha256');
+        $ids = [];
+        $counts = [];
+        $conflicts = [];
+        foreach ($relationships as $table => $references) {
+            $query = DB::table($table)->where('school_id', $school->id)->orderBy('id');
+            $rows = ($lock ? $query->lockForUpdate() : $query)->get();
+            $counts[$table] = $rows->count();
+            $ids[$table] = [];
+            hash_update($hash, $table);
+            foreach ($rows as $row) {
+                $ids[$table][$row->id] = true;
+                hash_update($hash, json_encode($row, JSON_THROW_ON_ERROR));
+                foreach ($references as $field => $parent) {
+                    if (! isset($ids[$parent][$row->$field])) {
+                        $conflicts[] = ['table' => $table, 'id' => $row->id, 'field' => $field, 'code' => 'missing_school_reference'];
+                    }
+                }
+                if ($table === 'academic_sessions' && $row->starts_on > $row->ends_on) {
+                    $conflicts[] = ['table' => $table, 'id' => $row->id, 'field' => 'ends_on', 'code' => 'invalid_session_dates'];
+                }
+            }
+        }
+
+        return ['digest' => hash_final($hash), 'counts' => $counts, 'conflicts' => $conflicts];
     }
 
     private function conversionSnapshot(School $school, ?object $grant): array
@@ -78,9 +116,10 @@ class SchoolEntitlements
             abort(409, 'Refresh the conversion preview.');
         }
 
-        abort_unless($school->data_stage === 'demo' && $grant?->policy === 'demo-v1'
+        $review = $this->conversionRecords($school, true);
+        abort_unless($review['conflicts'] === [] && $school->data_stage === 'demo' && $grant?->policy === 'demo-v1'
             && in_array($school->access_state, ['provisional', 'suspended'], true)
-            && ($decoded[0] ?? null) === $actor && ($decoded[1] ?? null) === $this->conversionSnapshot($school, $grant)
+            && ($decoded[0] ?? null) === $actor && ($decoded[1] ?? null) === [$this->conversionSnapshot($school, $grant), $review['digest']]
             && ($decoded[2] ?? 0) > now()->timestamp, 409, 'Refresh the conversion preview.');
     }
 
@@ -175,6 +214,20 @@ class SchoolEntitlements
         }
 
         return $used + ['school_date' => $day, 'warning' => $used['bytes'] >= 400_000_000, 'storage_blocked' => $used['bytes'] >= self::FREE['max_total_bytes']];
+    }
+
+    private function quotaSummary(School $school): array
+    {
+        $usage = $this->usage($school);
+        $pending = $this->pending($school)->get(['bytes', 'active_delta', 'school_date']);
+        $usage['reserved_bytes'] = $pending->sum('bytes');
+        $usage['reserved_active'] = $pending->sum('active_delta');
+        $usage['reserved_daily'] = $pending->where('school_date', $usage['school_date'])->count();
+        $projected = $usage['bytes'] + $usage['reserved_bytes'];
+        $usage['warning'] = $projected >= 400_000_000;
+        $usage['storage_blocked'] = $projected >= self::FREE['max_total_bytes'];
+
+        return $usage;
     }
 
     private function requireFreeLive(School $school, string $actor): void

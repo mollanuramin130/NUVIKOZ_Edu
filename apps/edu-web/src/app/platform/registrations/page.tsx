@@ -15,7 +15,7 @@ const activationLabels: Record<string, string> = {
   delivered: 'Delivered · awaiting password setup', expired: 'Expired', revoked: 'Revoked',
   superseded: 'Superseded', consumed: 'Account activated',
 };
-type ConversionPreview = { eligible: boolean; demo_state: string; access_after: string; policy_after: string; preview: string | null };
+type ConversionPreview = { record_counts: Record<string, number>; conflicts: { table: string; id: string; field: string; code: string }[]; eligible: boolean; demo_state: string; access_after: string; policy_after: string; preview: string | null };
 type EntitlementAction = 'grant_demo' | 'grant_free_live' | 'enable' | 'suspend';
 const entitlementActions: Record<EntitlementAction, string> = {
   grant_demo: 'Grant 30-day Demo', grant_free_live: 'Grant Free Live', enable: 'Enable school access', suspend: 'Suspend school access',
@@ -24,7 +24,7 @@ type Detail = {
   entitlement: { policy: string | null; access: string; state: string; starts_at: string | null; ends_at: string | null;
     history: { sequence: number; action: EntitlementAction | 'convert_demo'; starts_at: string; actor_id: string }[];
     quota: { bytes: number; active: number; daily: number; school_date: string; warning: boolean; storage_blocked: boolean;
-      max_pdf_bytes: number; max_active_pdfs: number; max_daily_pdfs: number; max_total_bytes: number } | null } | null;
+      reserved_bytes: number; reserved_active: number; reserved_daily: number; max_pdf_bytes: number; max_active_pdfs: number; max_daily_pdfs: number; max_total_bytes: number } | null } | null;
   activation: { state: string; delivery_configured: boolean; history: { sequence: number; state: string; operation: string; expires_at: string | null; created_at: string; actor_id: string }[] };
   provisioning: { school_id: string; code: string; created_at: string; actor_user_id: string; activation_state: string } | null;
   registration: Row & { contact_name: string; contact: string; notice_version: string };
@@ -222,6 +222,7 @@ export default function ReviewQueue() {
           {quota && <><dl><dt>Stored PDF bytes</dt><dd>{quota.bytes.toLocaleString()} / {quota.max_total_bytes.toLocaleString()}</dd>
             <dt>Active PDFs</dt><dd>{quota.active} / {quota.max_active_pdfs}</dd>
             <dt>New PDFs today ({quota.school_date})</dt><dd>{quota.daily} / {quota.max_daily_pdfs}</dd>
+            <dt>Pending reservations</dt><dd>{quota.reserved_bytes.toLocaleString()} bytes · {quota.reserved_active} active slots · {quota.reserved_daily} today</dd>
             <dt>Per PDF</dt><dd>{quota.max_pdf_bytes.toLocaleString()} bytes</dd></dl>
             {quota.storage_blocked ? <p role="status">Storage limit reached.</p> : quota.warning && <p role="status">Storage usage is at least 80%.</p>}</>}
           {activation?.state === 'consumed' && <form onSubmit={event => {
@@ -248,6 +249,16 @@ export default function ReviewQueue() {
           </form>}
           {entitlement.policy === 'demo-v1' && activation?.state === 'consumed' &&
             <button type="button" disabled={busy} onClick={() => void previewConversion()}>Preview Free Live conversion</button>}
+          {conversion && Object.keys(conversion.record_counts).length > 0 && <dl>
+            {Object.entries(conversion.record_counts).map(([table, count]) =>
+              <div key={table}><dt>{table.replaceAll('_', ' ')}</dt><dd>{count}</dd></div>)}
+          </dl>}
+          {conversion && conversion.conflicts.length > 0 && <div role="alert">
+            <h4>Resolve these record conflicts before conversion</h4>
+            <ul>{conversion.conflicts.map(conflict => <li key={`${conflict.table}:${conflict.id}:${conflict.field}`}>
+              {conflict.table.replaceAll('_', ' ')} · {conflict.id} · {conflict.code.replaceAll('_', ' ')}
+            </li>)}</ul>
+          </div>}
           {conversion && (conversion.eligible && conversion.preview ? <form onSubmit={event => {
             event.preventDefault();
             const days = Number(new FormData(event.currentTarget).get('conversion-days'));
