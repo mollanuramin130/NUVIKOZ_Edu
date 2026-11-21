@@ -1,3 +1,47 @@
+# Current checkpoint — AG-P00-003: Cross-Agent Source Synchronization & Premium Android Development Readiness
+
+2026-11-21 (Asia/Kolkata).
+Branches:
+- Mobile Client: `feature/m2-mobile-android-implementation` (HEAD commit `902d1f9` Stacks on `origin/feature/staging-staff-activation` `94d1554`).
+- Mobile Backend API: `feature/m2-mobile-academic-backend-api` (HEAD commit `eb75181` Stacks on `origin/feature/staging-staff-activation` `94d1554`).
+- Cross-Agent Handoff Reference: `WORK-P00-003 / WORK-P00-003-PUBLICATION` (reported integration baseline commit `7eb24d4` on unpushed `integration/edu-development-baseline`).
+
+### Implemented Architecture, Handoff & Test Evidence:
+1. **Source Verification & Work Mode Baseline Audit (AG-P00-003)**:
+   - Verified local and remote git logs: Reported Work Mode commit `7eb24d422f1fb94e8897b99c3ec5e8825a6ffa1c` and branch `integration/edu-development-baseline` do **not exist** in local workspace or remote GitHub origin (`git cat-file: object does not exist`).
+   - Synchronization status marked `BLOCKED` on remote publication by ChatGPT Work.
+   - Mobile Android implementation preserves all 9 local commits (`902d1f9`) with zero regression.
+
+2. **Two-Way Code Handoff & Verified Portable Bundles**:
+   - Generated and verified portable Git bundles in artifact directory for offline/cross-agent import:
+     - `mobile_android_implementation.bundle`: Contains all 9 commits on `feature/m2-mobile-android-implementation` (`902d1f9`) based on `94d1554`.
+     - `mobile_academic_backend.bundle`: Contains commit `eb75181` on `feature/m2-mobile-academic-backend-api` based on `94d1554`.
+   - Contract documentation published in `AG_P00_003_HANDOFF_REPORT.md`:
+     - Base URL: `https://edu-api-staging.nuvikoz.com/api/v1`
+     - Auth: School token capability guard, `DeviceSession` parsing, atomic logout with Keystore eradication.
+     - Storage: Hardware-backed Android Keystore AES-256-GCM (`nuvikoz.edu/secure-token-store:v1` UTF-8 AAD).
+     - Device MFA: `GET /api/v1/security/mfa/status` & `POST /api/v1/security/mfa/challenge` with `device_mfa_assurance:{$token->id}` cache.
+     - Academic Setup: 6 resource modules matching `AcademicCatalog::KINDS` with `Idempotency-Key` UUID v4 headers.
+
+3. **Backend Contract Categorization (Section 4 A–D)**:
+   - **Category A (Work Baseline Device Auth)**: Available in baseline (`/auth/login`, `/me`, `/auth/logout`, `/security/devices`, `/schools/{id}`). Compatible and verified.
+   - **Category B (Browser-Only Academic API)**: `routes/browser.php` (`/api/v1/browser/academic/{kind}`) protected by `BrowserSession::class`. Incompatible with mobile bearer tokens (prohibited per M1 contract line 33).
+   - **Category C (Separate Mobile Academic API)**: Implemented in branch `feature/m2-mobile-academic-backend-api` (`eb75181`) under `/api/v1/academic/{kind}` and `/api/v1/security/mfa/*`. **Must be merged into the central backend baseline by ChatGPT Work**.
+   - **Category D (New Phase 01 Onboarding)**: Unpushed on `feature/m3-platform-school-onboarding`. Deferred in mobile pending publication.
+
+4. **Test Suite & Physical Device Verification**:
+   - `flutter analyze --no-pub`: **0 issues found** (Clean).
+   - `flutter test --no-pub`: **27/27 PASSED** (0 failures).
+   - Native Android unit tests: `./gradlew testDebugUnitTest` **34 tasks PASSED** (`BUILD SUCCESSFUL`).
+   - Physical device: **OPPO F25 Pro** (`CPH2603`, Android 16, Serial `EM9D5L998XB6599H`) verified.
+
+5. **GitHub Publication & Freeze Status**:
+   - `git push --dry-run` confirmed HTTP 403 (PAT lacking write permissions). Local commits cleanly preserved.
+   - Development freeze active: No Hostinger deployment, no hosted db migration, no main merge, no Nursery modification.
+   - `READY_FOR_AG_P01_001: NO` until ChatGPT Work publishes `integration/edu-development-baseline` (incorporating commit `eb75181`) and Owner confirms mobile registration scope.
+
+NEXT SAFE TASK: ChatGPT Work publishes `integration/edu-development-baseline` to remote repository, Owner updates GitHub PAT write scope and pushes local feature branches, and Owner confirms mobile registration scope.
+
 # Current checkpoint — AG-P00-002: Cross-Agent Code Synchronization, Premium UI Contract Alignment & Phase 01 Readiness
 
 2026-11-21 (Asia/Kolkata).
