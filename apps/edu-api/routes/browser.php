@@ -88,6 +88,8 @@ Route::prefix('api/v1/browser/platform')->middleware(PlatformBrowser::class)->gr
         Route::post('/registrations/{registration}/review', [PlatformRegistrationController::class, 'review'])->whereUlid('registration')->middleware('throttle:20,1,platform-registration-review:');
         Route::post('/registrations/{registration}/provision', [PlatformRegistrationController::class, 'provision'])->whereUlid('registration')->middleware('throttle:20,1,platform-registration-provision:');
         Route::post('/registrations/{registration}/entitlement', [PlatformRegistrationController::class, 'entitlement'])->whereUlid('registration')->middleware('throttle:20,1,platform-school-entitlement:');
+        Route::get('/registrations/{registration}/conversion', [PlatformRegistrationController::class, 'conversionPreview'])->whereUlid('registration')->middleware('throttle:30,1,school-conversion-preview:');
+        Route::post('/registrations/{registration}/conversion', [PlatformRegistrationController::class, 'finalizeConversion'])->whereUlid('registration')->middleware('throttle:10,1,school-conversion-finalize:');
         Route::post('/registrations/{registration}/activation/{operation}', [PlatformRegistrationController::class, 'activation'])
             ->whereUlid('registration')->whereIn('operation', ['issue', 'reissue', 'revoke'])->middleware('throttle:10,1,platform-school-activation:');
         Route::post('/mfa/enrollment', [PlatformBrowserController::class, 'enroll']);

@@ -15,13 +15,14 @@ const activationLabels: Record<string, string> = {
   delivered: 'Delivered · awaiting password setup', expired: 'Expired', revoked: 'Revoked',
   superseded: 'Superseded', consumed: 'Account activated',
 };
+type ConversionPreview = { eligible: boolean; demo_state: string; access_after: string; policy_after: string; preview: string | null };
 type EntitlementAction = 'grant_demo' | 'grant_free_live' | 'enable' | 'suspend';
 const entitlementActions: Record<EntitlementAction, string> = {
   grant_demo: 'Grant 30-day Demo', grant_free_live: 'Grant Free Live', enable: 'Enable school access', suspend: 'Suspend school access',
 };
 type Detail = {
   entitlement: { policy: string | null; access: string; state: string; starts_at: string | null; ends_at: string | null;
-    history: { sequence: number; action: EntitlementAction; starts_at: string; actor_id: string }[];
+    history: { sequence: number; action: EntitlementAction | 'convert_demo'; starts_at: string; actor_id: string }[];
     quota: { bytes: number; active: number; daily: number; school_date: string; warning: boolean; storage_blocked: boolean;
       max_pdf_bytes: number; max_active_pdfs: number; max_daily_pdfs: number; max_total_bytes: number } | null } | null;
   activation: { state: string; delivery_configured: boolean; history: { sequence: number; state: string; operation: string; expires_at: string | null; created_at: string; actor_id: string }[] };
@@ -42,10 +43,11 @@ export default function ReviewQueue() {
   const [page, setPage] = useState<Page>();
   const [filters, setFilters] = useState<{ search?: string; state?: string }>({});
   const [detail, setDetail] = useState<Detail>();
+  const [conversion, setConversion] = useState<ConversionPreview>();
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState('');
   const [feedback, setFeedback] = useState('');
-  const [command, setCommand] = useState<{ state: Decision; note: string; command_id: string } | { state: 'provision' | ActivationAction; command_id: string } | { state: 'entitlement'; action: EntitlementAction; term_days?: number; command_id: string }>();
+  const [command, setCommand] = useState<{ state: Decision; note: string; command_id: string } | { state: 'provision' | ActivationAction; command_id: string } | { state: 'conversion'; preview: string; term_days: number; command_id: string } | { state: 'entitlement'; action: EntitlementAction; term_days?: number; command_id: string }>();
   const pending = useRef<AbortController | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
 
@@ -56,6 +58,7 @@ export default function ReviewQueue() {
     setBusy(true);
     setError('');
     setDetail(undefined);
+    setConversion(undefined);
     setPage(undefined);
     try {
       const data = await browserRequest<Page>('platform/registrations', undefined, { query, signal: request.signal });
@@ -83,7 +86,7 @@ export default function ReviewQueue() {
     pending.current?.abort();
     const request = new AbortController();
     pending.current = request;
-    setBusy(true); setError(''); setFeedback(''); setDetail(undefined);
+    setBusy(true); setError(''); setFeedback(''); setDetail(undefined); setConversion(undefined);
     try {
       const data = await browserRequest<Detail>(`platform/registrations/${id}`, undefined, { signal: request.signal });
       if (!request.signal.aborted) setDetail(data);
@@ -111,6 +114,20 @@ export default function ReviewQueue() {
     dialog.current?.showModal();
   }
 
+  async function previewConversion() {
+    if (!detail || busy) return;
+    pending.current?.abort();
+    const request = new AbortController();
+    pending.current = request;
+    setBusy(true); setError(''); setConversion(undefined);
+    try {
+      const result = await browserRequest<ConversionPreview>(`platform/registrations/${detail.registration.id}/conversion`, undefined, { signal: request.signal });
+      if (!request.signal.aborted) setConversion(result);
+    } catch (failure) {
+      if (!request.signal.aborted) setError(message(failure));
+    } finally { if (!request.signal.aborted) setBusy(false); }
+  }
+
   async function commit() {
     if (!detail || !command || busy) return;
     pending.current?.abort();
@@ -121,12 +138,13 @@ export default function ReviewQueue() {
       const reviewing = 'note' in command;
       const provisioning = command.state === 'provision';
       const entitlement = command.state === 'entitlement';
-      const endpoint = reviewing ? 'review' : provisioning ? 'provision' : entitlement ? 'entitlement' : `activation/${command.state}`;
-      await browserRequest(`platform/registrations/${detail.registration.id}/${endpoint}`, reviewing ? command : entitlement ? { action: command.action, term_days: command.term_days, command_id: command.command_id } : { command_id: command.command_id }, { signal: request.signal });
+      const converting = command.state === 'conversion';
+      const endpoint = reviewing ? 'review' : provisioning ? 'provision' : entitlement ? 'entitlement' : converting ? 'conversion' : `activation/${command.state}`;
+      await browserRequest(`platform/registrations/${detail.registration.id}/${endpoint}`, reviewing ? command : converting ? { preview: command.preview, term_days: command.term_days, confirmed: true, command_id: command.command_id } : entitlement ? { action: command.action, term_days: command.term_days, command_id: command.command_id } : { command_id: command.command_id }, { signal: request.signal });
       if (request.signal.aborted) return;
       dialog.current?.close();
       setCommand(undefined);
-      setFeedback(provisioning ? 'School provisioned. Access is pending activation.' : reviewing ? 'Review decision recorded.' : entitlement ? 'Entitlement action recorded.' : 'Activation action recorded.');
+      setFeedback(provisioning ? 'School provisioned. Access is pending activation.' : reviewing ? 'Review decision recorded.' : converting ? 'Converted to Free Live. School access is suspended.' : entitlement ? 'Entitlement action recorded.' : 'Activation action recorded.');
       await load(filters);
     } catch (failure) {
       if (!request.signal.aborted) {
@@ -228,8 +246,23 @@ export default function ReviewQueue() {
             <label htmlFor="entitlement-days">Term days (Free Live only)</label><input id="entitlement-days" name="entitlement-days" type="number" min={1} max={365} />
             <div className="onboard-actions"><button disabled={busy}>Review entitlement action</button></div>
           </form>}
+          {entitlement.policy === 'demo-v1' && activation?.state === 'consumed' &&
+            <button type="button" disabled={busy} onClick={() => void previewConversion()}>Preview Free Live conversion</button>}
+          {conversion && (conversion.eligible && conversion.preview ? <form onSubmit={event => {
+            event.preventDefault();
+            const days = Number(new FormData(event.currentTarget).get('conversion-days'));
+            if (!conversion.preview || !Number.isInteger(days) || days < 1 || days > 365) return;
+            setCommand({ state: 'conversion', preview: conversion.preview, term_days: days, command_id: crypto.randomUUID() });
+            dialog.current?.showModal();
+          }}>
+            <p role="status">Demo is {conversion.demo_state}. School records stay in place. Shared samples stay in the library.
+              Access after conversion is {conversion.access_after}.</p>
+            <label htmlFor="conversion-days">Free Live term (days)</label>
+            <input id="conversion-days" name="conversion-days" type="number" required min={1} max={365} />
+            <button disabled={busy}>Review conversion</button>
+          </form> : <p role="status">This school is not eligible for conversion.</p>)}
           {entitlement.history.length ? <ol>{entitlement.history.map(item => <li key={item.sequence}>
-            {entitlementActions[item.action]} · {item.starts_at} · {item.actor_id}</li>)}</ol> : <p>No entitlement actions yet.</p>}
+            {item.action === 'convert_demo' ? 'Converted Demo to Free Live' : entitlementActions[item.action]} · {item.starts_at} · {item.actor_id}</li>)}</ol> : <p>No entitlement actions yet.</p>}
         </section>}
         <h3>Review history</h3>
         {detail.history.length ? <ol>{detail.history.map(entry => <li key={entry.id}><strong>{entry.from_state} → {entry.to_state}</strong>
@@ -242,7 +275,7 @@ export default function ReviewQueue() {
       <dialog ref={dialog} aria-labelledby="decision-heading" onCancel={event => { if (busy) event.preventDefault(); }}>
         <h2 id="decision-heading">Confirm decision</h2>
         <p hidden={!command || !('note' in command)}>Change {detail?.registration.organization_name} to <strong>{command?.state}</strong>?</p>
-        <p>{command?.state === 'provision' ? 'Create a suspended school and inactive School Admin. Activation and entitlements remain pending.' : command?.state === 'entitlement' ? entitlementActions[command.action] : command && !('note' in command) ? `Confirm ${command.state} for the initial School Admin proof. School access remains suspended.` : 'This records an application decision. Provisioning and access activation are separate.'}</p>
+        <p>{command?.state === 'provision' ? 'Create a suspended school and inactive School Admin. Activation and entitlements remain pending.' : command?.state === 'conversion' ? `Convert to Free Live for ${command.term_days} days. School access will be suspended until separately enabled.` : command?.state === 'entitlement' ? entitlementActions[command.action] : command && !('note' in command) ? `Confirm ${command.state} for the initial School Admin proof. School access remains suspended.` : 'This records an application decision. Provisioning and access activation are separate.'}</p>
         {error && <p role="alert" className="onboard-error">{error}</p>}
         <div className="onboard-actions"><button className="onboard-secondary" disabled={busy} onClick={() => dialog.current?.close()}>Cancel</button>
           <button disabled={busy} onClick={() => void commit()}>{busy ? 'Saving…' : 'Confirm decision'}</button></div>

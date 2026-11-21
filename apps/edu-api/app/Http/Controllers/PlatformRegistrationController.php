@@ -167,11 +167,25 @@ class PlatformRegistrationController extends Controller
         }, 3);
     }
 
-    public function entitlement(Request $request, string $registration): JsonResponse
+    public function conversionPreview(Request $request, string $registration): JsonResponse
+    {
+        $this->authorizeReview($request);
+        abort_unless($request->query() === [], 422);
+        $link = DB::table('school_provisionings')->where('registration_id', $registration)->firstOrFail();
+
+        return Api::ok(app(SchoolEntitlements::class)->conversionPreview(School::findOrFail($link->school_id), $request->user()->id));
+    }
+
+    public function finalizeConversion(Request $request, string $registration): JsonResponse
+    {
+        return $this->entitlement($request, $registration, true);
+    }
+
+    public function entitlement(Request $request, string $registration, bool $conversion = false): JsonResponse
     {
         $this->authorizeReview($request);
         abort_unless($request->isJson(), 415);
-        abort_if(strlen($request->getContent()) > 1024, 413);
+        abort_if(strlen($request->getContent()) > ($conversion ? 4096 : 1024), 413);
         abort_unless($request->query() === [], 422);
         $input = $request->json()->all();
         $rules = [
@@ -179,8 +193,18 @@ class PlatformRegistrationController extends Controller
             'command_id' => ['required', 'uuid'],
             'term_days' => ['required_if:action,grant_free_live', 'prohibited_unless:action,grant_free_live', 'integer', 'between:1,365'],
         ];
+        if ($conversion) {
+            unset($rules['action']);
+            $rules['term_days'] = ['required', 'integer', 'between:1,365'];
+            $rules['preview'] = ['required', 'string', 'max:3000'];
+            $rules['confirmed'] = ['required', 'accepted'];
+            abort_unless(($input['confirmed'] ?? null) === true, 422);
+        }
         abort_unless(array_diff_key($input, $rules) === [], 422);
         $command = Validator::make($input, $rules)->validate();
+        if ($conversion) {
+            $command['action'] = 'convert_demo';
+        }
         if (isset($command['term_days'])) {
             $command['term_days'] = (int) $command['term_days'];
         }

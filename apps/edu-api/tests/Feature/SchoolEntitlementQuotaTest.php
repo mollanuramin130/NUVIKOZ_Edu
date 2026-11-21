@@ -6,6 +6,7 @@ use App\Models\Membership;
 use App\Models\School;
 use App\Models\User;
 use App\Services\SchoolEntitlements;
+use Illuminate\Database\RecordNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -73,6 +74,53 @@ class SchoolEntitlementQuotaTest extends TestCase
         $deny(fn () => $service->admitPdf($school->id, $document, 1, (string) Str::uuid(), $outsider->id, 'quota-test'), 403);
         $school->update(['access_state' => 'suspended']);
         $deny(fn () => $admit($document, 1), 403);
+    }
+
+    public function test_reservations_expire_cancel_and_settle_once_using_current_local_day(): void
+    {
+        $this->travelTo(Carbon::parse('2026-11-21 18:29:59 UTC'));
+        $actor = User::create(['name' => 'Synthetic actor', 'password' => Str::random(32)]);
+        $school = $this->freeSchool('RESERVE-A', $actor);
+        $other = $this->freeSchool('RESERVE-B', $actor);
+        $service = app(SchoolEntitlements::class);
+        $reserve = fn (string $id, ?string $doc = null) => $service->reservePdf($school->id, $doc ?? (string) Str::ulid(), 500, $id, $actor->id, 'reserve-test');
+        $key = (string) Str::uuid();
+        $doc = (string) Str::ulid();
+        $this->assertFalse($reserve($key, $doc)['replayed']);
+        $this->assertTrue($reserve($key, $doc)['replayed']);
+        $this->travel(1)->seconds();
+        $this->assertRejected(fn () => $service->settlePdf($other->id, $key, $actor->id, 400, 'application/pdf', 'settle-test'), 404);
+        $this->assertRejected(fn () => $service->settlePdf($school->id, $key, $actor->id, 400, 'text/plain', 'settle-test'), 422);
+        $this->assertRejected(fn () => $service->settlePdf($school->id, $key, $actor->id, 501, 'application/pdf', 'settle-test'), 409);
+        $this->assertFalse($service->settlePdf($school->id, $key, $actor->id, 400, 'application/pdf', 'settle-test')['replayed']);
+        $this->assertTrue($service->settlePdf($school->id, $key, $actor->id, 400, 'application/pdf', 'settle-test')['replayed']);
+        $this->assertDatabaseHas('school_pdf_admissions', ['school_id' => $school->id, 'bytes' => 400, 'school_date' => '2026-11-22']);
+        $this->assertRejected(fn () => $service->cancelPdf($school->id, $key, $actor->id, 'cancel'), 409);
+        $keys = [];
+        for ($i = 0; $i < 9; $i++) {
+            $keys[] = $id = (string) Str::uuid();
+            $reserve($id);
+        }
+        $this->assertRejected(fn () => $reserve((string) Str::uuid()), 409);
+        $service->cancelPdf($school->id, $keys[0], $actor->id, 'cancel');
+        $service->cancelPdf($school->id, $keys[0], $actor->id, 'cancel');
+        $this->assertSame(1, DB::table('audit_events')->where('action', 'school.quota.cancelled')->count());
+        $expiring = (string) Str::uuid();
+        $reserve($expiring);
+        $this->travel(15)->minutes();
+        $this->assertRejected(fn () => $service->settlePdf($school->id, $expiring, $actor->id, 400, 'application/pdf', 'settle-test'), 409);
+        $this->assertFalse($reserve((string) Str::uuid())['replayed']);
+        $this->assertSame(400, $service->summary($school)['quota']['bytes']);
+    }
+
+    private function assertRejected(callable $operation, int $status): void
+    {
+        try {
+            $operation();
+            $this->fail('The operation unexpectedly succeeded.');
+        } catch (RecordNotFoundException|HttpException $error) {
+            $this->assertSame($status, $error instanceof HttpException ? $error->getStatusCode() : 404);
+        }
     }
 
     private function freeSchool(string $code, User $actor): School

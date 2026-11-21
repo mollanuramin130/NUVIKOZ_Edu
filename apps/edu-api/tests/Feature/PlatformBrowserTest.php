@@ -234,10 +234,24 @@ class PlatformBrowserTest extends TestCase
         $this->browser('POST', $detail.'/entitlement', $grantDemo)->assertOk()->assertJsonPath('data.replayed', true);
         $this->browser('POST', $detail.'/entitlement', ['command_id' => (string) Str::uuid(), 'action' => 'enable'])
             ->assertOk()->assertJsonPath('data.entitlement.access', 'provisional');
+        $preview = $this->browser('GET', $detail.'/conversion')->assertOk()->assertJsonPath('data.eligible', true);
+        $this->assertDatabaseCount('school_entitlement_events', 2);
+        $finish = ['command_id' => (string) Str::uuid(), 'preview' => $preview->json('data.preview'), 'confirmed' => true, 'term_days' => 30];
+        $this->browser('POST', $detail.'/conversion', array_replace($finish, ['confirmed' => false]))->assertUnprocessable();
+        $this->browser('POST', $detail.'/entitlement', ['command_id' => (string) Str::uuid(), 'action' => 'suspend'])->assertOk();
+        $this->browser('POST', $detail.'/conversion', $finish)->assertConflict();
         $end = DB::table('schools')->where('id', $school)->value('demo_ends_at');
         $this->travelTo(Carbon::parse($end));
         $this->assertSame('expired', app(SchoolEntitlements::class)->summary(School::findOrFail($school))['state']);
         $this->travelBack();
+        $fresh = $this->browser('GET', $detail.'/conversion')->assertOk()->json('data.preview');
+        $finish['preview'] = $fresh;
+        $this->browser('POST', $detail.'/conversion', $finish)->assertOk()
+            ->assertJsonPath('data.entitlement.policy', 'free-live-v1')->assertJsonPath('data.entitlement.access', 'suspended');
+        $this->browser('POST', $detail.'/conversion', $finish)->assertOk()->assertJsonPath('data.replayed', true);
+        $this->browser('POST', $detail.'/conversion', array_replace($finish, ['command_id' => (string) Str::uuid()]))->assertConflict();
+        $this->assertDatabaseHas('schools', ['id' => $school, 'data_stage' => 'live', 'access_state' => 'suspended']);
+        $this->assertSame(1, DB::table('school_entitlement_events')->where('action', 'convert_demo')->count());
         $this->browser('POST', 'platform/logout')->assertOk();
         $this->browser('GET', $detail)->assertUnauthorized();
     }
