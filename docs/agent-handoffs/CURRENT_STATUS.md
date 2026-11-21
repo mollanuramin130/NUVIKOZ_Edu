@@ -1,3 +1,48 @@
+# Current checkpoint — M2 mobile Android architecture, native Keystore & academic implementation
+
+2026-11-21 (Asia/Kolkata). Dedicated mobile branch `feature/m2-mobile-android-implementation` created from verified baseline `origin/feature/staging-staff-activation` (`94d155452adf777f08768cc7ff02d9f3ea8787df`), integrating reviewed SEC-01 Android Keystore native security from PR #7.
+
+### Implemented Mobile Architecture & Deliverables:
+1. **Android Native Security Foundation (SEC-01 Integration)**:
+   - Hardware-backed Android Keystore vault (`SecureTokenVault.kt`) using AES/GCM/NoPadding (256-bit key, 12-byte IV, UTF-8 AAD `nuvikoz.edu/secure-token-store:v1`), zeroing arrays, `AtomicFile` persistence in `noBackupFilesDir`.
+   - Native MethodChannel (`nuvikoz.edu/secure-token-store`) in `MainActivity.kt` with coroutines on `Dispatchers.IO` and fail-closed error handling.
+   - Network security config (`network_security_config.xml`) enforcing HTTPS only, system trust anchors, with cleartext strictly restricted to local loopback/emulator.
+   - Gradle wrapper 8.14, AGP 8.11.1, Kotlin 2.2.20, Temurin OpenJDK 17.0.21.
+   - Local properties configured for Android SDK and Flutter SDK 3.47.8.
+   - Native unit tests: `SecureTokenVaultTest.kt` passed with `./gradlew testDebugUnitTest` (33 tasks, BUILD SUCCESSFUL).
+   - Debug APK assembled: `apps/edu-mobile/build/app/outputs/apk/debug/app-debug.apk` (158 MB, SHA256: `2c5680ba087edd134a4e8fc32f0c608cfa6e1969cbc09fb7ea9dc1fca9761021`).
+
+2. **Executive Enterprise + Modern EdTech Design System**:
+   - Palette: Deep Navy (`#10283F`), Primary Blue (`#164C8C`), Premium Teal (`#087B79`), Light Background (`#F3F6FB`), Primary Text (`#172B45`), White Surface (`#FFFFFF`).
+   - Material 3 theme (`AppTheme.lightTheme`) with customized input decoration, cards, buttons, status badges, and typography.
+   - Reusable UI components: `AppCard`, `StatusBadge`, `EmptyStateView`, `ErrorBanner`.
+
+3. **Authentication & Session Lifecycle (AUTH-09)**:
+   - Polished `LoginScreen` with school code, account identifier, password obscure toggle, inline validation, and hardware Keystore security indicators.
+   - Staging API connection configured to `https://edu-api-staging.nuvikoz.com` via `AppConfig`.
+   - `DeviceSession` parsing, role badges, expiry tracking, school context validation, and atomic logout/revocation.
+   - `SecurityScreen` with active device sessions list (`/api/v1/security/devices`) and password-confirmed device revocation (`/api/v1/security/devices/{id}/revoke`).
+
+4. **Academic Setup Modules (M2 Mobile Parity)**:
+   - Full support for all 6 academic catalog resources matching `AcademicCatalog.php`:
+     1. Academic Sessions (`sessions`): name, starts_on, ends_on, state, version
+     2. Classes (`classes`): name, grade_label, sort_order, version
+     3. Class Offerings (`class-offerings`): session_id, class_id, version
+     4. Sections (`sections`): class_offering_id, name, version
+     5. Subjects (`subjects`): code, name, version
+     6. Subject Offerings (`subject-offerings`): class_offering_id, subject_id, compulsory, version
+   - `AcademicWorkspaceScreen` with 6-tab navigation, context selectors (Session context, Offering context), list items, status badges, and bottom-sheet creation forms with validation.
+   - `HttpAcademicRepository` enforcing `Idempotency-Key` headers (UUID 32-char), bearer token, `X-School-ID`, and structured `ApiFailure` error mapping.
+   - `AcademicController` managing state, filters, creation flows, and error handling.
+   - Security boundary enforced: privileged operations guidance shown; browser-only MFA requirement clearly communicated.
+
+5. **Test Results**:
+   - Native Android unit tests: `./gradlew testDebugUnitTest` PASSED (33 actionable tasks executed).
+   - Flutter static analysis: `flutter analyze --no-pub` PASSED with 0 issues.
+   - Flutter test suite: `flutter test --no-pub` PASSED 23/23 tests (including widget tests, transport tests, API client tests, auth controller tests, academic repository tests, and academic controller tests).
+
+NEXT SAFE TASK: Owner emulator/device launch and staging smoke test with synthetic accounts, followed by owner review of this feature branch.
+
 # Staging Principal and Teacher activation
 
 2026-11-21 (Asia/Kolkata). Branch `feature/staging-staff-activation` stacks on `feature/staging-school-admin-proof-reissue` at `9cf1d93f564fa8a306328bd39dcbd9600d0d7ebe`. Adds an opt-in sealed activation handoff for one synthetic staging tenant, a gated School Admin form for provisioning/reissue, and the [staging access runbook](../deployment/STAGING_FIRST_SCHOOL_ADMIN.md#synthetic-principal-and-teacher-access). Production delivery, privileged device access and MFA behavior remain unchanged. Schema and migration files are unchanged.

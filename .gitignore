@@ -28,6 +28,8 @@ key.properties
 *.tsbuildinfo
 **/.flutter-plugins-dependencies
 **/.packages
+.idea/
+apps/edu-mobile/.idea/
 
 apps/edu-api/storage/**
 !apps/edu-api/storage/README.md
