@@ -156,4 +156,109 @@ class InitialSchoolAdminTest extends TestCase
             $this->assertDatabaseCount('audit_events', 1);
         }
     }
+
+    private function replacement(array $data, array $changes = []): array
+    {
+        $secret = bin2hex(random_bytes(32));
+        $payload = array_replace([
+            'school_code' => $data['school_code'],
+            'previous_proof_id' => $data['proof_id'],
+            'proof_id' => (string) Str::ulid(),
+            'secret_hash' => hash('sha256', $secret),
+            'expires_at' => now()->addMinutes(15)->timestamp,
+        ], $changes);
+        $manifest = json_encode($payload, JSON_THROW_ON_ERROR);
+        config(['staging-bootstrap.approval_digest' => hash('sha256', $manifest)]);
+
+        return [$manifest, array_replace($data, ['proof_id' => $payload['proof_id'], 'secret' => $secret])];
+    }
+
+    public function test_reissue_replaces_expired_proof_without_creating_another_identity(): void
+    {
+        [$manifest, $old] = $this->approval();
+        $service = app(InitialSchoolAdmin::class);
+        $service->initialize($manifest);
+        $member = Membership::sole();
+        $this->travel(16)->minutes();
+        [$replacement, $new] = $this->replacement($old);
+        $service->reissue($replacement);
+
+        $this->assertDatabaseCount('schools', 1);
+        $this->assertDatabaseCount('users', 2);
+        $this->assertDatabaseCount('memberships', 1);
+        $this->assertDatabaseCount('initial_school_admin_proofs', 1);
+        $this->assertDatabaseHas('audit_events', ['school_id' => $member->school_id, 'resource_id' => $member->id, 'action' => 'staging.initial_admin.reissued']);
+        $this->assertStringNotContainsString($new['secret'], AuditEvent::all()->toJson());
+        $this->assertTrue($member->user->fresh()->activation_required);
+
+        try {
+            app(AccountActivation::class)->consume($old, 'retired-proof');
+            $this->fail('Retired proof was accepted.');
+        } catch (ValidationException) {
+            $this->assertNull(DB::table('initial_school_admin_proofs')->value('consumed_at'));
+        }
+
+        try {
+            $service->reissue($replacement);
+            $this->fail('Replacement manifest replayed.');
+        } catch (AuthorizationException) {
+            $this->assertSame($new['proof_id'], DB::table('initial_school_admin_proofs')->value('id'));
+        }
+
+        [$retired] = $this->replacement($new, ['proof_id' => $old['proof_id']]);
+        try {
+            $service->reissue($retired);
+            $this->fail('A retired proof ID was revived.');
+        } catch (AuthorizationException) {
+            $this->assertSame($new['proof_id'], DB::table('initial_school_admin_proofs')->value('id'));
+        }
+
+        $this->assertTrue(app(AccountActivation::class)->consume($new, 'replacement-activation')['activated']);
+        [$afterActivation] = $this->replacement($new);
+        $this->expectException(AuthorizationException::class);
+        $service->reissue($afterActivation);
+    }
+
+    public function test_reissue_requires_exact_owner_approval_and_tenant(): void
+    {
+        [$manifest, $old] = $this->approval();
+        $service = app(InitialSchoolAdmin::class);
+        $service->initialize($manifest);
+        School::create(['code' => 'EDU-STAGE-OTHER', 'name' => 'Other synthetic school', 'demo_ends_at' => now()->addDay()]);
+        [$wrongSchool] = $this->replacement($old, ['school_code' => 'EDU-STAGE-OTHER']);
+        [$approved] = $this->replacement($old);
+        foreach ([$approved.' ', $wrongSchool] as $manifest) {
+            if ($manifest === $wrongSchool) {
+                config(['staging-bootstrap.approval_digest' => hash('sha256', $manifest)]);
+            }
+            try {
+                $service->reissue($manifest);
+                $this->fail('Unauthorized reissue succeeded.');
+            } catch (AuthorizationException) {
+                $this->assertSame($old['proof_id'], DB::table('initial_school_admin_proofs')->value('id'));
+                $this->assertDatabaseCount('audit_events', 1);
+            }
+        }
+    }
+
+    public function test_reissue_audit_failure_restores_the_original_proof(): void
+    {
+        [$manifest, $old] = $this->approval();
+        $service = app(InitialSchoolAdmin::class);
+        $service->initialize($manifest);
+        [$replacement] = $this->replacement($old);
+        AuditEvent::creating(function (AuditEvent $event): void {
+            if ($event->action === 'staging.initial_admin.reissued') {
+                throw new RuntimeException('Synthetic reissue audit failure');
+            }
+        });
+        try {
+            $service->reissue($replacement);
+            $this->fail('Replacement committed without an audit.');
+        } catch (RuntimeException $error) {
+            $this->assertSame('Synthetic reissue audit failure', $error->getMessage());
+            $this->assertSame($old['proof_id'], DB::table('initial_school_admin_proofs')->value('id'));
+            $this->assertDatabaseCount('audit_events', 1);
+        }
+    }
 }
