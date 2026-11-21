@@ -6,6 +6,9 @@ use App\Models\Membership;
 use App\Models\School;
 use App\Models\User;
 use App\Services\LocalPdfStorage;
+use App\Services\PdfMalwareScanner;
+use App\Services\SchoolEntitlements;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\RecordNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -71,12 +74,88 @@ class LocalPdfStorageTest extends TestCase
         });
     }
 
+    public function test_required_scan_fails_closed_and_retry_uses_the_original_reservation(): void
+    {
+        $this->withStorage(function (LocalPdfStorage $storage, School $school, User $owner): void {
+            $bytes = file_get_contents(base_path('../../assets/demo-samples/report-card.pdf'));
+            $command = (string) Str::uuid();
+            $document = (string) Str::ulid();
+            $ingest = fn () => $storage->ingest($school->id, $document, $command, $owner->id, $this->stream($bytes), 'test');
+            config(['pdf-storage.enabled' => false, 'pdf-storage.require_malware_scan' => true]);
+            $this->reject($ingest, 503);
+            $this->assertDatabaseCount('local_pdf_objects', 0);
+            config(['pdf-storage.enabled' => true]);
+            $this->reject($ingest, 503);
+            $row = DB::table('local_pdf_objects')->sole();
+            $file = storage_path('app/private/pdf-objects/'.$row->id);
+            $this->assertFileDoesNotExist($file);
+            $scanner = new class implements PdfMalwareScanner
+            {
+                public bool $clean = false;
+
+                public function isClean(string $privatePath): bool
+                {
+                    return $this->clean;
+                }
+            };
+            app()->instance(PdfMalwareScanner::class, $scanner);
+            $this->reject($ingest, 422);
+            $this->assertDatabaseCount('school_pdf_admissions', 0);
+            file_put_contents($file, 'abandoned partial write');
+            $scanner->clean = true;
+            $result = $ingest();
+            $this->assertSame($row->id, $result['object_id']);
+            $this->assertSame($bytes, file_get_contents($file));
+            $this->assertDatabaseCount('school_pdf_admissions', 1);
+            file_put_contents($file, str_repeat('x', strlen($bytes)));
+            $this->reject(fn () => $storage->open($school->id, $owner->id, $row->id), 503);
+            unlink($file);
+            $this->reject(fn () => $storage->open($school->id, $owner->id, $row->id), 503);
+            $this->reject($ingest, 503);
+            $this->reject(fn () => app(SchoolEntitlements::class)->cancelPdf($school->id, $command, $owner->id, 'test'), 409);
+            $this->assertSame(0, $storage->reconcile());
+            $this->assertSame(strlen($bytes), app(SchoolEntitlements::class)->summary($school)['quota']['bytes']);
+        });
+    }
+
+    public function test_publication_interruption_rolls_back_settlement_and_restores_on_retry(): void
+    {
+        $this->withStorage(function (LocalPdfStorage $storage, School $school, User $owner): void {
+            $document = (string) Str::ulid();
+            $command = (string) Str::uuid();
+            $bytes = file_get_contents(base_path('../../assets/demo-samples/report-card.pdf'));
+            $ingest = fn () => $storage->ingest($school->id, $document, $command, $owner->id, $this->stream($bytes), 'test');
+            $interrupt = true;
+            DB::listen(function (QueryExecuted $query) use (&$interrupt): void {
+                if ($interrupt && str_starts_with($query->sql, 'update') && str_contains($query->sql, 'local_pdf_objects')
+                    && in_array('published', $query->bindings, true)) {
+                    $interrupt = false;
+                    throw new \RuntimeException('Synthetic commit interruption');
+                }
+            });
+            try {
+                $ingest();
+                $this->fail('The interruption did not occur.');
+            } catch (\RuntimeException $error) {
+                $this->assertSame('Synthetic commit interruption', $error->getMessage());
+            }
+            $row = DB::table('local_pdf_objects')->sole();
+            $this->assertSame('quarantined', $row->state);
+            $this->assertFileDoesNotExist(storage_path('app/private/pdf-objects/'.$row->id));
+            $this->assertDatabaseHas('school_pdf_reservations', ['command_id' => $command, 'state' => 'pending']);
+            $this->assertDatabaseCount('school_pdf_admissions', 0);
+            $this->assertSame($row->id, $ingest()['object_id']);
+            $this->assertTrue($ingest()['replayed']);
+            $this->assertDatabaseCount('school_pdf_admissions', 1);
+        });
+    }
+
     private function withStorage(callable $test): void
     {
         $original = storage_path();
         $root = sys_get_temp_dir().'/edu-pdf-'.bin2hex(random_bytes(12));
         $this->app->useStoragePath($root);
-        config(['pdf-storage.enabled' => true]);
+        config(['pdf-storage.enabled' => true, 'pdf-storage.require_malware_scan' => false]);
         try {
             $actor = User::create(['name' => 'Synthetic admin', 'password' => Str::random(32)]);
             $school = School::create(['code' => 'PDF-LOCAL', 'name' => 'PDF Local', 'data_stage' => 'live', 'access_state' => 'live_enabled',

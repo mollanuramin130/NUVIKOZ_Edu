@@ -8,13 +8,21 @@ use App\Models\User;
 use App\Services\SchoolEntitlements;
 use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\Process\Process;
 use Tests\TestCase;
 
 class PdfReservationRaceTest extends TestCase
 {
-    public function test_two_connections_contest_the_last_daily_reservation(): void
+    public static function limits(): array
+    {
+        return ['daily slot' => [false], 'physical bytes' => [true]];
+    }
+
+    #[DataProvider('limits')]
+    public function test_two_connections_contest_the_last_capacity(bool $physical): void
     {
         if (DB::getDriverName() !== 'mysql' || DB::getDatabaseName() !== 'edu_test' || ! function_exists('proc_open')) {
             $this->markTestSkipped('Requires disposable MariaDB and process support.');
@@ -34,7 +42,7 @@ class PdfReservationRaceTest extends TestCase
             'command_id' => (string) Str::uuid(), 'sequence' => 1, 'action' => 'grant_free_live',
             'policy' => 'free-live-v1', 'term_days' => 30, 'starts_at' => now(), 'ends_at' => now()->addDays(30),
         ]);
-        for ($i = 0; $i < 9; $i++) {
+        for ($i = 0; ! $physical && $i < 9; $i++) {
             app(SchoolEntitlements::class)->reservePdf($school->id, (string) Str::ulid(), 1, (string) Str::uuid(), $user->id, 'race-seed');
         }
 
@@ -44,19 +52,31 @@ $app = require 'bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 echo "ready\n";
 try {
-    $app->make(App\Services\SchoolEntitlements::class)->reservePdf($argv[1], $argv[2], 1, $argv[3], $argv[4], 'race');
+    if ($argv[5] === '') {
+        $app->make(App\Services\SchoolEntitlements::class)->reservePdf($argv[1], $argv[2], 1, $argv[3], $argv[4], 'race');
+    } else {
+        $app->useStoragePath($argv[5]);
+        $path = base_path('../../assets/demo-samples/report-card.pdf');
+        config(['pdf-storage.enabled' => true, 'pdf-storage.require_malware_scan' => false, 'pdf-storage.capacity_bytes' => filesize($path)]);
+        $app->make(App\Services\LocalPdfStorage::class)->ingest($argv[1], $argv[2], $argv[3], $argv[4], fopen($path, 'rb'), 'race');
+    }
     echo "accepted\n";
 } catch (Symfony\Component\HttpKernel\Exception\HttpException $error) {
     echo $error->getStatusCode()."\n";
 }
 CHILD;
         $workers = [];
+        $root = $physical ? sys_get_temp_dir().'/edu-pdf-race-'.bin2hex(random_bytes(12)) : '';
         DB::beginTransaction();
         try {
-            School::whereKey($school->id)->lockForUpdate()->firstOrFail();
+            if ($physical) {
+                DB::table('local_pdf_capacity')->where('id', 1)->lockForUpdate()->firstOrFail();
+            } else {
+                School::whereKey($school->id)->lockForUpdate()->firstOrFail();
+            }
             for ($i = 0; $i < 2; $i++) {
                 $worker = new Process([PHP_BINARY, '-c', php_ini_loaded_file() ?: '', '-r', $script, $school->id,
-                    (string) Str::ulid(), (string) Str::uuid(), $user->id], base_path(), timeout: 12);
+                    (string) Str::ulid(), (string) Str::uuid(), $user->id, $root], base_path(), timeout: 12);
                 $workers[] = $worker;
                 $worker->start();
                 $this->assertTrue($worker->waitUntil(fn ($type, $output) => str_contains($output, 'ready')), $worker->getErrorOutput());
@@ -67,8 +87,9 @@ CHILD;
                 $this->assertSame(0, $worker->wait(), $worker->getErrorOutput());
                 $results[] = trim(str_replace('ready', '', $worker->getOutput()));
             }
-            $this->assertEqualsCanonicalizing(['accepted', '409'], $results);
-            $this->assertDatabaseCount('school_pdf_reservations', 10);
+            $this->assertEqualsCanonicalizing(['accepted', $physical ? '503' : '409'], $results);
+            $this->assertDatabaseCount('school_pdf_reservations', $physical ? 1 : 10);
+            $this->assertDatabaseCount('local_pdf_objects', $physical ? 1 : 0);
         } finally {
             foreach ($workers as $worker) {
                 if ($worker->isRunning()) {
@@ -77,6 +98,9 @@ CHILD;
             }
             if (DB::transactionLevel()) {
                 DB::rollBack();
+            }
+            if ($physical) {
+                File::deleteDirectory($root);
             }
         }
     }
