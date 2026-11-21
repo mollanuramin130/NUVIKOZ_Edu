@@ -196,8 +196,7 @@ class AcademicCatalog
                 $zone = $actor->school->settings['timezone'] ?? null;
                 abort_unless(is_string($zone) && in_array($zone, timezone_identifiers_list(), true), 403);
                 abort_unless($data['starts_on'] > CarbonImmutable::now($zone)->toDateString(), 422);
-                abort_if(DB::table($table)->where('school_id', $actor->school_id)->whereIn('state', ['future', 'active'])
-                    ->where('starts_on', '<=', $data['ends_on'])->where('ends_on', '>=', $data['starts_on'])->lockForUpdate()->first(), 409);
+                app(AcademicSessionChanges::class)->requireNoOverlap($actor->school_id, $data['starts_on'], $data['ends_on']);
             }
             $id = (string) Str::ulid();
             DB::table($table)->insert($data + ['id' => $id, 'school_id' => $actor->school_id, 'created_at' => now(), 'updated_at' => now()]);

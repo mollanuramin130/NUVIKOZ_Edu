@@ -1,3 +1,7 @@
+# Phase 02 F015 protected session dates
+
+2026-11-22 (Asia/Kolkata). WORK-P02-001 starts from `7c3af4750fa917e4c8b43646bf184bcce9908171` on `feature/m4-academic-session-lifecycle`. Implements browser School Admin active boundary proposals and Platform MFA review, shared inclusive overlap checks, immutable audit and Web submission. [F015 contract](../api/M2_ACADEMIC_CONTRACT.md) lists the routes, change-request table and remaining approvals. Lifecycle trigger/actor, future-edit transport, Platform discovery and global default rules are pending contract approval. No mobile or hosted changes. Next safe task: review exact-commit CI and authorize the remaining lifecycle contract.
+
 # Phase 01 storage security acceptance
 
 2026-11-22 (Asia/Kolkata). WORK-P01-008, `feature/m3-phase01-security-acceptance` directly from `5a46a87027dc9cfe448f2626d7a39557056c23ec`. Conversion replay now binds the original preview digest in the immutable audit receipt. Added disposable MariaDB race coverage for concurrent conversion and regression cases for changed payloads and failed quarantine cleanup. No new routes or migrations. See the [storage, scanner, parser, capacity, purge, applicant verification and delivery acceptance contracts](../api/F008_F010_ENTITLEMENTS_V1.md).

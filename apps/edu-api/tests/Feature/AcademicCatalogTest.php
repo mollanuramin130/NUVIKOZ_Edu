@@ -7,7 +7,9 @@ use App\Models\Membership;
 use App\Models\School;
 use App\Models\User;
 use App\Services\AcademicCatalog;
+use App\Services\AcademicSessionChanges;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\RecordNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -44,6 +46,32 @@ class AcademicCatalogTest extends TestCase
         } catch (HttpException $e) {
             $this->assertSame($code, $e->getStatusCode());
         }
+    }
+
+    public function test_active_boundary_submission_preserves_dates_and_rejects_overlap_and_foreign_school(): void
+    {
+        $this->travelTo(now()->setDate(2027, 4, 10)->setTime(12, 0));
+        $actor = $this->member();
+        $this->mfaFixture($actor);
+        $id = (string) Str::ulid();
+        DB::table('academic_sessions')->insert(['id' => $id, 'school_id' => $actor->school_id, 'name' => 'Current session',
+            'starts_on' => '2027-04-01', 'ends_on' => '2027-06-30', 'state' => 'active', 'version' => 1]);
+        $future = $this->create($actor, data: ['name' => 'Future term', 'starts_on' => '2027-08-01', 'ends_on' => '2027-12-31']);
+        $service = app(AcademicSessionChanges::class);
+        $change = ['proposed_start' => '2027-04-01', 'proposed_end' => '2027-07-31', 'reason' => 'School calendar adjustment', 'version' => 1];
+        $key = (string) Str::ulid();
+        $this->denied(fn () => $service->submit($actor, $id, array_replace($change, ['proposed_end' => '2027-08-01']), $key, 'test'), 409);
+        $this->denied(fn () => $service->submit($actor, $future['resource']['id'], $change, $key, 'test'), 409);
+        $result = $service->submit($actor, $id, $change, $key, 'test');
+        $this->assertSame('pending', $result['state']);
+        $this->assertTrue($service->submit($actor, $id, $change, $key, 'test')['replayed']);
+        $this->denied(fn () => $service->submit($actor, $id, array_replace($change, ['reason' => 'Changed reason']), $key, 'test'), 409);
+        $other = $this->member('OTHER');
+        $this->mfaFixture($other);
+        $this->expectException(RecordNotFoundException::class);
+        $this->assertDatabaseCount('session_change_requests', 1);
+        $this->assertDatabaseHas('academic_sessions', ['id' => $id, 'ends_on' => '2027-06-30']);
+        $service->submit($other, $id, $change, $key, 'test');
     }
 
     public function test_future_session_and_unrestricted_grade_catalog_have_scoped_audits(): void

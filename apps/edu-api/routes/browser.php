@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AcademicCatalogController;
+use App\Http\Controllers\AcademicSessionChangeController;
 use App\Http\Controllers\ActivationController;
 use App\Http\Controllers\BrowserAuthController as Browser;
 use App\Http\Controllers\CapabilityController;
@@ -71,6 +72,9 @@ Route::prefix('api/v1/browser/samples')->middleware(['auth:sanctum', BrowserSess
     Route::get('/{id}/preview', [DemoSampleController::class, 'preview'])->whereUlid('id');
 });
 
+Route::post('api/v1/browser/sessions/{id}/change-requests', [AcademicSessionChangeController::class, 'submit'])
+    ->whereUlid('id')->middleware(['auth:sanctum', BrowserSession::class, 'throttle:20,1,session-change:']);
+
 Route::prefix('api/v1/browser/registration')->group(function (): void {
     Route::get('/notice', [RegistrationController::class, 'notice'])->middleware('throttle:30,1,browser-registration-notice:');
     Route::post('/submit', [RegistrationController::class, 'submitBrowser'])->middleware('throttle:5,10,registration-submit:');
@@ -83,6 +87,8 @@ Route::prefix('api/v1/browser/platform')->middleware(PlatformBrowser::class)->gr
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::get('/status', [PlatformBrowserController::class, 'status']);
         Route::get('/identity', [PlatformBrowserController::class, 'identity']);
+        Route::post('/sessions/change-requests/{id}/review', [AcademicSessionChangeController::class, 'review'])
+            ->whereUlid('id')->middleware('throttle:20,1,session-change-review:');
         Route::get('/registrations', [PlatformRegistrationController::class, 'index'])->middleware('throttle:60,1,platform-registration-list:');
         Route::get('/registrations/{registration}', [PlatformRegistrationController::class, 'show'])->whereUlid('registration')->middleware('throttle:60,1,platform-registration-show:');
         Route::post('/registrations/{registration}/review', [PlatformRegistrationController::class, 'review'])->whereUlid('registration')->middleware('throttle:20,1,platform-registration-review:');
