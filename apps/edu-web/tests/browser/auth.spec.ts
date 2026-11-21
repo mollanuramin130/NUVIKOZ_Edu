@@ -208,12 +208,12 @@ test('School Admin cannot provision before actual MFA enrollment and recovery ch
  await page.goto('/dashboard/school_admin');await expect(page).toHaveURL(/profile\/security/);
  await page.getByLabel('Current password',{exact:true}).fill(password);await page.getByRole('button',{name:'Begin enrollment',exact:true}).click();
  const seed=await page.getByTestId('mfa-seed').innerText();
- await page.getByLabel('Current password',{exact:true}).fill(password);await page.getByLabel('Authenticator code').fill(totp(seed));
+ await page.getByLabel('Current password',{exact:true}).fill(password);const enrollmentCode=totp(seed);await page.getByLabel('Authenticator code').fill(enrollmentCode);
  await page.getByRole('button',{name:'Confirm enrollment',exact:true}).click();
  await expect(page.getByRole('region',{name:'New recovery codes'})).toBeVisible();
  const codes=await page.getByRole('region',{name:'New recovery codes'}).locator('li').allTextContents();expect(codes.length).toBe(8);const stale=await httpRequest.newContext({ignoreHTTPSErrors:true});expect((await stale.get(`${api}/me`,{headers:{Origin:origin,Cookie:`edu_browser_session=${pendingCookie.value}`}})).status()).toBe(401);await stale.dispose();
  const csrf=await bootstrap(context);
- expect((await context.request.post(`${api}/security/mfa/challenge`,{headers:{Origin:origin,'X-CSRF-TOKEN':csrf},data:{password,code:totp(seed)}})).status()).toBe(422);
+ expect((await context.request.post(`${api}/security/mfa/challenge`,{headers:{Origin:origin,'X-CSRF-TOKEN':csrf},data:{password,code:enrollmentCode}})).status()).toBe(422);
  await page.getByRole('link',{name:'Continue to dashboard'}).click();await expect(page).toHaveURL(/dashboard\/school_admin/);
  await page.getByRole('button',{name:'Sign out',exact:true}).click();
  await page.getByLabel('School code').fill('A');await page.getByLabel('Account identifier').fill('ADMIN');await page.getByLabel('Password',{exact:true}).fill(password);await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page).toHaveURL(/profile\/security/);
