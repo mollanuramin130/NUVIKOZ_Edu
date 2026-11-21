@@ -219,7 +219,7 @@ export default function ReviewQueue() {
           <dl><dt>Policy</dt><dd>{entitlement.policy ?? 'Unassigned'}</dd><dt>Term status</dt><dd>{entitlement.state}</dd>
             <dt>School access</dt><dd>{entitlement.access}</dd><dt>Starts</dt><dd>{entitlement.starts_at ?? '—'}</dd>
             <dt>Expires</dt><dd>{entitlement.ends_at ?? '—'}</dd></dl>
-          {quota && <><dl><dt>Stored PDF bytes</dt><dd>{quota.bytes.toLocaleString()} / {quota.max_total_bytes.toLocaleString()}</dd>
+          {quota && <><p>Production PDF storage is unavailable.</p><dl><dt>Stored PDF bytes</dt><dd>{quota.bytes.toLocaleString()} / {quota.max_total_bytes.toLocaleString()}</dd>
             <dt>Active PDFs</dt><dd>{quota.active} / {quota.max_active_pdfs}</dd>
             <dt>New PDFs today ({quota.school_date})</dt><dd>{quota.daily} / {quota.max_daily_pdfs}</dd>
             <dt>Pending reservations</dt><dd>{quota.reserved_bytes.toLocaleString()} bytes · {quota.reserved_active} active slots · {quota.reserved_daily} today</dd>

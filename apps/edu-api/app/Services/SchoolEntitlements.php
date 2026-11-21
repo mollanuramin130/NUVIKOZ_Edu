@@ -129,8 +129,15 @@ class SchoolEntitlements
         $previous = $this->events($school)->where('command_id', $command['command_id'])->lockForUpdate()->first();
         $action = $command['action'];
         $days = $command['term_days'] ?? null;
+        $previewHash = $action === 'convert_demo' ? hash('sha256', $command['preview']) : null;
         if ($previous) {
             abort_unless($previous->actor_id === $actor && $previous->action === $action && $previous->term_days === $days, 409);
+            if ($previewHash !== null) {
+                $receipt = AuditEvent::where('school_id', $school->id)->where('actor_user_id', $actor)
+                    ->where('action', 'school.entitlement.convert_demo')->where('resource_id', $previous->id)->lockForUpdate()->first();
+                $storedHash = $receipt?->details['preview_hash'] ?? null;
+                abort_unless(is_string($storedHash) && hash_equals($storedHash, $previewHash), 409);
+            }
 
             return ['entitlement' => $this->summary($school), 'replayed' => true];
         }
@@ -187,7 +194,7 @@ class SchoolEntitlements
             'action' => $action, 'policy' => $policy, 'term_days' => $days, 'starts_at' => $now, 'ends_at' => $end,
         ]);
         AuditEvent::create(['school_id' => $school->id, 'actor_user_id' => $actor, 'action' => 'school.entitlement.'.$action,
-            'resource_id' => $id, 'request_id' => $request, 'details' => ['previous_access' => $before, 'access' => $school->access_state, 'policy' => $policy]]);
+            'resource_id' => $id, 'request_id' => $request, 'details' => ['previous_access' => $before, 'access' => $school->access_state, 'policy' => $policy] + ($previewHash === null ? [] : ['preview_hash' => $previewHash])]);
 
         return ['entitlement' => $this->summary($school), 'replayed' => false];
     }

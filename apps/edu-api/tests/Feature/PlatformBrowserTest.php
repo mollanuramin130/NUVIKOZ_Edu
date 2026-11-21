@@ -265,6 +265,7 @@ class PlatformBrowserTest extends TestCase
         $this->browser('POST', $detail.'/conversion', $finish)->assertOk()
             ->assertJsonPath('data.entitlement.policy', 'free-live-v1')->assertJsonPath('data.entitlement.access', 'suspended');
         $this->browser('POST', $detail.'/conversion', $finish)->assertOk()->assertJsonPath('data.replayed', true);
+        $this->browser('POST', $detail.'/conversion', array_replace($finish, ['preview' => $stale]))->assertConflict();
         $this->browser('POST', $detail.'/conversion', array_replace($finish, ['command_id' => (string) Str::uuid()]))->assertConflict();
         $this->assertDatabaseHas('schools', ['id' => $school, 'data_stage' => 'live', 'access_state' => 'suspended']);
         $this->assertSame(1, DB::table('school_entitlement_events')->where('action', 'convert_demo')->count());
