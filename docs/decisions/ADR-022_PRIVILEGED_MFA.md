@@ -6,6 +6,8 @@ Browser password login establishes limited school context and a five-minute chal
 
 Activation/recovery proof redemption revalidates the issuer with requireAdminIdentity rather than demanding that the unrelated issuer remain signed in while the holder redeems a proof. Issuance/reissue still require the current issuer's MFA, tenant, role and ordinary lifecycle checks. Password recovery never deletes MFA enrollment; credential change invalidates old assurance. Production delivery remains disabled.
 
+The opt-in staging staff channel seals Principal and Teacher activation proofs to the operator's public key for a single configured synthetic provisional school. The browser receives ciphertext and the operator opens it locally. Issuance uses the existing MFA requirement and transaction. Missing configuration or encryption failure rolls back provisioning or reissue. Redemption uses the existing issuer, tenant, expiry and single-use checks.
+
 Legacy device provisioning and platform health are closed. A school token or platform-looking abilities string is not MFA assurance. There is no approved platform login issuer or native privileged-device challenge; no bypass issuer/reset/seed-replacement API is introduced. Platform sign-in, independently verified MFA reset and native privileged-device MFA are explicit dependencies, not completed portals. Unsupported actions fail closed.
 
 Lock order: school → identity → membership → MFA credential/recovery code. Database mutations/audit commit before writing session assurance. Decryption/audit/validation failures do not downgrade security. Sensitive request fields password/secret/code are excluded from flashed input. No proofs/seeds/codes in account lists, storage, URLs or logs.

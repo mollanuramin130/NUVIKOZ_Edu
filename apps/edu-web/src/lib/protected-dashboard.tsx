@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AuthError, browserRequest, logout, onSessionChange, type Identity } from './browser-auth';
+import StagingStaffAccess from './staging-staff-access';
 export default function ProtectedDashboard({ role }: { role: string }) {
   const [identity, setIdentity] = useState<Identity | null>(null);
   const [error, setError] = useState('');
@@ -41,5 +42,5 @@ export default function ProtectedDashboard({ role }: { role: string }) {
   }
   if (error) return <main><h1>Unable to verify access</h1><p role="alert">{error}</p><button onClick={signOut}>Retry sign out</button><a href="/login">Sign in</a></main>;
   if (!identity) return <main><p role="status">Checking your session…</p></main>;
-  return <main><p>NUVIKOZ Edu</p><h1>{role.replaceAll('_', ' ')} dashboard</h1><p>School context: {identity.school_id}</p><p>{role === 'school_admin' ? 'Academic setup is available for your verified school context.' : 'Academic modules for this role are not yet connected.'}</p>{role === 'school_admin' && <><Link href="/academic">Academic setup</Link><a href="/assisted-recovery">Assisted password recovery</a><Link href="/security/permissions">School permissions</Link></>}<Link href="/profile/sessions">Sessions and devices</Link><button onClick={signOut}>Sign out</button></main>;
+  return <main><p>NUVIKOZ Edu</p><h1>{role.replaceAll('_', ' ')} dashboard</h1><p>School context: {identity.school_id}</p><p>{role === 'school_admin' ? 'Academic setup is available for your verified school context.' : 'Academic modules for this role are not yet connected.'}</p>{role === 'school_admin' && <><Link href="/academic">Academic setup</Link><a href="/assisted-recovery">Assisted password recovery</a><Link href="/security/permissions">School permissions</Link>{process.env.NEXT_PUBLIC_EDU_STAGING_STAFF_ACTIVATION === 'true' && <StagingStaffAccess />}</>}<Link href="/profile/sessions">Sessions and devices</Link><button onClick={signOut}>Sign out</button></main>;
 }

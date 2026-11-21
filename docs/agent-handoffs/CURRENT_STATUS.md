@@ -1,3 +1,11 @@
+# Staging Principal and Teacher activation
+
+2026-11-21 (Asia/Kolkata). Branch `feature/staging-staff-activation` stacks on `feature/staging-school-admin-proof-reissue` at `9cf1d93f564fa8a306328bd39dcbd9600d0d7ebe`. Adds an opt-in sealed activation handoff for one synthetic staging tenant, a gated School Admin form for provisioning/reissue, and the [staging access runbook](../deployment/STAGING_FIRST_SCHOOL_ADMIN.md#synthetic-principal-and-teacher-access). Production delivery, privileged device access and MFA behavior remain unchanged. Schema and migration files are unchanged.
+
+PHP 8.4.27 with disposable SQLite: Pint passed; targeted activation/foundation tests 53 passed (263 assertions); full suite 138 passed (956 assertions), 25 skipped with MariaDB unavailable locally. Composer platform checks and locked audit passed. Web ESLint, TypeScript, eight client tests and the opt-in Next.js build passed. npm high-severity audit gate passed with eight moderate advisories, including items on the baseline Next.js 16.4.3. Repository integrity and diff checks passed. Hosted MariaDB/browser checks belong to this Draft PR. No staging changes or staff accounts were made.
+
+Next safe task: review hosted results and resolve the Next.js advisory exposure before a separate approval for staging API and web release. Confirm Sodium, opt in only for the synthetic tenant, configure the owner's public key, and verify the School Admin MFA-to-activation path and role-specific browser sign-in.
+
 # Staging School Admin proof reissue
 
 2026-11-21. Branch `feature/staging-school-admin-proof-reissue` stacks on Draft PR #11. Adds console-only replacement of a pending bootstrap proof using an owner-approved manifest bound to the currently issued proof. Uses the existing migration and audit tables. Tests cover expired proof replacement, replay, tenant scope, unchanged identity and audit rollback. Repository integrity and diff checks passed locally. PHP checks run in the Draft PR CI. Next safe task is separate approval for staging deployment and the scoped reissue.

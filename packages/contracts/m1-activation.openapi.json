@@ -3,7 +3,7 @@
   "info": {
     "title": "NUVIKOZ Edu AUTH-04 implemented subset",
     "version": "0.1.0",
-    "description": "Same-site HTTPS first-party browser flow. Synthetic local handover only; production issuance disabled. No recovery or MFA."
+    "description": "Same-site HTTPS first-party browser flow. Staff issuance requires current School Admin MFA. Local/testing handover and an opt-in sealed handover for one synthetic staging school are supported. Production issuance is disabled."
   },
   "paths": {
     "/api/v1/browser/activation/consume": {
@@ -76,7 +76,7 @@
         },
         "responses": {
           "200": {
-            "description": "Success envelope; consume returns activated and login_required. Authorized local issuance alone returns local_handover."
+            "description": "Success envelope containing activated and login_required."
           },
           "401": {
             "description": "Missing browser session"
@@ -94,7 +94,7 @@
             "description": "Throttled"
           },
           "503": {
-            "description": "Production delivery not configured; issuance rolled back"
+            "description": "Delivery unavailable under current environment or configuration; issuance rolled back"
           }
         }
       }
@@ -188,10 +188,10 @@
             "description": "Throttled"
           },
           "503": {
-            "description": "Production delivery not configured; issuance rolled back"
+            "description": "Delivery unavailable under current environment or configuration; issuance rolled back"
           },
           "201": {
-            "description": "Success envelope; consume returns activated and login_required. Authorized local issuance alone returns local_handover."
+            "description": "Success envelope containing membership_id, activation_status and replayed. Initial issuance returns local_handover in local/testing or sealed_handover in configured staging. Replay returns neither."
           }
         }
       }
@@ -244,7 +244,7 @@
         },
         "responses": {
           "200": {
-            "description": "Success envelope; consume returns activated and login_required. Authorized local issuance alone returns local_handover."
+            "description": "Success envelope containing activation_status and the replacement local_handover in local/testing or sealed_handover in configured staging."
           },
           "401": {
             "description": "Missing browser session"
@@ -262,7 +262,7 @@
             "description": "Throttled"
           },
           "503": {
-            "description": "Production delivery not configured; issuance rolled back"
+            "description": "Delivery unavailable under current environment or configuration; issuance rolled back"
           }
         }
       }

@@ -36,6 +36,22 @@ test('419 refreshes handshake exactly once without replaying the mutation', asyn
   await assert.rejects(f.api.createAcademic('subjects', {code:'T', name:'Test'}, 'synthetic-command-01'), e => e.status===419);
   assert.equal(f.requests.filter(r=>r.options.method==='POST').length, 1); assert.equal(f.requests.filter(r=>r.url.endsWith('/csrf')).length, 2);
 });
+test('staff provisioning uses the current CSRF and explicit idempotency key', async () => {
+  const f = fixture(url => response(200, url.endsWith('/csrf') ? {csrf_token: 'synthetic-csrf'} : {sealed_handover: 'synthetic-envelope'}));
+  const body = {name: 'Synthetic Principal', login_identifier: 'QA_PRINCIPAL', role: 'principal'};
+  const key = 'synthetic-provision-01';
+  const result = await f.auth.browserRequest('accounts', body, {idempotencyKey: key});
+  assert.equal(result.sealed_handover, 'synthetic-envelope');
+  assert.equal(f.requests.length, 2);
+  const r = f.requests[1];
+  assert.equal(new URL(r.url).pathname, '/api/v1/browser/accounts');
+  assert.equal(r.options.headers['Idempotency-Key'], key);
+  assert.equal(r.options.headers['X-CSRF-TOKEN'], 'synthetic-csrf');
+  assert.equal(r.options.cache, 'no-store');
+  assert.deepEqual(JSON.parse(r.options.body), body);
+  await assert.rejects(f.auth.browserRequest('accounts', body, {idempotencyKey: 'short'}));
+  assert.equal(f.requests.length, 2);
+});
 test('409 and 422 preserve errors and do not silently retry', async () => {
   for (const status of [409,422]) {
     const f=fixture(url=>url.endsWith('/csrf') ? response(200,{csrf_token:'synthetic'}) : response(status, {}, {code:'VALIDATION_FAILED', fields:{name:['Synthetic field error']}}));
