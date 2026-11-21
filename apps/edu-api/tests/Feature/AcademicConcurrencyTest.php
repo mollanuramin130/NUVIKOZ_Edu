@@ -40,6 +40,26 @@ class AcademicConcurrencyTest extends TestCase
         $this->race('transitions', true, ['created', 'replayed']);
     }
 
+    public function test_concurrent_session_edits_with_same_version_commit_once(): void
+    {
+        $this->race('edits', false, ['created', 'denied']);
+    }
+
+    public function test_concurrent_session_edit_retry_replays_once(): void
+    {
+        $this->race('edits', true, ['created', 'replayed']);
+    }
+
+    public function test_concurrent_edits_of_two_sessions_cannot_overlap(): void
+    {
+        $this->race('overlapping-edits', false, ['created', 'denied']);
+    }
+
+    public function test_concurrent_create_and_edit_cannot_overlap(): void
+    {
+        $this->race('create-edit', false, ['created', 'denied']);
+    }
+
     private function race(string $kind, bool $replay, array $expected): void
     {
         if (config('database.default') !== 'mysql') {
@@ -56,10 +76,17 @@ class AcademicConcurrencyTest extends TestCase
         $env = ['APP_ENV' => 'testing', 'APP_KEY' => config('app.key'), 'DB_CONNECTION' => 'mysql', 'DB_DATABASE' => 'edu_test', 'DB_HOST' => config('database.connections.mysql.host'), 'DB_PORT' => (string) config('database.connections.mysql.port'), 'DB_USERNAME' => config('database.connections.mysql.username'), 'DB_PASSWORD' => config('database.connections.mysql.password'), 'SESSION_DRIVER' => 'array', 'CACHE_STORE' => 'array'];
         $key = (string) Str::ulid();
         $session = null;
-        if ($kind === 'transitions') {
+        $isEdit = in_array($kind, ['edits', 'overlapping-edits', 'create-edit'], true);
+        $secondSession = null;
+        if ($kind === 'transitions' || $isEdit) {
             $session = (string) Str::ulid();
             DB::table('academic_sessions')->insert(['id' => $session, 'school_id' => $school->id, 'name' => 'Today',
-                'starts_on' => now('Asia/Kolkata')->toDateString(), 'ends_on' => now('Asia/Kolkata')->addDay()->toDateString()]);
+                'starts_on' => $isEdit ? '2035-01-01' : now('Asia/Kolkata')->toDateString(), 'ends_on' => $isEdit ? '2035-01-31' : now('Asia/Kolkata')->addDay()->toDateString()]);
+        }
+        if ($kind === 'overlapping-edits') {
+            $secondSession = (string) Str::ulid();
+            DB::table('academic_sessions')->insert(['id' => $secondSession, 'school_id' => $school->id, 'name' => 'Second',
+                'starts_on' => '2035-02-01', 'ends_on' => '2035-02-28']);
         }
         try {
             foreach ([0, 1] as $i) {
@@ -67,7 +94,17 @@ class AcademicConcurrencyTest extends TestCase
                 if ($session) {
                     $data = ['action' => 'activate', 'version' => 1];
                 }
-                $job = new Process([PHP_BINARY, base_path('../../scripts/academic-race-worker.php')], base_path(), $env, json_encode(['membership' => $member->id, 'kind' => $kind, 'session' => $session, 'data' => $data, 'key' => $replay ? $key : (string) Str::ulid(), 'ready' => $dir.'/ready'.$i, 'gate' => $dir.'/go']), 25);
+                if ($isEdit) {
+                    $data = ['name' => 'Revised '.($replay ? 0 : $i), 'starts_on' => '2035-04-01', 'ends_on' => '2035-04-30', 'version' => 1];
+                }
+                $jobKind = $kind;
+                if ($kind === 'create-edit') {
+                    $jobKind = $i === 0 ? 'edits' : 'sessions';
+                    if ($i === 1) {
+                        unset($data['version']);
+                    }
+                }
+                $job = new Process([PHP_BINARY, base_path('../../scripts/academic-race-worker.php')], base_path(), $env, json_encode(['membership' => $member->id, 'kind' => $jobKind, 'session' => $i === 1 && $secondSession ? $secondSession : $session, 'data' => $data, 'key' => $replay ? $key : (string) Str::ulid(), 'ready' => $dir.'/ready'.$i, 'gate' => $dir.'/go']), 25);
                 $job->start();
                 $jobs[] = $job;
             }
@@ -84,12 +121,20 @@ class AcademicConcurrencyTest extends TestCase
             }
             sort($results);
             $this->assertSame($expected, $results);
-            $this->assertSame(1, DB::table($kind === 'classes' ? 'classes' : 'academic_sessions')->count());
             $this->assertSame(1, DB::table('academic_command_receipts')->count());
-            if ($session) {
+            if ($kind === 'create-edit') {
+                $this->assertSame(1, DB::table('academic_sessions')->where('starts_on', '2035-04-01')->count());
+                $this->assertSame(1, DB::table('audit_events')->whereIn('action', ['academic.sessions.edited', 'academic.sessions.created'])->count());
+
+                return;
+            }
+            $this->assertSame($secondSession ? 2 : 1, DB::table($kind === 'classes' ? 'classes' : 'academic_sessions')->count());
+            if ($isEdit) {
+                $this->assertSame(1, DB::table('academic_sessions')->where('state', 'future')->where('version', 2)->count());
+            } elseif ($session) {
                 $this->assertDatabaseHas('academic_sessions', ['id' => $session, 'state' => 'active', 'version' => 2]);
             }
-            $this->assertSame(1, DB::table('audit_events')->where('action', $session ? 'academic.sessions.transitioned' : 'academic.'.$kind.'.created')->count());
+            $this->assertSame(1, DB::table('audit_events')->where('action', $isEdit ? 'academic.sessions.edited' : ($session ? 'academic.sessions.transitioned' : 'academic.'.$kind.'.created'))->count());
         } finally {
             foreach ($jobs as $job) {
                 if ($job->isRunning()) {

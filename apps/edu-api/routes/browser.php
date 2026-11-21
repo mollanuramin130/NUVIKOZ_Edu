@@ -64,6 +64,8 @@ Route::prefix('api/v1/browser/security')->middleware(['auth:sanctum', BrowserSes
 // Browser-only academic setup; existing boundary/session middleware and service MFA both apply.
 Route::prefix('api/v1/browser/academic')->middleware(['auth:sanctum', BrowserSession::class])->group(function (): void {
     Route::get('/{kind}', [AcademicCatalogController::class, 'index'])->whereIn('kind', AcademicCatalog::KINDS);
+    Route::post('/sessions/{id}/edit', [AcademicCatalogController::class, 'editSession'])
+        ->whereUlid('id')->middleware('throttle:20,1,session-edit:');
     Route::post('/sessions/{id}/transitions', [AcademicCatalogController::class, 'transitionSession'])
         ->whereUlid('id')->middleware('throttle:20,1,session-transition:');
     Route::post('/{kind}', [AcademicCatalogController::class, 'store'])->whereIn('kind', AcademicCatalog::KINDS)->middleware('throttle:20,1,academic-create:');

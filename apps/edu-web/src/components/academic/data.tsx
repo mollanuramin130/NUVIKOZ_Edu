@@ -42,6 +42,7 @@ export function useAcademicList<K extends Kind>(kind: K, filters: Filters[K] = {
   }, [enabled, load, cancel]);
   return {calendar: enabled && loadedKey === kind + filterKey ? calendar : undefined, items: enabled && loadedKey === kind + filterKey ? items : [], next: enabled && loadedKey === kind + filterKey ? next : null, busy: enabled && busy, error: enabled ? error : '', page: cursors.length,
     refresh: () => void load([undefined]),
+    refreshPage: () => void load(cursors),
     forward: () => {if (next && !busy) void load([...cursors, next], append);},
     back: () => {if (cursors.length > 1 && !busy) void load(cursors.slice(0, -1));},
   };
