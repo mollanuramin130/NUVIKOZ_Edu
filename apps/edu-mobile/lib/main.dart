@@ -4,7 +4,7 @@ import 'auth/auth_controller.dart';
 import 'auth/screens/login_screen.dart';
 import 'auth/secure_token_store.dart';
 import 'core/app_config.dart';
-import 'dashboard/screens/dashboard_screen.dart';
+import 'navigation/main_navigation_shell.dart';
 import 'theme/app_theme.dart';
 
 void main() {
@@ -32,7 +32,6 @@ class _EduAppState extends State<EduApp> {
           PlatformSecureTokenStore(),
         );
     auth.restore();
-
   }
 
   @override
@@ -52,7 +51,7 @@ class _EduAppState extends State<EduApp> {
         builder: (context, _) {
           final session = auth.session;
           if (session != null && auth.state == AuthState.authenticated) {
-            return DashboardScreen(authController: auth);
+            return MainNavigationShell(authController: auth);
           }
           return LoginScreen(controller: auth);
         },
