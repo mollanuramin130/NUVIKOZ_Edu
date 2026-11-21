@@ -174,7 +174,7 @@ class FoundationTest extends TestCase
         $this->auth($target)->postJson('/api/v1/auth/password', ['current_password' => 'Known-Synthetic-Initial-Password', 'password' => 'New-Synthetic-Password', 'password_confirmation' => 'New-Synthetic-Password'])->assertForbidden();
         $this->assertTrue($target->user->fresh()->activation_required);
         $this->mfaFixture($admin);
-        $proof = app(AccountActivation::class)->issue($admin, $target->id, 'reissue');
+        $proof = app(AccountActivation::class)->issue($admin, $target->id, 'reissue')['local_handover'];
         app(AccountActivation::class)->consume(['school_code' => 'A', 'proof_id' => $proof['proof_id'], 'secret' => $proof['secret'], 'password' => 'Activated-Synthetic-Password', 'password_confirmation' => 'Activated-Synthetic-Password'], 'activate');
         app('auth')->forgetGuards();
         $this->flushHeaders();

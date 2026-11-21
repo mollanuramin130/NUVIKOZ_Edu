@@ -53,7 +53,8 @@ class ProvisionStaff
 
             DB::table('idempotency_records')->insert(['id' => (string) Str::ulid(), 'school_id' => $actor->school_id, 'actor_id' => $actor->user_id, 'operation' => 'staff.provision', 'key' => $key, 'body_hash' => $hash, 'membership_id' => $membership->id, 'created_at' => now(), 'updated_at' => now()]);
 
-            return ['membership_id' => $membership->id, 'activation_status' => 'pending', 'replayed' => false, 'local_handover' => app(AccountActivation::class)->issue($actor, $membership->id, $requestId)];
+            return ['membership_id' => $membership->id, 'activation_status' => 'pending', 'replayed' => false]
+                + app(AccountActivation::class)->issue($actor, $membership->id, $requestId);
         }, 3);
     }
 }

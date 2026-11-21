@@ -152,7 +152,7 @@ class AccountActivationTest extends TestCase
         $replay = app(AccountActivation::class)->provision($admin, ['name' => 'Synthetic teacher', 'login_identifier' => 'NEW', 'role' => 'teacher'], 'replay', 'synthetic-activation-0001');
         $this->assertTrue($replay['replayed']);
         $this->assertArrayNotHasKey('local_handover', $replay);
-        $new = app(AccountActivation::class)->issue($admin, $target->id, 'reissue');
+        $new = app(AccountActivation::class)->issue($admin, $target->id, 'reissue')['local_handover'];
         $this->invalid($this->data($proof));
         $this->assertTrue(app(AccountActivation::class)->consume($this->data($new), 'success')['activated']);
         $this->assertDatabaseHas('audit_events', ['action' => 'activation.invalidated']);
@@ -250,5 +250,112 @@ class AccountActivationTest extends TestCase
         $this->assertSame(1, User::count());
         $this->assertSame(0, DB::table('account_activations')->count());
         $this->assertSame(0, AuditEvent::count());
+    }
+
+    public function test_staging_staff_handover_is_sealed_and_uses_existing_activation_for_both_roles(): void
+    {
+        $code = 'EDU-STAGE-ACADEMIC';
+        $admin = $this->member($code);
+        $admin->school->update(['data_stage' => 'demo', 'access_state' => 'provisional', 'demo_ends_at' => now()->addDay()]);
+        $keypair = sodium_crypto_box_keypair();
+        config([
+            'staging-bootstrap.staff_activation_school' => $code,
+            'staging-bootstrap.staff_activation_public_key' => bin2hex(sodium_crypto_box_publickey($keypair)),
+        ]);
+        app()->instance('env', 'staging');
+        $service = app(AccountActivation::class);
+
+        foreach (['principal', 'teacher'] as $role) {
+            $staff = ['name' => 'Synthetic '.$role, 'login_identifier' => strtoupper($role), 'role' => $role];
+            $key = 'staging-provision-'.$role;
+            $result = $service->provision($admin, $staff, 'staging-provision', $key);
+            $target = Membership::findOrFail($result['membership_id']);
+            $this->assertSame($role, $target->role->value);
+            $this->assertTrue($target->user->activation_required);
+
+            $sealed = base64_decode($result['sealed_handover'], true);
+            $this->assertFalse(sodium_crypto_box_seal_open($sealed, sodium_crypto_box_keypair()));
+            $proof = json_decode(sodium_crypto_box_seal_open($sealed, $keypair), true, flags: JSON_THROW_ON_ERROR);
+            $this->assertSame($code, $proof['school_code']);
+            $this->assertStringNotContainsString($proof['secret'], json_encode($result, JSON_THROW_ON_ERROR));
+            $this->assertStringNotContainsString($proof['secret'], AuditEvent::all()->toJson());
+            $this->assertArrayNotHasKey('local_handover', $result);
+            $this->assertDatabaseHas('account_activations', ['id' => $proof['proof_id'], 'secret_hash' => hash('sha256', $proof['secret'])]);
+            $replay = $service->provision($admin, $staff, 'staging-retry', $key);
+            $this->assertTrue($replay['replayed']);
+            $this->assertArrayNotHasKey('sealed_handover', $replay);
+
+            $replacement = $service->issue($admin, $target->id, 'staging-reissue');
+            $this->assertArrayNotHasKey('local_handover', $replacement);
+            $freshProof = json_decode(sodium_crypto_box_seal_open(base64_decode($replacement['sealed_handover'], true), $keypair), true, flags: JSON_THROW_ON_ERROR);
+            $this->invalid($this->data($proof, $code));
+            $this->invalid($this->data($freshProof, 'OTHER-SCHOOL'));
+            $this->assertTrue($service->consume($this->data($freshProof, $code), 'staging-activation')['activated']);
+            $this->assertFalse($target->user->fresh()->activation_required);
+            $this->invalid($this->data($freshProof, $code));
+            $this->assertDatabaseHas('audit_events', ['action' => 'activation.completed', 'resource_id' => $freshProof['proof_id']]);
+        }
+
+        config(['browser.origins' => ['https://web.edu.test'], 'browser.secure' => true]);
+        $this->withServerVariables(['HTTPS' => 'on', 'SERVER_PORT' => 443]);
+        foreach (['principal', 'teacher'] as $role) {
+            Auth::forgetGuards();
+            $origin = ['Origin' => 'https://web.edu.test'];
+            $handshake = $this->getJson('https://localhost/api/v1/browser/csrf', $origin)->assertOk();
+            $this->withCredentials()
+                ->withCookie('edu_browser_session', $handshake->getCookie('edu_browser_session')->getValue())
+                ->postJson('https://localhost/api/v1/browser/login', [
+                    'school_code' => $code,
+                    'identifier' => strtoupper($role),
+                    'password' => 'Synthetic-New-Password-123',
+                ], $origin + ['X-CSRF-TOKEN' => $handshake->json('data.csrf_token')])
+                ->assertOk()
+                ->assertJsonPath('data.role', $role)
+                ->assertJsonPath('data.school_id', $admin->school_id);
+        }
+    }
+
+    public function test_staging_delivery_requires_exact_school_valid_key_and_current_admin_mfa(): void
+    {
+        $code = 'EDU-STAGE-ACADEMIC';
+        $admin = $this->member($code);
+        $admin->school->update(['data_stage' => 'demo', 'access_state' => 'provisional', 'demo_ends_at' => now()->addDay()]);
+        $staff = ['name' => 'Synthetic principal', 'login_identifier' => 'PRINCIPAL', 'role' => 'principal'];
+        $provision = fn () => app(AccountActivation::class)->provision($admin, $staff, 'staging-denied', 'staging-denied-key');
+        $validKey = bin2hex(sodium_crypto_box_publickey(sodium_crypto_box_keypair()));
+        app()->instance('env', 'staging');
+
+        foreach ([
+            ['EDU-STAGE-OTHER', $validKey],
+            [$code, null],
+            [$code, 'malformed'],
+            [$code, str_repeat('0', 64)],
+        ] as [$configuredSchool, $configuredKey]) {
+            config([
+                'staging-bootstrap.staff_activation_school' => $configuredSchool,
+                'staging-bootstrap.staff_activation_public_key' => $configuredKey,
+            ]);
+            try {
+                $provision();
+                $this->fail('Delivery unexpectedly succeeded');
+            } catch (HttpException $e) {
+                $this->assertSame(503, $e->getStatusCode());
+            }
+            $this->assertDatabaseCount('memberships', 1);
+            $this->assertDatabaseCount('users', 1);
+            $this->assertDatabaseCount('account_activations', 0);
+            $this->assertDatabaseCount('audit_events', 0);
+            $this->assertDatabaseCount('idempotency_records', 0);
+        }
+
+        config(['staging-bootstrap.staff_activation_public_key' => $validKey]);
+        request()->session()->forget('mfa_assurance');
+        try {
+            $provision();
+            $this->fail('Provisioning unexpectedly succeeded without MFA');
+        } catch (HttpException $e) {
+            $this->assertSame(403, $e->getStatusCode());
+        }
+        $this->assertDatabaseCount('memberships', 1);
     }
 }

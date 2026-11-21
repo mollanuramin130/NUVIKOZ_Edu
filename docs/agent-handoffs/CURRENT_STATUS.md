@@ -1,3 +1,133 @@
+# Phase 00 development baseline
+
+2026-11-21 (Asia/Kolkata). Documentation branch `docs/phase-00-development-baseline` from `main@c9ae3cd`. The owner froze hosted code, schema and configuration until final release approval. The [baseline report](../milestones/DEVELOPMENT_BASELINE_REPORT.md), [roadmap](../milestones/DEVELOPMENT_MASTER_ROADMAP.md), [dependency matrix](../milestones/MODULE_DEPENDENCY_MATRIX.md), [definition of done](../milestones/DEFINITION_OF_DONE.md), [43-feature tracker](../requirements/IMPLEMENTATION_PROGRESS.csv), and [Phase 01 plan](../milestones/PHASE_01_IMPLEMENTATION_PLAN.md) record the audit, branch-specific tests and remaining gates. No migrations or application code changed. NEXT SAFE TASK: obtain owner approval for isolated branch consolidation, verify it, then start the approved Phase 01 scope. Earlier handoff entries below remain historical.
+
+
+# Staging Principal and Teacher activation
+
+2026-11-21 (Asia/Kolkata). Branch `feature/staging-staff-activation` stacks on `feature/staging-school-admin-proof-reissue` at `9cf1d93f564fa8a306328bd39dcbd9600d0d7ebe`. Adds an opt-in sealed activation handoff for one synthetic staging tenant, a gated School Admin form for provisioning/reissue, and the [staging access runbook](../deployment/STAGING_FIRST_SCHOOL_ADMIN.md#synthetic-principal-and-teacher-access). Production delivery, privileged device access and MFA behavior remain unchanged. Schema and migration files are unchanged.
+
+PHP 8.4.27 with disposable SQLite: Pint passed; targeted activation/foundation tests 53 passed (263 assertions); full suite 138 passed (956 assertions), 25 skipped with MariaDB unavailable locally. Composer platform checks and locked audit passed. Web ESLint, TypeScript, eight client tests and the opt-in Next.js build passed. npm high-severity audit gate passed with eight moderate advisories, including items on the baseline Next.js 16.4.3. Repository integrity and diff checks passed. Hosted MariaDB/browser checks belong to this Draft PR. No staging changes or staff accounts were made.
+
+Next safe task: review hosted results and resolve the Next.js advisory exposure before a separate approval for staging API and web release. Confirm Sodium, opt in only for the synthetic tenant, configure the owner's public key, and verify the School Admin MFA-to-activation path and role-specific browser sign-in.
+
+# Staging School Admin proof reissue
+
+2026-11-21. Branch `feature/staging-school-admin-proof-reissue` stacks on Draft PR #11. Adds console-only replacement of a pending bootstrap proof using an owner-approved manifest bound to the currently issued proof. Uses the existing migration and audit tables. Tests cover expired proof replacement, replay, tenant scope, unchanged identity and audit rollback. Repository integrity and diff checks passed locally. PHP checks run in the Draft PR CI. Next safe task is separate approval for staging deployment and the scoped reissue.
+
+# Staging first School Admin development checkpoint
+
+2026-11-21. Branch `feature/staging-first-school-admin` stacks on Draft PR #10 at `19729ac9`. Adds the owner-approved manifest command, a tenant-bound proof migration and existing-browser activation integration. The normal School Admin MFA gate still applies. The offline handoff is documented in `docs/deployment/STAGING_FIRST_SCHOOL_ADMIN.md`. No database or hosting operation was performed. Repository integrity and diff checks passed locally. API, Pint, MariaDB races and dependency audit run in the Draft PR CI. Next safe task is review of CI and separate staging migration/deployment/initialization authorization.
+
+# Current checkpoint — F007 registration intake
+
+Updated 2026-11-21 (owner local date). Branch: `feature/f007-registration-intake`, based on the verified Academic Setup branch at `491385b8a085049bb4162448f9cb98043d103bd2`. Verify the published branch head and hosted results before continuing.
+
+Implemented opt-in HTTPS application submission and private token-scoped status. The controller validates the current notice version, inserts a single registration request, and returns a one-time tracking token. Migration `2026_11_21_000009_create_registration_requests.php` adds the registration table plus unique tracking and duplicate digests. Route, configuration, local feature tests and intake API behavior are documented in [F007 registration intake](../api/F007_REGISTRATION_INTAKE.md). No school or account gets created.
+
+Local PHP 8.4.12 with disposable SQLite: Pint passed. PHPUnit discovered 152 tests, passed 128 with 840 assertions, and skipped 24 MariaDB-only tests. All three new intake cases passed. Hosted MariaDB and browser results are tracked in the pull request checks.
+
+Next task: implement the staff review queue and append-only review history using a current Platform Super Admin MFA context. Review the platform authentication dependency before assigning real review privileges. Public form, contact verification, privacy notice content, retention and production intake activation are still pending.
+
+# Prior checkpoint — M2 web review and dependency security refresh
+
+Updated 2026-11-20 (owner local date). Work is on `feature/m2-academic-setup`, [Draft PR #9](https://github.com/mollanuramin130/NUVIKOZ_Edu/pull/9). The prior published implementation `6863ba6` passed its own Foundation and Integrity runs. Desktop and mobile Sections screenshots were recovered from that run's API log, matched to the SHA-256 checksums in PR #9, and visually inspected. The screenshots show the selected session and class, section listing, and create form. This review covers the captured screens. Owner acceptance and a full accessibility review remain pending.
+
+- `380ef20` adds a Playwright regression in `apps/edu-web/tests/browser/academic.spec.ts` for revalidation on window focus, clearing unsaved academic form inputs, and the absence of a saved row. All 29 real HTTPS tests passed in [run 44785609722](https://github.com/mollanuramin130/NUVIKOZ_Edu/actions/runs/44785609722). That run's API job failed on the Composer dependency audit.
+- `d10e06deec0c8570f404c851201e91d5274a607e` updates `apps/edu-api/composer.lock` with Laravel 13.43.0 and Symfony HttpFoundation, HttpKernel and Routing 8.1.11. Composer updated only those four packages. Local `composer validate --strict` and `composer audit --locked` passed with zero advisories. Local PHPUnit discovered 149 tests, passed 125 with 817 assertions, and skipped the 24 MariaDB-only cases. This work includes no schema migration. Verify API, Web, Flutter and Repository Integrity on the published documentation successor before marking this checkpoint fully verified.
+
+Next task after CI is green: prepare the bounded school registration and review workflow (F007) from the approved requirements and tenant-readiness roadmap. Define its states, permissions, API contract and acceptance tests before implementation. The feature branch can continue independently of a merge. Separately, SEC-01 still needs real Android Flutter MethodChannel acceptance before privileged native academic workflows. No production deployment is authorized.
+
+# Historical evidence — M2 Slice C web integration
+
+Updated2026-10-30 (owner local date). Existing branch `feature/m2-academic-setup`, Draft PR9 https://github.com/mollanuramin130/NUVIKOZ_Edu/pull/9 remains Draft/unmerged. Verified implementation HEAD `fdd7bee706ab724ace4bba02e2b257e945db2889`; actual hosted M1 run40939278449 and Integrity40939278352 all passed. Local source mirrorc889006 has identical source tree; original Slice B local history remains in checkpoint/m2-slice-b-local-65a0d8a. Resolve actual remote HEAD/lease before any future publication; no force-push or stale file replacement. Final handoff/copy successor must pass its own CI.
+
+Owner-approved Executive Enterprise + Modern EdTech Premium Hybrid is implemented under `/academic`: overview, sessions, classes/offerings, sections, subjects. All six supported browser resources have actual create/list UI, typed requests, explicit relation selectors and cursor pagination. Scoped design tokens, responsive sidebar/menu, semantic fields/errors, page-local search, loading/empty/conflict/read-only feedback. No fake counts/names/student data or teacher/calendar actions; native/mobile source and dependencies unchanged. School Admin dashboard links to the workspace.
+
+Security: existing HTTPS/host-only cookies, CSRF, credentials/no-store/exact Origin and backend School Admin/MFA/tenant/entitlement checks retained. Client rejects path/query/key injection and redirects; UUID idempotency intents are in-memory only, stable for an explicit unchanged retry, renewed for changed input/success/unmount.419 refreshes handshake without mutation replay;409 asks for review. Private subtree is removed on context/focus revalidation; stale requests are canceled/ignored. Generic403 does not invent an entitlement state. No localStorage credential or command fallback. Focus revalidation deliberately clears unsaved private forms; owner manual UX review remains pending.
+
+Actual implementation-head results:149 real MariaDB tests/994 assertions including all24 independent-process races; all28 HTTPS Chromium journeys (20 previous +8 actual UI/security journeys);7 isolated client unit tests; web lint/typecheck/production build; Composer/npm audits (no advisories); Pint, migration fresh/rollback/remigrate,16 metadata-blocked Flutter tests/analyze and Integrity passed. Actual desktop1440/mobile390 screenshots were decoded, checksum-matched to CI and visually inspected; tablet900 overflow, mobile overflow, label associations,44px target, keyboard/focus checks passed. Measured token contrast is documented; no full WCAG/screen-reader certification claimed. Tests and synthetic-only artifact/checksums: docs/testing/M2_SLICE_C_RESULTS.md.
+
+Initial hosted failures were test harness defects: Next.js route announcer made an unscoped alert ambiguous; rapid mobile navigation selected the old Subjects control before the destination Sections DOM committed. Scoped form locators and destination-heading waits corrected them; all original assertions retained and API/mobile/keyboard assertions strengthened. No production auth/MFA/backend weakening or domain migration was needed. A final small dashboard copy correction stops claiming academic setup is disconnected.
+
+Planning progress: M2~68% (A20+B28+C20 of weighted milestone points), overall~14.1% (198 effort points; F01860% and F01510% partial credits). Backend and supported web integration verified; owner acceptance, Slice D/mobile, effective-dated staff assignment, calendar defaults/approval and onboarding remain pending. Native8 physical executions are owner-reported; real-engine SEC-01 MethodChannel acceptance remains DEVICE TEST PENDING. Production platform issuance, privileged native MFA, independent lost-factor reset and real delivery remain disabled/deferred.
+
+NEXT SAFE TASK: verify the final handoff/copy commit's own API/Web/Flutter/Integrity, then owner review of actual UI/screenshots. Slice D requires a reviewed mobile academic contract and privileged native MFA; do not alias these browser-only endpoints to bearer tokens. Finish outstanding MethodChannel device acceptance at a relevant security checkpoint with one owner instruction at a time. No new phone APK requested for this web slice. Main/PR6/7/8 remain unchanged; every PR Draft/unmerged; no deploy/Hostinger/DNS/production database/Nursery modification.
+
+# Historical evidence — M2 Slice B
+
+# Current checkpoint — M2 Slice B backend implementation
+
+Updated2026-10-29. Existing branch `feature/m2-academic-setup`, Draft PR9 https://github.com/mollanuramin130/NUVIKOZ_Edu/pull/9 . Slice A baseline `2885e3dcd469797e7155c15b4579001b8810d069` is retained. Published Slice B implementation `884ec68e2e299df564541778a952a4c90f557d42`, tree `574a72d7f2e842214fba69e458a829c06b0539cf`; local source mirror `2f0e2c2` has identical tree. All four implementation checks passed (run40928712658/Integrity40928712670). The evidence-only successor needs its own final-head checks. Local history is a content-identical source mirror; checkpoint/m2-slice-a-local-f223bd2 preserves its starting commits. Resolve actual remote HEAD before any future publication; use its exact parent/lease, never force-push or overwrite newer changes.
+
+Slice B implements school/session class offerings, sections, subject definitions and class/session-specific required/optional subject offerings. Four additional GET/POST browser kinds share School Admin+current MFA/tenant/session/origin/CSRF/entitlement guards. One additive000008 migration adds composite tenant FKs/domain uniqueness/RESTRICT history; no source rows or prior migrations replaced. Reuse atomic audit/idempotency receipts and school→identity→membership locks. Child session/class comes only from class offering, not client state. Future/session/start date and unarchived masters rechecked, including retries. Per-school Demo caps bounded. See API0.2.0, M2 contract/dictionary/ADR and milestone for exact supported behavior.
+
+Teacher reference remains null/deferred: membership role alone does not establish effective-dated staff/academic assignment. No placeholder account, student count, enrollment, grading or UI introduced. Optional teacher assignment waits for staff scope. Current API requires no phone APK/download. SEC-01 MethodChannel physical acceptance remains DEVICE TEST PENDING onPR7; native8 execution results are owner-reported, not evidence of Flutter-engine PASS. No Flutter files, SDK/locks, isolation script, PR6/7/8 or main modified. Production platform issuance, privileged mobile MFA, independent lost-factor reset and real delivery remain disabled/deferred.
+
+Local executed results:149 PHP discovered,125 passed/817 assertions;24 MariaDB-only skipped (14 existing +10 new). Pint, Composer strict validation/audit and Next lint/typecheck/build passed. Actual implementation-head hosted execution:149 real MariaDB tests/994 assertions with no skips, including all24 independent-process concurrency cases (14 previous +10 new); all20 HTTPS Chromium journeys (18 previous +2 new) passed. School-lock queued revocation, duplicate/replay/Demo-cap races, FK/uniqueness/history guards, audit rollback and existing auth/tenant regressions passed. Migration fresh/rollback/remigrate including000008, Pint, Composer platform/validation/blocking audit, npm audit (zero vulnerabilities), web lint/typecheck/build and Repository Integrity passed. Metadata-blocked Flutter3.47.8/Dart3.13.7 analyze+16 tests passed, CapEff0/NoNewPrivs1; no native/device claim. Evidence: docs/testing/M2_SLICE_B_RESULTS.md. Canonical evidence successor must verify its own head too.
+
+M2 planning progress approximately48% (A20% + B28% of milestone weights); overall approximately13.4% using unchanged198 effort points and F018 partial credit35%. This is not feature acceptance. UI/mobile, effective-dated teacher assignment, global session defaults/approval and onboarding dependencies remain pending.
+
+NEXT SAFE TASK: verify the evidence-only successor's exact-head four CI jobs, then owner review of the supported Slice B backend. Slice C UI data contracts are ready for the owner's still-pending visual direction; do not apply a platform-wide redesign without approval. No merge/deploy/production/Nursery changes authorized.
+
+# Historical evidence — M2 Slice A
+
+# Current checkpoint — milestone strategy / M2 academic setup slice A
+
+Updated2026-10-29. Sole developer: ChatGPT Work; Gemini no longer owns tasks. Owner approved milestone batches with continuous automated CI and periodic physical-device acceptance, preserving all prior rules and SDK versions.
+
+New independent branch `feature/m2-academic-setup` starts at actual main `c9ae3cd5d5cc2dc7683fe61576fbc851f49b85ff`. Draft PR9: https://github.com/mollanuramin130/NUVIKOZ_Edu/pull/9 . Published implementation `d0534d33a8b4c2b85c01eda373ce2f64ba70b70d`, tree `f0e974fae40ae77b98be771a5a6feacb86da9ee3`; local source mirror `3cf83ab3a3661ff7e44a435eb05ee50556f32781` has identical tree. Resolve the subsequent evidence commit and its own checks before continuing. No unmerged security source copied. Existing PR6 `3c34bc94a9d6a794cb3884ef7daed492542a6662`, PR7 `78e25234320f978bcf4bb1b79867ec7f3884c653`, PR8 `5276e20bf54b8e2d2d387cd8ca8edb389b84c663` are Draft/open; main unchanged. Their handoff statuses below are historical. PR6 run40869497184 passed; PR7 run40910552859 passed Foundation but runtime preflight40910552842 failed KVM permissions (no bypass); PR8 run40892765495 passed combined build/regression. Those are source-specific evidence, not M2 evidence.
+
+Slice A implements School Admin+MFA browser future-session/class catalog create/list, current-identity/tenant/entitlement revalidation, strict payloads, configured school timezone, future-only/nonoverlap, idempotency receipts, bounded Demo records and append-only audit rollback. One additive000007 migration. Actual API subset: `packages/contracts/m2-academic.openapi.json`; contract/migration details and `docs/milestones/M2_ACADEMIC_SETUP.md`. Classes/sections/subject offerings, staff, admission/guardian and domain UI/mobile are not complete. Global session defaults/approval and timezone onboarding remain explicit dependencies; no public timezone setter invented.
+
+Local execution: PHP8.4.1, 125 discovered /111 passed /601 assertions;14 MariaDB-only tests skipped (11 existing +3 new independent races). AcademicCatalogTest:13/13 passed,75 assertions. Pint passed. Hosted implementation verification at `d0534d33a8b4c2b85c01eda373ce2f64ba70b70d`: M1 run https://github.com/mollanuramin130/NUVIKOZ_Edu/actions/runs/40921807983 passed API/Web/Flutter; Integrity40921808036 passed. Real MariaDB:125 tests/698 assertions with no skips, including14 independent-process concurrency cases (11 existing +3 new). All18 actual HTTPS Chromium journeys passed (17 existing +1 new academic fetch journey). Migration fresh/rollback/remigrate, Pint, Composer platform checks/blocking audit, npm audit, lint/typecheck/build passed; no known advisories. Metadata-blocked, credential-free Flutter analyze and16 tests passed (CapEff0, NoNewPrivs1). This main-based branch does not include unmerged PR6 platform/replacement tests or PR7 native source; their independent acceptance is preserved, not replaced. The documentation-only successor requires its own final-head CI; do not transfer green checks automatically. No local Flutter invocation. Dependency locks unchanged.
+
+Owner-reported Vivo1951 Android11/API30 native vault6/6 + persistence write1/1 + force-stop +read1/1 passed. Real Flutter-engine MethodChannel remains DEVICE TEST PENDING; harness atPR7 compiled but no phone PASS claimed. Defer routine owner APK downloads to a relevant milestone/security checkpoint. Do not mark secure Flutter authentication accepted before this gate. Keep Flutter3.47.8/Dart3.13.7, metadata blocking, credential isolation and privilege dropping unchanged.
+
+Roadmap/dependencies: `M2_ACADEMIC_SETUP.md`; all43 source feature rows tracked in `docs/requirements/IMPLEMENTATION_PROGRESS.csv`. Planning estimate roughly13% overall (12.6% weighted initial estimate;198 effort points, subjective subset credits, not acceptance). M2 approximately20% planning progress after backend slice A hosted integration passed; remaining offerings/UI/mobile and owner acceptance are pending. Premium UI specification `docs/ui-ux/ACADEMIC_SETUP_DIRECTION.md` is proposed, not applied or brand-wide approved.
+
+NEXT SAFE TASK: verify the evidence commit's exact Draft PR9 CI; implementation run passed all3 new MariaDB races and the new18th HTTPS journey. Then add class offerings/sections and subject definitions with composite tenant FKs on this branch. Prepare concrete academic UI preview for owner visual-direction approval before broad styling; no approval needed for ordinary backend work. No main merge/deployment/production action authorized. Production platform issuer, privileged native MFA, independent lost-factor reset, real delivery/contact verification and hosting readiness remain fail-closed/deferred gates.
+
+# Historical evidence — previous M1 checkpoints
+
+# SEC-01 Android build recovery — current checkpoint
+
+ChatGPT Work is now the sole development owner, including Android/Flutter/native security. Prior Gemini ownership assignments below are historical. PR7 remains Draft; no merge/deployment.
+
+Confirmed AndroidX failure at2a1f130 was fixed by android/gradle.properties containing only android.useAndroidX=true. No Jetifier or speculative version changes. Published5b65d0fb0c5d190b661c33298a4445c0b60a9936 passed all four checks in M1 run40890574983 / Integrity40890575000. Flutter3.47.8/Dart3.13.7, Gradle8.14/AGP8.11.1/Kotlin2.2.20/Java17. Actual flutter build apk --debug --no-pub succeeded; path apps/edu-mobile/build/app/outputs/flutter-apk/app-debug.apk; log size144M; SHA25605d91fb852610a13d2e69cef4fbbf023763ee72692d091f1006ebe0fefade7c3. This evidence belongs only to5b65d0fb; later checkpoints need their own CI.
+
+This follow-up prepares six tests invoking the actual AndroidKeyStore/vault (AES-GCM, round trip/reopen, random ciphertext/no plaintext, tampering, missing keys, interrupted AtomicFile write, failed payload preservation and secure clear), plus an explicit two-instrumentation-process persistence procedure. Existing five JVM tests only check constants/duplicated validation; they are not vault security verification. CI now runs JVM tests and compiles the instrumentation APK inside the existing metadata-blocked, env-clean, no-new-privileges/capability-free process. It does NOT execute device instrumentation. Seven-day artifacts contain only debug application/test APKs and the actual APK checksum. Release signing no longer reuses the debug key.
+
+AndroidKeyStore instrumentation and MethodChannel read/write/clear runtime: NOT RUN (no adb, emulator or device in Work). Actual activity recreation, device-invalidated key behavior and injected filesystem failure coverage remain incomplete; new vault-object reopening and staged-write interruption must not be described as those stronger checks. No full native security acceptance claim.
+
+Device procedure (DISPOSABLE debug install only; tests erase the app vault; never use real credentials): download the same-head artifact, verify the checksum, install app-debug.apk and app-debug-androidTest.apk with adb install -r. Run:
+
+```sh
+adb shell am instrument -w -e class com.nuvikoz.edu.SecureTokenVaultInstrumentedTest com.nuvikoz.edu.test/androidx.test.runner.AndroidJUnitRunner
+adb shell am instrument -w -e class com.nuvikoz.edu.VaultProcessPersistenceTest -e phase write com.nuvikoz.edu.test/androidx.test.runner.AndroidJUnitRunner
+adb shell am force-stop com.nuvikoz.edu
+adb shell am instrument -w -e class com.nuvikoz.edu.VaultProcessPersistenceTest -e phase read com.nuvikoz.edu.test/androidx.test.runner.AndroidJUnitRunner
+```
+
+Capture runner reports, Android API/device model and both process runs. MethodChannel runtime still requires a real Flutter-engine/device journey using synthetic data; native vault tests alone cannot prove Dart/channel dispatch.
+
+NEXT SAFE TASK: verify this follow-up exact-head hosted APK/JVM/instrumentation compilation, then refresh existing PR8 by a fast-forward merge commit of this PR7 history and verify all combined jobs. Preserve metadata isolation and production platform/lost-factor gates. No main merge, Hostinger/Nursery/DNS/live database or messaging changes.
+
+# Historical SEC-01 evidence
+
+# Active ownership handoff
+
+SEC-01 native source implementation COMPLETED by Android Studio Gemini on `feature/m1-security-completion` (Draft PR #7).
+Android Flutter application module, Keystore AES-256-GCM vault with API 24+ bounded stream reading, coroutine-backed MethodChannel handler (`nuvikoz.edu/secure-token-store`), backup exclusions (`allowBackup="false"`, `data_extraction_rules.xml`), HTTPS network security config (`network_security_config.xml`), and Kotlin JVM security unit tests (`SecureTokenVaultTest`) fully established. Executed native unit test result: `ALL_NATIVE_UNIT_TESTS_PASSED`. Read `apps/edu-mobile/android/NATIVE_CHECKPOINT.md` for full implementation breakdown.
+
+# SEC-01 handoff — SOURCE IMPLEMENTED & HARDENED (Draft PR #7)
+
+Branch `feature/m1-security-completion` based on verified main `c9ae3cd5d5cc2dc7683fe61576fbc851f49b85ff`. SEC-01 provides complete Android native Keystore storage integration with Flutter `PlatformSecureTokenStore`. No plaintext fallback; corrupt or missing keys fail closed. Native Kotlin compilation and unit tests verified passing. GitHub CI static analysis (`flutter analyze`) and tests (`flutter test`) passed. Native APK assembly blocked locally on SDK version constraint; Keystore OS instrumentation NOT RUN (no active device). Future SEC-02/03 work remains on separate feature branches.
+
+
+
+# Historical evidence — prior merged foundation
+
 # Current checkpoint — advanced authentication final owner review
 
 Existing branch `feature/m1-advanced-auth-security`; PR #5 https://github.com/mollanuramin130/NUVIKOZ_Edu/pull/5 remains **Draft**. Latest published implementation HEAD verified before this documentation-only update: `66bcdde57b64cb56a7c4120c2bd7fe2ed62e5f8d`. The documentation commit supersedes that HEAD without changing implementation; resolve the live PR head and its own checks for final review.

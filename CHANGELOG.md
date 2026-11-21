@@ -1,5 +1,24 @@
 # Change log
 
+## Unreleased — M2 Slice C
+
+- Owner-approved hybrid academic workspace: secure real API sessions/classes/offerings/sections/subjects forms and lists, reusable responsive components and scoped design tokens.
+- Extend browser client with typed filters, cursor/key validation, in-memory idempotent intent and cancellation; add client boundary and actual UI HTTPS tests with synthetic screenshot evidence.
+
+## Unreleased — M2 Slice B
+
+- Add same-school future class offerings, sections, subject catalogs and required/optional subject offerings with composite FKs, idempotency, audit, bounded Demo caps and scoped cursor filters.
+- Defer actual teacher assignment; extend negative/security, independent MariaDB race and HTTPS browser coverage.
+
+## Unreleased — M2 academic setup checkpoint
+
+- Browser future-session/class catalog, serialized tenant/MFA/entitlement checks, idempotent commands and audit rollback; no academic UI acceptance claimed.
+- Additive academic catalog migration, focused security/MariaDB race/HTTPS tests, dependency roadmap, progress register and proposed UI direction.
+
+## M1 SEC-02/SEC-03 supported security completion — 2026-10-29
+
+Added synthetic-only platform browser UI/HTTPS integration and context-bound authenticator replacement for School Admin/global synthetic platform identities. Replacement requires password plus an old factor, confirms a new encrypted authenticator before atomic activation, rotates recovery codes and revokes existing browser/device access with append-only audit. Added000006 transient pending-replacement migration, eight real MariaDB race cases, rollback/negative tests and both replacement UI journeys. Verified implementation8122b3e:139 MariaDB tests/971 assertions,25 HTTPS browser tests and all four CI checks passed. Production platform issuance and independent lost-factor recovery remain disabled; Gemini SEC-01/native storage integration remains separate. No merge/deployment.
+
 ## 2026-10-28 — Gate3 initialization
 
 - Created owner-authorized private repository,default branch main.

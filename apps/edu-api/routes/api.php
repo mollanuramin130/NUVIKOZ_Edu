@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\FoundationController as C;
+use App\Http\Controllers\RegistrationController;
 use App\Http\Controllers\SecurityInventoryController;
 use App\Support\Api;
 use Illuminate\Http\Request;
@@ -18,6 +19,9 @@ Route::prefix('v1')->group(function (): void {
             return Api::error('NOT_READY', 'Database unavailable.', 503);
         }
     });
+    Route::post('/registrations', [RegistrationController::class, 'store'])->middleware('throttle:5,10,registration-submit:');
+    Route::get('/registrations/status', [RegistrationController::class, 'status'])->middleware('throttle:30,1,registration-status:');
+
     Route::post('/auth/login', [C::class, 'login'])->middleware('throttle:5,1');
     Route::middleware(['auth:sanctum', 'identity.active'])->group(function (): void {
         Route::get('/me', [C::class, 'me']);
