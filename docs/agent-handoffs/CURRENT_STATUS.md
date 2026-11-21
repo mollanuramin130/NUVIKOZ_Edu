@@ -1,3 +1,7 @@
+## Hostinger staging build diagnostic — 2026-11-21
+
+Isolated branch `test/hostinger-next-config`, based on `19729ac9a2d32954ae229d8577300bf383f80cdd`. Renamed the Next.js config from TypeScript to ESM with unchanged options. No migrations. Web lint, typecheck, and build with the staging API URL passed locally. Hostinger SWC/GLIBC compatibility remains unverified. Next safe task: deploy the isolated commit on Edu web staging and verify HTTPS.
+
 # Current checkpoint — F007 registration intake
 
 Updated 2026-11-21 (owner local date). Branch: `feature/f007-registration-intake`, based on the verified Academic Setup branch at `491385b8a085049bb4162448f9cb98043d103bd2`. Verify the published branch head and hosted results before continuing.
