@@ -28,3 +28,23 @@ Artisan::command('edu:initialize-staging-school-admin', function () {
 
     return 0;
 })->purpose('Initialize the first School Admin of an owner-approved synthetic staging school');
+
+Artisan::command('edu:reissue-staging-school-admin-proof', function () {
+    if (! app()->environment('staging') || ! $this->input->isInteractive()) {
+        $this->error('An interactive staging operator session is required.');
+
+        return 1;
+    }
+
+    try {
+        app(InitialSchoolAdmin::class)->reissue((string) $this->secret('Owner-approved replacement manifest', false));
+    } catch (Throwable) {
+        $this->error('Reissue failed. No replacement proof was committed.');
+
+        return 1;
+    }
+
+    $this->info('Pending School Admin proof replaced. Activate through the existing activation form.');
+
+    return 0;
+})->purpose('Replace an unused proof of the owner-approved pending staging School Admin');

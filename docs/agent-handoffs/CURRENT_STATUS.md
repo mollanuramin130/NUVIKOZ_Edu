@@ -1,3 +1,7 @@
+# Staging School Admin proof reissue
+
+2026-11-21. Branch `feature/staging-school-admin-proof-reissue` stacks on Draft PR #11. Adds console-only replacement of a pending bootstrap proof using an owner-approved manifest bound to the currently issued proof. Uses the existing migration and audit tables. Tests cover expired proof replacement, replay, tenant scope, unchanged identity and audit rollback. Repository integrity and diff checks passed locally. PHP checks run in the Draft PR CI. Next safe task is separate approval for staging deployment and the scoped reissue.
+
 # Staging first School Admin development checkpoint
 
 2026-11-21. Branch `feature/staging-first-school-admin` stacks on Draft PR #10 at `19729ac9`. Adds the owner-approved manifest command, a tenant-bound proof migration and existing-browser activation integration. The normal School Admin MFA gate still applies. The offline handoff is documented in `docs/deployment/STAGING_FIRST_SCHOOL_ADMIN.md`. No database or hosting operation was performed. Repository integrity and diff checks passed locally. API, Pint, MariaDB races and dependency audit run in the Draft PR CI. Next safe task is review of CI and separate staging migration/deployment/initialization authorization.
