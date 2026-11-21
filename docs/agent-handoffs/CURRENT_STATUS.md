@@ -1,3 +1,8 @@
+# Phase 00 development baseline
+
+2026-11-21 (Asia/Kolkata). Documentation branch `docs/phase-00-development-baseline` from `main@c9ae3cd`. The owner froze hosted code, schema and configuration until final release approval. The [baseline report](../milestones/DEVELOPMENT_BASELINE_REPORT.md), [roadmap](../milestones/DEVELOPMENT_MASTER_ROADMAP.md), [dependency matrix](../milestones/MODULE_DEPENDENCY_MATRIX.md), [definition of done](../milestones/DEFINITION_OF_DONE.md), [43-feature tracker](../requirements/IMPLEMENTATION_PROGRESS.csv), and [Phase 01 plan](../milestones/PHASE_01_IMPLEMENTATION_PLAN.md) record the audit, branch-specific tests and remaining gates. No migrations or application code changed. NEXT SAFE TASK: obtain owner approval for isolated branch consolidation, verify it, then start the approved Phase 01 scope. Earlier handoff entries below remain historical.
+
+
 # Staging Principal and Teacher activation
 
 2026-11-21 (Asia/Kolkata). Branch `feature/staging-staff-activation` stacks on `feature/staging-school-admin-proof-reissue` at `9cf1d93f564fa8a306328bd39dcbd9600d0d7ebe`. Adds an opt-in sealed activation handoff for one synthetic staging tenant, a gated School Admin form for provisioning/reissue, and the [staging access runbook](../deployment/STAGING_FIRST_SCHOOL_ADMIN.md#synthetic-principal-and-teacher-access). Production delivery, privileged device access and MFA behavior remain unchanged. Schema and migration files are unchanged.
