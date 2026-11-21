@@ -2,6 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\Role;
+use App\Models\AuditEvent;
+use App\Models\Membership;
+use App\Models\School;
 use App\Models\User;
 use App\Services\PlatformAssurance;
 use App\Support\Api;
@@ -53,7 +57,84 @@ class PlatformRegistrationController extends Controller
             'id', 'actor_user_id', 'from_state', 'to_state', 'note', 'created_at',
         ]);
 
-        return Api::ok(['registration' => $record, 'history' => $history]);
+        return Api::ok(['registration' => $record, 'history' => $history, 'provisioning' => $this->provisioning($registration)]);
+    }
+
+    private function provisioning(string $registration): ?array
+    {
+        $row = DB::table('school_provisionings')
+            ->join('schools', 'schools.id', '=', 'school_provisionings.school_id')
+            ->where('registration_id', $registration)
+            ->first(['school_provisionings.school_id', 'schools.code', 'school_provisionings.created_at', 'school_provisionings.actor_user_id']);
+
+        return $row ? (array) $row + ['state' => 'provisioned', 'activation_state' => 'awaiting_verified_delivery'] : null;
+    }
+
+    public function provision(Request $request, string $registration): JsonResponse
+    {
+        $this->authorizeReview($request);
+        abort_unless($request->isJson(), 415);
+        abort_if(strlen($request->getContent()) > 1024, 413);
+        abort_unless($request->query() === [], 422);
+        $input = $request->json()->all();
+        abort_unless(array_keys($input) === ['command_id'], 422);
+        $command = Validator::make($input, ['command_id' => ['required', 'uuid']])->validate();
+        $actor = $request->user()->id;
+
+        return DB::transaction(function () use ($request, $registration, $command, $actor): JsonResponse {
+            User::whereKey($actor)->lockForUpdate()->firstOrFail();
+            $this->authorizeReview($request);
+            $record = DB::table('registration_requests')->where('id', $registration)->lockForUpdate()->first();
+            abort_unless($record, 404);
+            abort_unless($record->state === 'approved', 409);
+
+            $previous = DB::table('school_provisionings')->where('registration_id', $registration)->first();
+            if ($previous) {
+                abort_unless($previous->actor_user_id === $actor && $previous->command_id === $command['command_id'], 409);
+
+                return Api::ok(['provisioning' => $this->provisioning($registration), 'replayed' => true]);
+            }
+
+            $school = School::create([
+                'code' => 'EDU-'.Str::ulid(),
+                'name' => $record->organization_name,
+                'data_stage' => 'demo',
+                'access_state' => 'suspended',
+            ]);
+            $admin = User::create([
+                'name' => $record->contact_name,
+                'password' => bin2hex(random_bytes(32)),
+                'status' => 'inactive',
+                'activation_required' => true,
+                'must_change_password' => true,
+            ]);
+            $member = Membership::create([
+                'school_id' => $school->id,
+                'user_id' => $admin->id,
+                'role' => Role::SchoolAdmin,
+                'login_identifier' => $admin->id,
+                'status' => 'inactive',
+            ]);
+
+            DB::table('school_provisionings')->insert([
+                'registration_id' => $registration,
+                'school_id' => $school->id,
+                'membership_id' => $member->id,
+                'actor_user_id' => $actor,
+                'command_id' => $command['command_id'],
+                'created_at' => now(),
+            ]);
+            AuditEvent::create([
+                'school_id' => $school->id,
+                'actor_user_id' => $actor,
+                'action' => 'platform.registration.provisioned',
+                'resource_id' => $member->id,
+                'request_id' => $request->attributes->get('request_id'),
+                'details' => ['registration_id' => $registration],
+            ]);
+
+            return Api::ok(['provisioning' => $this->provisioning($registration), 'replayed' => false], 201);
+        }, 3);
     }
 
     public function review(Request $request, string $registration): JsonResponse

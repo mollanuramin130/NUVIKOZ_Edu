@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\Services\Totp;
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
@@ -114,6 +115,7 @@ class PlatformBrowserTest extends TestCase
         $this->browser('GET', $detail)->assertOk()->assertJsonPath('data.registration.contact', 'test@example.test');
         $command = ['state' => 'approved', 'note' => 'Reviewed', 'command_id' => (string) Str::uuid()];
         $this->browser('POST', $detail.'/review', $command)->assertConflict();
+        $this->browser('POST', $detail.'/provision', ['command_id' => (string) Str::uuid()])->assertConflict();
         $start = ['state' => 'reviewing', 'note' => 'Start review', 'command_id' => (string) Str::uuid()];
         $this->browser('POST', $detail.'/review', $start)->assertOk()->assertJsonPath('data.replayed', false);
         $this->browser('POST', $detail.'/review', $start)->assertOk()->assertJsonPath('data.replayed', true);
@@ -126,6 +128,38 @@ class PlatformBrowserTest extends TestCase
             ->assertJsonMissingPath('data.contact')->assertJsonMissingPath('data.tracking_token');
         $this->assertDatabaseCount('schools', 0);
         $this->assertDatabaseCount('memberships', 0);
+        foreach (['update', 'delete'] as $operation) {
+            try {
+                $query = DB::table('registration_reviews')->where('registration_id', $id);
+                $operation === 'update' ? $query->update(['note' => 'Changed']) : $query->delete();
+                $this->fail('Review history was mutable.');
+            } catch (QueryException $error) {
+                $this->assertStringContainsString('Registration review is append-only', $error->getMessage());
+            }
+        }
+        try {
+            (require database_path('migrations/2026_11_22_000011_create_registration_reviews.php'))->down();
+            $this->fail('Rollback discarded existing review history.');
+        } catch (\RuntimeException $error) {
+            $this->assertStringContainsString('preservation plan', $error->getMessage());
+        }
+        $this->assertDatabaseCount('registration_reviews', 2);
+        $provision = ['command_id' => (string) Str::uuid()];
+        $created = $this->browser('POST', $detail.'/provision', $provision)->assertCreated()
+            ->assertJsonPath('data.provisioning.activation_state', 'awaiting_verified_delivery')
+            ->assertJsonPath('data.replayed', false)->assertJsonMissingPath('data.provisioning.secret');
+        $school = $created->json('data.provisioning.school_id');
+        $this->browser('POST', $detail.'/provision', $provision)->assertOk()
+            ->assertJsonPath('data.replayed', true)->assertJsonPath('data.provisioning.school_id', $school);
+        $this->browser('POST', $detail.'/provision', ['command_id' => (string) Str::uuid()])->assertConflict();
+        $this->assertDatabaseCount('schools', 1);
+        $this->assertDatabaseCount('school_provisionings', 1);
+        $this->assertDatabaseCount('account_activations', 0);
+        $this->assertDatabaseCount('initial_school_admin_proofs', 0);
+        $this->assertDatabaseHas('schools', ['id' => $school, 'access_state' => 'suspended', 'demo_ends_at' => null, 'entitlement_ends_at' => null]);
+        $this->assertDatabaseHas('memberships', ['school_id' => $school, 'role' => 'school_admin', 'status' => 'inactive']);
+        $this->assertDatabaseHas('audit_events', ['school_id' => $school, 'action' => 'platform.registration.provisioned']);
+        $this->assertDatabaseCount('audit_events', 1);
         $this->browser('POST', 'platform/logout')->assertOk();
         $this->browser('GET', $detail)->assertUnauthorized();
     }

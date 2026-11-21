@@ -105,6 +105,14 @@ test('public school application can be privately tracked after an MFA-bound plat
     await page.getByRole('dialog').getByRole('button', { name: 'Confirm decision' }).click();
     await expect(page.getByText('Review decision recorded.')).toBeVisible();
 
+    await open.click();
+    await page.getByRole('button', { name: 'Provision school' }).click();
+    await expect(page.getByRole('dialog')).toContainText('Create a suspended school');
+    await page.getByRole('dialog').getByRole('button', { name: 'Confirm decision' }).click();
+    await expect(page.getByText('School provisioned. Access is pending activation.')).toBeVisible();
+    await open.click();
+    await expect(page.getByRole('region', { name: 'School provisioning' })).toContainText('Awaiting verified delivery');
+
     await registration.getByRole('button', { name: 'Track an application' }).click();
     await registration.getByLabel('Private tracking code').fill(tracking);
     await registration.getByRole('button', { name: 'Check status' }).click();
