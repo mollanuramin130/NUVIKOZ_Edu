@@ -1,8 +1,10 @@
 <?php
 
+use App\Http\Controllers\AcademicCatalogController;
 use App\Http\Controllers\FoundationController as C;
 use App\Http\Controllers\RegistrationController;
 use App\Http\Controllers\SecurityInventoryController;
+use App\Services\AcademicCatalog;
 use App\Support\Api;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -32,10 +34,14 @@ Route::prefix('v1')->group(function (): void {
 
         });
         Route::middleware('tenant')->group(function (): void {
+            Route::get('/security/mfa/status', [SecurityInventoryController::class, 'mfaStatus']);
+            Route::post('/security/mfa/challenge', [SecurityInventoryController::class, 'mfaChallenge'])->middleware('throttle:5,1,device-mfa:');
             Route::get('/security/devices', [SecurityInventoryController::class, 'devices']);
             Route::post('/security/devices/{id}/revoke', [SecurityInventoryController::class, 'revokeDevice'])->middleware('throttle:10,1,device-revoke:');
             Route::get('/schools/{school}', [C::class, 'school']);
             Route::post('/accounts', [C::class, 'provision']);
+            Route::get('/academic/{kind}', [AcademicCatalogController::class, 'index'])->whereIn('kind', AcademicCatalog::KINDS);
+            Route::post('/academic/{kind}', [AcademicCatalogController::class, 'store'])->whereIn('kind', AcademicCatalog::KINDS)->middleware('throttle:20,1,academic-create:');
             Route::post('/storage/reservations', [C::class, 'fileDenied']);
             Route::post('/imports/files', [C::class, 'fileDenied']);
             Route::post('/ingestion/remote', [C::class, 'fileDenied']);
