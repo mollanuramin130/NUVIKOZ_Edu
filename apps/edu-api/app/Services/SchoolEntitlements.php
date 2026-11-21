@@ -6,7 +6,9 @@ use App\Enums\Role;
 use App\Models\AuditEvent;
 use App\Models\Membership;
 use App\Models\School;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -48,6 +50,40 @@ class SchoolEntitlements
         ];
     }
 
+    public function conversionPreview(School $school, string $actor): array
+    {
+        $grant = $this->grant($school);
+        $eligible = $school->data_stage === 'demo' && $grant?->policy === 'demo-v1'
+            && in_array($school->access_state, ['provisional', 'suspended'], true);
+        $expires = now()->addMinutes(10)->timestamp;
+        $snapshot = $this->conversionSnapshot($school, $grant);
+
+        return [
+            'eligible' => $eligible, 'demo_state' => $grant?->policy !== 'demo-v1' ? 'unassigned' : ($this->current($grant) ? 'current' : 'expired'),
+            'access_after' => 'suspended', 'policy_after' => self::FREE['version'],
+            'preview' => $eligible ? Crypt::encryptString(json_encode([$actor, $snapshot, $expires], JSON_THROW_ON_ERROR)) : null,
+        ];
+    }
+
+    private function conversionSnapshot(School $school, ?object $grant): array
+    {
+        return [$school->id, $school->data_stage, $school->access_state, (int) $school->version, $grant?->id, $this->current($grant)];
+    }
+
+    private function verifyConversion(School $school, ?object $grant, string $actor, string $preview): void
+    {
+        try {
+            $decoded = json_decode(Crypt::decryptString($preview), true, flags: JSON_THROW_ON_ERROR);
+        } catch (DecryptException|\JsonException) {
+            abort(409, 'Refresh the conversion preview.');
+        }
+
+        abort_unless($school->data_stage === 'demo' && $grant?->policy === 'demo-v1'
+            && in_array($school->access_state, ['provisional', 'suspended'], true)
+            && ($decoded[0] ?? null) === $actor && ($decoded[1] ?? null) === $this->conversionSnapshot($school, $grant)
+            && ($decoded[2] ?? 0) > now()->timestamp, 409, 'Refresh the conversion preview.');
+    }
+
     // Caller holds the school lock and revalidates Platform MFA.
     public function change(School $school, object $link, string $actor, array $command, string $request): array
     {
@@ -75,6 +111,14 @@ class SchoolEntitlements
                 $end = $now->copy()->addDays(30);
                 $school->demo_ends_at = $end;
                 break;
+            case 'convert_demo':
+                $this->verifyConversion($school, $grant, $actor, $command['preview']);
+                $policy = self::FREE['version'];
+                $end = $now->copy()->addDays($days);
+                $school->data_stage = 'live';
+                $school->access_state = 'suspended';
+                $school->entitlement_ends_at = $end;
+                break;
             case 'grant_free_live':
                 abort_unless((! $grant && $before === 'suspended') || ($grant?->policy === self::FREE['version'] && ! $this->current($grant)), 409);
                 $policy = self::FREE['version'];
@@ -96,6 +140,7 @@ class SchoolEntitlements
         if ($policy && ! $this->localDay($school)) {
             $school->settings = array_replace($school->settings ?? [], ['timezone' => 'Asia/Kolkata']);
         }
+        $school->version++;
         $school->save();
         $this->events($school)->insert([
             'id' => $id, 'school_id' => $school->id, 'actor_id' => $actor,
@@ -132,6 +177,118 @@ class SchoolEntitlements
         return $used + ['school_date' => $day, 'warning' => $used['bytes'] >= 400_000_000, 'storage_blocked' => $used['bytes'] >= self::FREE['max_total_bytes']];
     }
 
+    private function requireFreeLive(School $school, string $actor): void
+    {
+        $schoolId = $school->id;
+        abort_unless($school->data_stage === 'live' && $school->access_state === 'live_enabled', 403);
+        $member = Membership::where('school_id', $schoolId)->where('user_id', $actor)->where('status', 'active')->with('user')->first();
+        abort_unless($member && $member->user->status === 'active' && ! $member->user->is_platform_admin
+            && ! $member->user->activation_required && ! $member->user->must_change_password, 403);
+        $grant = $this->grant($school, true);
+        abort_unless($grant?->policy === self::FREE['version'] && $this->current($grant) && $school->entitlement_ends_at?->isFuture(), 403);
+    }
+
+    private function pending(School $school)
+    {
+        return DB::table('school_pdf_reservations')->where('school_id', $school->id)
+            ->where('state', 'pending')->where('expires_at', '>', now());
+    }
+
+    private function requireCapacity(School $school, int $bytes, int $delta): array
+    {
+        $usage = $this->usage($school, true);
+        abort_unless($usage['school_date'], 409, 'School timezone is required.');
+        foreach ($this->pending($school)->lockForUpdate()->get() as $reservation) {
+            abort_if($reservation->timezone !== $school->settings['timezone'], 409, 'School timezone changed.');
+            $usage['bytes'] += $reservation->bytes;
+            $usage['active'] += $reservation->active_delta;
+            $usage['daily'] += $reservation->school_date === $usage['school_date'] ? 1 : 0;
+        }
+        abort_if($bytes > self::FREE['max_pdf_bytes'], 422, 'PDF size limit exceeded.');
+        abort_if(self::FREE['max_active_pdfs'] < $usage['active'] + $delta, 409, 'Active PDF limit exceeded.');
+        abort_if($usage['daily'] >= self::FREE['max_daily_pdfs'], 409, 'Daily PDF limit exceeded.');
+        abort_if(self::FREE['max_total_bytes'] < $usage['bytes'] + $bytes, 409, 'School storage limit exceeded.');
+
+        return $usage;
+    }
+
+    /** Internal only: the caller owns document authorization and has verified its school binding. */
+    public function reservePdf(string $schoolId, string $documentId, int $bytes, string $commandId, string $actor, string $request): array
+    {
+        abort_unless(Str::isUuid($commandId) && Str::isUlid($documentId) && $bytes > 0, 422);
+
+        return DB::transaction(function () use ($schoolId, $documentId, $bytes, $commandId, $actor, $request): array {
+            $school = School::whereKey($schoolId)->lockForUpdate()->firstOrFail();
+            $this->requireFreeLive($school, $actor);
+            $key = ['school_id' => $schoolId, 'command_id' => $commandId];
+            $prior = DB::table('school_pdf_reservations')->where($key)->lockForUpdate()->first();
+            if ($prior) {
+                abort_unless($prior->actor_id === $actor && $prior->document_id === $documentId && $prior->bytes === $bytes, 409);
+
+                return ['state' => $prior->state === 'pending' && ! Carbon::parse($prior->expires_at)->isFuture() ? 'expired' : $prior->state, 'replayed' => true];
+            }
+            abort_if($this->pending($school)->where('document_id', $documentId)->lockForUpdate()->first(), 409, 'Document already reserved.');
+            $committed = DB::table('school_pdf_admissions')->where('school_id', $schoolId);
+            abort_if((clone $committed)->where('command_id', $commandId)->lockForUpdate()->first(), 409);
+            $delta = (clone $committed)->where('document_id', $documentId)->lockForUpdate()->first() ? 0 : 1;
+            $usage = $this->requireCapacity($school, $bytes, $delta);
+            DB::table('school_pdf_reservations')->insert($key + [
+                'actor_id' => $actor, 'document_id' => $documentId, 'bytes' => $bytes, 'active_delta' => $delta,
+                'school_date' => $usage['school_date'], 'timezone' => $school->settings['timezone'],
+                'state' => 'pending', 'expires_at' => now()->addMinutes(15),
+            ]);
+            $this->reservationAudit($schoolId, $actor, $documentId, 'reserved', $request);
+
+            return ['state' => 'pending', 'replayed' => false];
+        }, 3);
+    }
+
+    /** Internal only: MIME and actual byte length must come from approved server-side inspection. */
+    public function settlePdf(string $schoolId, string $commandId, string $actor, int $verifiedBytes, string $verifiedMime, string $request): array
+    {
+        abort_unless($verifiedMime === 'application/pdf' && $verifiedBytes > 0, 422);
+
+        return DB::transaction(function () use ($schoolId, $commandId, $actor, $verifiedBytes, $request): array {
+            $school = School::whereKey($schoolId)->lockForUpdate()->firstOrFail();
+            $this->requireFreeLive($school, $actor);
+            $row = DB::table('school_pdf_reservations')->where(['school_id' => $schoolId, 'command_id' => $commandId]);
+            $reservation = (clone $row)->lockForUpdate()->firstOrFail();
+            abort_unless($reservation->actor_id === $actor, 403);
+            if ($reservation->state === 'settled') {
+                abort_unless($reservation->settled_bytes === $verifiedBytes, 409);
+
+                return ['replayed' => true];
+            }
+            abort_unless($reservation->state === 'pending' && Carbon::parse($reservation->expires_at)->isFuture()
+                && $reservation->timezone === ($school->settings['timezone'] ?? null) && $verifiedBytes <= $reservation->bytes, 409);
+            $row->update(['state' => 'settled', 'settled_bytes' => $verifiedBytes]);
+
+            return $this->admitPdf($schoolId, $reservation->document_id, $verifiedBytes, $commandId, $actor, $request);
+        }, 3);
+    }
+
+    /** Release provisional capacity only; settled physical bytes require verified lawful purge. */
+    public function cancelPdf(string $schoolId, string $commandId, string $actor, string $request): void
+    {
+        DB::transaction(function () use ($schoolId, $commandId, $actor, $request): void {
+            School::whereKey($schoolId)->lockForUpdate()->firstOrFail();
+            $row = DB::table('school_pdf_reservations')->where(['school_id' => $schoolId, 'command_id' => $commandId]);
+            $reservation = (clone $row)->lockForUpdate()->firstOrFail();
+            abort_unless($reservation->actor_id === $actor, 403);
+            abort_if($reservation->state === 'settled', 409);
+            if ($reservation->state === 'pending') {
+                $row->update(['state' => 'cancelled']);
+                $this->reservationAudit($schoolId, $actor, $reservation->document_id, 'cancelled', $request);
+            }
+        }, 3);
+    }
+
+    private function reservationAudit(string $school, string $actor, string $document, string $event, string $request): void
+    {
+        AuditEvent::create(['school_id' => $school, 'actor_user_id' => $actor,
+            'action' => 'school.quota.'.$event, 'resource_id' => $document, 'request_id' => $request]);
+    }
+
     /** Internal accounting for verified PDFs and pre-authorized, tenant-owned document bindings. */
     public function admitPdf(string $schoolId, string $documentId, int $bytes, string $commandId, string $actor, string $request): array
     {
@@ -139,26 +296,20 @@ class SchoolEntitlements
 
         return DB::transaction(function () use ($schoolId, $documentId, $bytes, $commandId, $actor, $request): array {
             $school = School::whereKey($schoolId)->lockForUpdate()->firstOrFail();
-            abort_unless($school->data_stage === 'live' && $school->access_state === 'live_enabled', 403);
-            $member = Membership::where('school_id', $schoolId)->where('user_id', $actor)->where('status', 'active')->with('user')->first();
-            abort_unless($member && $member->user->status === 'active' && ! $member->user->is_platform_admin
-                && ! $member->user->activation_required && ! $member->user->must_change_password, 403);
-            $grant = $this->grant($school, true);
-            abort_unless($grant?->policy === self::FREE['version'] && $this->current($grant) && $school->entitlement_ends_at?->isFuture(), 403);
+            $this->requireFreeLive($school, $actor);
             $scope = DB::table('school_pdf_admissions')->where('school_id', $schoolId);
             $prior = (clone $scope)->where('command_id', $commandId)->lockForUpdate()->first();
+            $reserved = DB::table('school_pdf_reservations')->where('school_id', $schoolId)->where('command_id', $commandId)->lockForUpdate()->first();
+            abort_if($reserved && ($reserved->state !== 'settled' || $reserved->document_id !== $documentId
+                || $reserved->settled_bytes !== $bytes || $reserved->actor_id !== $actor), 409);
             if ($prior) {
                 abort_unless($prior->document_id === $documentId && $prior->bytes === $bytes, 409);
 
                 return ['replayed' => true];
             }
+            abort_if($this->pending($school)->where('document_id', $documentId)->lockForUpdate()->first(), 409, 'Document already reserved.');
             $delta = (clone $scope)->where('document_id', $documentId)->lockForUpdate()->first() ? 0 : 1;
-            $usage = $this->usage($school, true);
-            abort_unless($usage['school_date'], 409, 'School timezone is required.');
-            abort_if($bytes > self::FREE['max_pdf_bytes'], 422, 'PDF size limit exceeded.');
-            abort_if(self::FREE['max_active_pdfs'] < $usage['active'] + $delta, 409, 'Active PDF limit exceeded.');
-            abort_if($usage['daily'] >= self::FREE['max_daily_pdfs'], 409, 'Daily PDF limit exceeded.');
-            abort_if(self::FREE['max_total_bytes'] < $usage['bytes'] + $bytes, 409, 'School storage limit exceeded.');
+            $usage = $this->requireCapacity($school, $bytes, $delta);
             DB::table('school_pdf_admissions')->insert(['school_id' => $schoolId, 'command_id' => $commandId, 'document_id' => $documentId, 'bytes' => $bytes, 'active_delta' => $delta, 'school_date' => $usage['school_date']]);
             AuditEvent::create(['school_id' => $schoolId, 'actor_user_id' => $actor, 'action' => 'school.quota.pdf_admitted',
                 'resource_id' => $documentId, 'request_id' => $request, 'details' => ['bytes' => $bytes, 'active_delta' => $delta]]);

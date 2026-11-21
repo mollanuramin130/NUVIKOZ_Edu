@@ -1,3 +1,11 @@
+# Phase 01 Demo conversion and PDF reservation
+
+2026-11-22 (Asia/Kolkata). WORK-P01-005, branch `feature/m3-demo-live-lifecycle-completion`, directly based on `bf8b0e3897f1a1d583d2819d324181a4bffa5bf7`. Platform registration detail and entitlement service now support read-only preview and explicitly confirmed Demo conversion. School access stays suspended pending a separate enable action. Migration `2026_11_22_000015_create_school_pdf_reservations` adds internal pending, settlement and cancellation accounting. See the [implemented API contract](../api/F008_F010_ENTITLEMENTS_V1.md).
+
+Exact-parent PR #20 CI passed. Local disposable MariaDB: 211 tests passed, 1,894 assertions; fresh, rollback and forward passed. Two worker race accepted one of two last-slot attempts. Pint, web lint, typecheck, eight client tests, build, production npm audit and repository integrity passed. Local HTTPS browser: 38 discovered, zero executed because the runner lacks sudo.
+
+NEXT SAFE TASK: publish the reviewed branch and run HTTPS CI. Physical PDF inspection, private storage, verified purge/reconciliation and applicant verification/delivery remain gated by their integrations. No deployment or hosted migration.
+
 # Phase 01 browser registration and platform review
 
 Base: `integration/edu-mobile-academic@2fc9ab327aa1cf29f1ec5e75fcf41c36cd7dab9d`. Development branch: `feature/m3-platform-school-onboarding`. The [browser onboarding contract](../api/F007_BROWSER_ONBOARDING_V1.md) covers opt-in intake, private tracking and MFA-gated platform review. The review migration adds append-only history. An approval records the decision and does not issue activation credentials or entitlements.
