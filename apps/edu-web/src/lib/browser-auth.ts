@@ -36,7 +36,7 @@ export async function browserRequest<T>(path: string, body?: unknown, options: B
       }
     }
   }
-  if (options.idempotencyKey && (body === undefined || !academicFilters[kind] || !/^[A-Za-z0-9_-]{16,160}$/.test(options.idempotencyKey))) throw new Error('Invalid academic command key.');
+  if (options.idempotencyKey && (body === undefined || (path !== 'accounts' && !academicFilters[kind]) || !/^[A-Za-z0-9_-]{16,160}$/.test(options.idempotencyKey))) throw new Error('Invalid command key.');
   const loopback = (host: string) => ['localhost', '127.0.0.1'].includes(host);
   const localHttp = process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_EDU_ALLOW_LOCAL_HTTP === 'true'
     && loopback(target.hostname) && loopback(window.location.hostname);

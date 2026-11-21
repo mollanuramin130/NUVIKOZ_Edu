@@ -20,7 +20,7 @@ class ActivationController extends Controller
     {
         abort_unless($r->all() === [], 422);
 
-        return Api::ok(['activation_status' => 'pending', 'local_handover' => $service->issue($r->attributes->get('membership'), $membership, $r->attributes->get('request_id'))]);
+        return Api::ok(['activation_status' => 'pending'] + $service->issue($r->attributes->get('membership'), $membership, $r->attributes->get('request_id')));
     }
 
     public function consume(ActivationRequest $r, AccountActivation $service)
