@@ -1,8 +1,10 @@
 <?php
 
 use App\Services\InitialSchoolAdmin;
+use App\Services\ProvisionedSchoolAdminActivation;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Str;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -48,3 +50,16 @@ Artisan::command('edu:reissue-staging-school-admin-proof', function () {
 
     return 0;
 })->purpose('Replace an unused proof of the owner-approved pending staging School Admin');
+
+Artisan::command('edu:deliver-school-admin-proof {registration}', function (): int {
+    $registration = $this->argument('registration');
+    if (! Str::isUlid($registration)) {
+        return 1;
+    }
+
+    return app(ProvisionedSchoolAdminActivation::class)->deliver($registration) ? 0 : 1;
+})->purpose('Process one pending School Admin proof through the configured trusted adapter');
+
+Artisan::command('edu:expire-school-admin-proofs', function (): void {
+    app(ProvisionedSchoolAdminActivation::class)->expire();
+})->purpose('Erase expired School Admin proof material')->everyMinute();
