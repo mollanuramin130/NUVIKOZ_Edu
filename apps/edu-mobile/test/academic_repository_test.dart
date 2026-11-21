@@ -125,6 +125,123 @@ void main() {
       expect(mockApi.lastBody?['name'], '2028–2029');
     });
 
+    test('getSessions deduplicates items shifted across cursor pages', () async {
+      const cursor = '01HXYZ00000000000000000010';
+      final item1 = {
+        'id': '01HXYZ00000000000000000001',
+        'name': '2027–2028',
+        'starts_on': '2027-04-01',
+        'ends_on': '2028-03-31',
+        'state': 'future',
+        'version': 1,
+      };
+      final item2 = {
+        'id': '01HXYZ00000000000000000002',
+        'name': '2028–2029',
+        'starts_on': '2028-04-01',
+        'ends_on': '2029-03-31',
+        'state': 'future',
+        'version': 1,
+      };
+
+      // Page 1 returns item1 and item2; Page 2 returns item2 (duplicate shifted) and item3
+      mockApi.pages.addAll([
+        {
+          'data': {
+            'items': [item1, item2],
+            'next_cursor': cursor,
+          }
+        },
+        {
+          'data': {
+            'items': [
+              item2, // duplicate
+              {
+                'id': '01HXYZ00000000000000000003',
+                'name': '2029–2030',
+                'starts_on': '2029-04-01',
+                'ends_on': '2030-03-31',
+                'state': 'future',
+                'version': 1,
+              }
+            ],
+            'next_cursor': null,
+          }
+        },
+      ]);
+
+      final items = await repo.getSessions();
+      expect(items.length, 3);
+      expect(items.map((s) => s.id).toList(), [
+        '01HXYZ00000000000000000001',
+        '01HXYZ00000000000000000002',
+        '01HXYZ00000000000000000003',
+      ]);
+    });
+
+    test('createSession sends POST with caller-specified Idempotency-Key header', () async {
+      mockApi.responseData = {
+        'data': {
+          'resource': {
+            'id': '01HXYZ00000000000000000011',
+            'name': '2028–2029',
+            'starts_on': '2028-04-01',
+            'ends_on': '2029-03-31',
+            'state': 'future',
+            'version': 1,
+          }
+        }
+      };
+
+      const customKey = 'custom-replay-idempotency-key-01';
+      final created = await repo.createSession(
+        name: '2028–2029',
+        startsOn: '2028-04-01',
+        endsOn: '2029-03-31',
+        idempotencyKey: customKey,
+      );
+
+      expect(created.name, '2028–2029');
+      expect(mockApi.lastMethod, 'POST');
+      expect(mockApi.lastPath, '/api/v1/academic/sessions');
+      expect(mockApi.lastHeaders?['Idempotency-Key'], customKey);
+    });
+
+    test('createSession detects session drift and throws SESSION_CHANGED', () async {
+      mockApi.responseData = {
+        'data': {
+          'resource': {
+            'id': '01HXYZ00000000000000000011',
+            'name': '2028–2029',
+            'starts_on': '2028-04-01',
+            'ends_on': '2029-03-31',
+            'state': 'future',
+            'version': 1,
+          }
+        }
+      };
+
+      DeviceSession? activeSession = session;
+      final driftRepo = HttpAcademicRepository(
+        api: mockApi,
+        sessionProvider: () {
+          final s = activeSession;
+          // Simulate session switch/drift during API request
+          activeSession = null;
+          return s;
+        },
+      );
+
+      expect(
+        () => driftRepo.createSession(
+          name: '2028–2029',
+          startsOn: '2028-04-01',
+          endsOn: '2029-03-31',
+        ),
+        throwsA(isA<ApiFailure>().having((e) => e.code, 'code', 'SESSION_CHANGED')),
+      );
+    });
+
     test('getClasses fetches classes list', () async {
       mockApi.responseData = {
         'data': {

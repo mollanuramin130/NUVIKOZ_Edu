@@ -20,33 +20,39 @@ abstract class AcademicRepository {
     required String name,
     required String startsOn,
     required String endsOn,
+    String? idempotencyKey,
   });
 
   Future<SchoolClass> createClass({
     required String name,
     String? gradeLabel,
     required int sortOrder,
+    String? idempotencyKey,
   });
 
   Future<ClassOffering> createClassOffering({
     required String sessionId,
     required String classId,
+    String? idempotencyKey,
   });
 
   Future<ClassSection> createSection({
     required String classOfferingId,
     required String name,
+    String? idempotencyKey,
   });
 
   Future<Subject> createSubject({
     required String code,
     required String name,
+    String? idempotencyKey,
   });
 
   Future<SubjectOffering> createSubjectOffering({
     required String classOfferingId,
     required String subjectId,
     required bool compulsory,
+    String? idempotencyKey,
   });
 }
 
@@ -82,6 +88,7 @@ class HttpAcademicRepository implements AcademicRepository {
     final s = _session;
     final filters = {...?queryParams};
     final seen = <String>{if (filters['cursor'] case final String cursor) cursor};
+    final seenIds = <String>{};
     final results = <T>[];
     while (true) {
       final res = await api.send(
@@ -103,6 +110,13 @@ class HttpAcademicRepository implements AcademicRepository {
         if (item is! Map<String, dynamic>) {
           throw const ApiFailure(0, 'MALFORMED_RESPONSE');
         }
+        final id = item['id'];
+        if (id is String && id.isNotEmpty) {
+          if (!seenIds.add(id)) {
+            // Deduplicate items shifted across cursor pages
+            continue;
+          }
+        }
         results.add(fromJson(item));
       }
       final next = data['next_cursor'];
@@ -117,9 +131,11 @@ class HttpAcademicRepository implements AcademicRepository {
   Future<T> _create<T>(
     String kind,
     Map<String, dynamic> body,
-    T Function(Map<String, dynamic>) fromJson,
-  ) async {
+    T Function(Map<String, dynamic>) fromJson, {
+    String? idempotencyKey,
+  }) async {
     final s = _session;
+    final key = idempotencyKey ?? _generateIdempotencyKey();
     final res = await api.send(
       'POST',
       '$endpointPrefix/$kind',
@@ -127,9 +143,13 @@ class HttpAcademicRepository implements AcademicRepository {
       token: s.token,
       school: s.school,
       headers: {
-        'Idempotency-Key': _generateIdempotencyKey(),
+        'Idempotency-Key': key,
       },
     );
+    if (sessionProvider()?.token != s.token ||
+        sessionProvider()?.school != s.school) {
+      throw const ApiFailure(401, 'SESSION_CHANGED');
+    }
     final data = res['data'];
     if (data is! Map<String, dynamic>) throw const ApiFailure(0, 'MALFORMED_RESPONSE');
     final resource = data['resource'];
@@ -180,64 +200,70 @@ class HttpAcademicRepository implements AcademicRepository {
     required String name,
     required String startsOn,
     required String endsOn,
+    String? idempotencyKey,
   }) =>
       _create('sessions', {
         'name': name,
         'starts_on': startsOn,
         'ends_on': endsOn,
-      }, AcademicSession.fromJson);
+      }, AcademicSession.fromJson, idempotencyKey: idempotencyKey);
 
   @override
   Future<SchoolClass> createClass({
     required String name,
     String? gradeLabel,
     required int sortOrder,
+    String? idempotencyKey,
   }) =>
       _create('classes', {
         'name': name,
         if (gradeLabel != null && gradeLabel.isNotEmpty) 'grade_label': gradeLabel,
         'sort_order': sortOrder,
-      }, SchoolClass.fromJson);
+      }, SchoolClass.fromJson, idempotencyKey: idempotencyKey);
 
   @override
   Future<ClassOffering> createClassOffering({
     required String sessionId,
     required String classId,
+    String? idempotencyKey,
   }) =>
       _create('class-offerings', {
         'session_id': sessionId,
         'class_id': classId,
-      }, ClassOffering.fromJson);
+      }, ClassOffering.fromJson, idempotencyKey: idempotencyKey);
 
   @override
   Future<ClassSection> createSection({
     required String classOfferingId,
     required String name,
+    String? idempotencyKey,
   }) =>
       _create('sections', {
         'class_offering_id': classOfferingId,
         'name': name,
-      }, ClassSection.fromJson);
+      }, ClassSection.fromJson, idempotencyKey: idempotencyKey);
 
   @override
   Future<Subject> createSubject({
     required String code,
     required String name,
+    String? idempotencyKey,
   }) =>
       _create('subjects', {
         'code': code,
         'name': name,
-      }, Subject.fromJson);
+      }, Subject.fromJson, idempotencyKey: idempotencyKey);
 
   @override
   Future<SubjectOffering> createSubjectOffering({
     required String classOfferingId,
     required String subjectId,
     required bool compulsory,
+    String? idempotencyKey,
   }) =>
       _create('subject-offerings', {
         'class_offering_id': classOfferingId,
         'subject_id': subjectId,
         'compulsory': compulsory,
-      }, SubjectOffering.fromJson);
+      }, SubjectOffering.fromJson, idempotencyKey: idempotencyKey);
 }
