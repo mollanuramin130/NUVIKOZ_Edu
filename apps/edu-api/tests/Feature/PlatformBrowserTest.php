@@ -2,13 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Models\School;
 use App\Models\User;
 use App\Services\ProvisionedSchoolAdminActivation;
+use App\Services\SchoolEntitlements;
 use App\Services\Totp;
 use App\Services\VerifiedSchoolAdminDelivery;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -162,6 +165,8 @@ class PlatformBrowserTest extends TestCase
         $this->assertDatabaseHas('memberships', ['school_id' => $school, 'role' => 'school_admin', 'status' => 'inactive']);
         $this->assertDatabaseHas('audit_events', ['school_id' => $school, 'action' => 'platform.registration.provisioned']);
         $this->assertDatabaseCount('audit_events', 1);
+        $grantDemo = ['command_id' => (string) Str::uuid(), 'action' => 'grant_demo'];
+        $this->browser('POST', $detail.'/entitlement', $grantDemo)->assertConflict();
         $issue = ['command_id' => (string) Str::uuid()];
         $this->browser('POST', $detail.'/activation/issue', $issue)->assertStatus(503);
         $this->assertDatabaseCount('school_admin_activation_proofs', 0);
@@ -222,6 +227,18 @@ class PlatformBrowserTest extends TestCase
         $this->assertDatabaseHas('schools', ['id' => $school, 'access_state' => 'suspended', 'demo_ends_at' => null, 'entitlement_ends_at' => null]);
         $this->assertDatabaseHas('memberships', ['school_id' => $school, 'role' => 'school_admin', 'status' => 'active']);
         $this->assertSame(1, DB::table('audit_events')->where('action', 'school_admin.activation.consumed')->count());
+        $this->browser('POST', $detail.'/entitlement', $grantDemo)->assertUnauthorized();
+        $this->authenticate();
+        $this->browser('POST', $detail.'/entitlement', $grantDemo)->assertOk()
+            ->assertJsonPath('data.entitlement.access', 'suspended')->assertJsonPath('data.entitlement.policy', 'demo-v1');
+        $this->browser('POST', $detail.'/entitlement', $grantDemo)->assertOk()->assertJsonPath('data.replayed', true);
+        $this->browser('POST', $detail.'/entitlement', ['command_id' => (string) Str::uuid(), 'action' => 'enable'])
+            ->assertOk()->assertJsonPath('data.entitlement.access', 'provisional');
+        $end = DB::table('schools')->where('id', $school)->value('demo_ends_at');
+        $this->travelTo(Carbon::parse($end));
+        $this->assertSame('expired', app(SchoolEntitlements::class)->summary(School::findOrFail($school))['state']);
+        $this->travelBack();
+        $this->browser('POST', 'platform/logout')->assertOk();
         $this->browser('GET', $detail)->assertUnauthorized();
     }
 

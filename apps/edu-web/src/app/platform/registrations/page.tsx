@@ -15,7 +15,15 @@ const activationLabels: Record<string, string> = {
   delivered: 'Delivered · awaiting password setup', expired: 'Expired', revoked: 'Revoked',
   superseded: 'Superseded', consumed: 'Account activated',
 };
+type EntitlementAction = 'grant_demo' | 'grant_free_live' | 'enable' | 'suspend';
+const entitlementActions: Record<EntitlementAction, string> = {
+  grant_demo: 'Grant 30-day Demo', grant_free_live: 'Grant Free Live', enable: 'Enable school access', suspend: 'Suspend school access',
+};
 type Detail = {
+  entitlement: { policy: string | null; access: string; state: string; starts_at: string | null; ends_at: string | null;
+    history: { sequence: number; action: EntitlementAction; starts_at: string; actor_id: string }[];
+    quota: { bytes: number; active: number; daily: number; school_date: string; warning: boolean; storage_blocked: boolean;
+      max_pdf_bytes: number; max_active_pdfs: number; max_daily_pdfs: number; max_total_bytes: number } | null } | null;
   activation: { state: string; delivery_configured: boolean; history: { sequence: number; state: string; operation: string; expires_at: string | null; created_at: string; actor_id: string }[] };
   provisioning: { school_id: string; code: string; created_at: string; actor_user_id: string; activation_state: string } | null;
   registration: Row & { contact_name: string; contact: string; notice_version: string };
@@ -37,7 +45,7 @@ export default function ReviewQueue() {
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState('');
   const [feedback, setFeedback] = useState('');
-  const [command, setCommand] = useState<{ state: Decision; note: string; command_id: string } | { state: 'provision' | ActivationAction; command_id: string }>();
+  const [command, setCommand] = useState<{ state: Decision; note: string; command_id: string } | { state: 'provision' | ActivationAction; command_id: string } | { state: 'entitlement'; action: EntitlementAction; term_days?: number; command_id: string }>();
   const pending = useRef<AbortController | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
 
@@ -112,12 +120,13 @@ export default function ReviewQueue() {
     try {
       const reviewing = 'note' in command;
       const provisioning = command.state === 'provision';
-      const endpoint = reviewing ? 'review' : provisioning ? 'provision' : `activation/${command.state}`;
-      await browserRequest(`platform/registrations/${detail.registration.id}/${endpoint}`, reviewing ? command : { command_id: command.command_id }, { signal: request.signal });
+      const entitlement = command.state === 'entitlement';
+      const endpoint = reviewing ? 'review' : provisioning ? 'provision' : entitlement ? 'entitlement' : `activation/${command.state}`;
+      await browserRequest(`platform/registrations/${detail.registration.id}/${endpoint}`, reviewing ? command : entitlement ? { action: command.action, term_days: command.term_days, command_id: command.command_id } : { command_id: command.command_id }, { signal: request.signal });
       if (request.signal.aborted) return;
       dialog.current?.close();
       setCommand(undefined);
-      setFeedback(provisioning ? 'School provisioned. Access is pending activation.' : reviewing ? 'Review decision recorded.' : 'Activation action recorded.');
+      setFeedback(provisioning ? 'School provisioned. Access is pending activation.' : reviewing ? 'Review decision recorded.' : entitlement ? 'Entitlement action recorded.' : 'Activation action recorded.');
       await load(filters);
     } catch (failure) {
       if (!request.signal.aborted) {
@@ -132,6 +141,8 @@ export default function ReviewQueue() {
   }
 
   const state = detail?.registration.state;
+  const entitlement = detail?.entitlement;
+  const quota = entitlement?.quota;
   const activation = detail?.activation;
   const actions: ActivationAction[] = !activation || activation.state === 'consumed' ? []
     : activation.state === 'awaiting_verified_delivery' ? ['issue']
@@ -185,6 +196,41 @@ export default function ReviewQueue() {
               setError(''); setCommand({ state: action, command_id: crypto.randomUUID() }); dialog.current?.showModal();
             }}>{action === 'issue' ? 'Issue proof' : action === 'reissue' ? 'Reissue proof' : 'Revoke proof'}</button>)}</div>
         </section>}
+        {entitlement && <section aria-label="School entitlement">
+          <h3>School entitlement</h3>
+          <dl><dt>Policy</dt><dd>{entitlement.policy ?? 'Unassigned'}</dd><dt>Term status</dt><dd>{entitlement.state}</dd>
+            <dt>School access</dt><dd>{entitlement.access}</dd><dt>Starts</dt><dd>{entitlement.starts_at ?? '—'}</dd>
+            <dt>Expires</dt><dd>{entitlement.ends_at ?? '—'}</dd></dl>
+          {quota && <><dl><dt>Stored PDF bytes</dt><dd>{quota.bytes.toLocaleString()} / {quota.max_total_bytes.toLocaleString()}</dd>
+            <dt>Active PDFs</dt><dd>{quota.active} / {quota.max_active_pdfs}</dd>
+            <dt>New PDFs today ({quota.school_date})</dt><dd>{quota.daily} / {quota.max_daily_pdfs}</dd>
+            <dt>Per PDF</dt><dd>{quota.max_pdf_bytes.toLocaleString()} bytes</dd></dl>
+            {quota.storage_blocked ? <p role="status">Storage limit reached.</p> : quota.warning && <p role="status">Storage usage is at least 80%.</p>}</>}
+          {activation?.state === 'consumed' && <form onSubmit={event => {
+            event.preventDefault();
+            const data = new FormData(event.currentTarget);
+            const action = data.get('entitlement-action') as EntitlementAction;
+            const days = Number(data.get('entitlement-days'));
+            if (!action || (action === 'grant_free_live' && (!Number.isInteger(days) || days < 1 || days > 365))) {
+              setError('Choose an available action and enter a valid Free Live term if required.');
+              return;
+            }
+            setError(''); setCommand({ state: 'entitlement', action, term_days: action === 'grant_free_live' ? days : undefined, command_id: crypto.randomUUID() });
+            dialog.current?.showModal();
+          }}>
+            <label htmlFor="entitlement-action">Entitlement action</label>
+            <select id="entitlement-action" name="entitlement-action">
+              {(!entitlement.policy ? ['grant_demo', 'grant_free_live']
+                : [...(entitlement.state === 'expired' && entitlement.policy === 'free-live-v1' ? ['grant_free_live'] : []),
+                  ...(entitlement.access === 'suspended' ? (entitlement.state === 'current' ? ['enable'] : []) : ['suspend'])])
+                .map(action => <option key={action} value={action}>{entitlementActions[action as EntitlementAction]}</option>)}
+            </select>
+            <label htmlFor="entitlement-days">Term days (Free Live only)</label><input id="entitlement-days" name="entitlement-days" type="number" min={1} max={365} />
+            <div className="onboard-actions"><button disabled={busy}>Review entitlement action</button></div>
+          </form>}
+          {entitlement.history.length ? <ol>{entitlement.history.map(item => <li key={item.sequence}>
+            {entitlementActions[item.action]} · {item.starts_at} · {item.actor_id}</li>)}</ol> : <p>No entitlement actions yet.</p>}
+        </section>}
         <h3>Review history</h3>
         {detail.history.length ? <ol>{detail.history.map(entry => <li key={entry.id}><strong>{entry.from_state} → {entry.to_state}</strong>
           <p>{entry.note}</p><small>{entry.created_at} · {entry.actor_user_id}</small></li>)}</ol> : <p>No review decisions yet.</p>}
@@ -196,7 +242,7 @@ export default function ReviewQueue() {
       <dialog ref={dialog} aria-labelledby="decision-heading" onCancel={event => { if (busy) event.preventDefault(); }}>
         <h2 id="decision-heading">Confirm decision</h2>
         <p hidden={!command || !('note' in command)}>Change {detail?.registration.organization_name} to <strong>{command?.state}</strong>?</p>
-        <p>{command?.state === 'provision' ? 'Create a suspended school and inactive School Admin. Activation and entitlements remain pending.' : command && !('note' in command) ? `Confirm ${command.state} for the initial School Admin proof. School access remains suspended.` : 'This records an application decision. Provisioning and access activation are separate.'}</p>
+        <p>{command?.state === 'provision' ? 'Create a suspended school and inactive School Admin. Activation and entitlements remain pending.' : command?.state === 'entitlement' ? entitlementActions[command.action] : command && !('note' in command) ? `Confirm ${command.state} for the initial School Admin proof. School access remains suspended.` : 'This records an application decision. Provisioning and access activation are separate.'}</p>
         {error && <p role="alert" className="onboard-error">{error}</p>}
         <div className="onboard-actions"><button className="onboard-secondary" disabled={busy} onClick={() => dialog.current?.close()}>Cancel</button>
           <button disabled={busy} onClick={() => void commit()}>{busy ? 'Saving…' : 'Confirm decision'}</button></div>

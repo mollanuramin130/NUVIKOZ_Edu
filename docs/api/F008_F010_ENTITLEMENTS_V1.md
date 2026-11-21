@@ -1,0 +1,19 @@
+# Demo and Free Live development API
+
+Platform application detail now includes `entitlement` (null before provisioning). It contains `access,state,policy,starts_at,ends_at,quota,history`. State is unassigned, current or expired. Access remains independent. Recent history lists up to 25 actions, sequence, actor and timestamps. Free quota includes its immutable policy version, configured limits, current bytes, active slots, school-local date/day count, warning and storage-blocked flags.
+
+`POST /api/v1/browser/platform/registrations/{registration}/entitlement` requires current Platform Super Admin browser MFA, existing Origin/CSRF/session controls and a provisioned registration whose initial School Admin is active. Send JSON `{action,command_id}`; for `grant_free_live` also supply the manually selected integer `term_days` (1–365). No query or extra fields; max 1 KiB. Returns `{entitlement,replayed}` in the standard envelope. Conflicting replay, invalid transition and unavailable activated identity return 409. An unprovisioned registration returns 404. Invalid DTO returns 422. The same actor, action and term with the same command UUID replays without another audit event.
+
+- `grant_demo` assigns one 30-day UTC Demo grant. `grant_free_live` assigns direct Free Live for a suspended unassigned school, or renews an expired Free Live grant. Neither command changes access state. First grant initializes an absent school timezone to Asia/Kolkata, the current pilot locale.
+- `enable` changes suspended access to provisional Demo or Live enabled only for a current grant. `suspend` denies school access without erasing grant history. Ordinary writes stop at the exact expiry timestamp. Existing authorized historical reads follow established access rules.
+- Demo-to-Live conversion requires the separate preview/finalize workflow and is intentionally blocked here. Paid remains a reserved separate policy scope. There is no Paid grant route, provider, subscription or automatic fallback.
+
+`GET /api/v1/browser/samples` lists shared synthetic PDF id, label, revision and watermark. `GET /api/v1/browser/samples/{id}/preview` streams the bundled integrity-checked PDF inline with private/no-store headers. Both require a current Demo browser membership (including School Admin MFA as applicable), are read-only, and rate limited. Package the existing `assets/demo-samples` directory with the repository layout. No tenant copy or upload endpoint is created. Existing Academic Demo record limits remain in force.
+
+## Free Live quota accounting
+
+`SchoolEntitlements::admitPdf` is an internal transaction for already authorized tenant document bindings and verified PDFs. It rechecks current enabled Free Live, tenant membership and entitlement expiry, serializes on school ID and stores an idempotent admission and audit entry. No file ingestion, download, deletion, retention release, reservation/settlement or global capacity integration ships here. A future storage module must call admission in the same commit as finalization and supply independently verified content type, byte length and tenant ownership. Replacement uses an existing document ID, consumes another daily slot and retains all bytes without adding another active slot.
+
+Owner policy uses decimal units. The 5,000,000-byte PDF, 50th active PDF and 10th new PDF in a server-calculated school-local day are allowed when all other checks pass. An admission may land exactly on 500,000,000 bytes. Any further positive admission is blocked. Warning starts inclusively at 400,000,000 bytes. The accounting foundation retains all admitted bytes. It cannot yet account for non-PDF objects, temporary reservations or lawful purge.
+
+Migration `2026_11_22_000014_create_school_entitlements` creates grant/transition events and PDF admission accounting. It updates no existing records and refuses rollback when either table contains history.
