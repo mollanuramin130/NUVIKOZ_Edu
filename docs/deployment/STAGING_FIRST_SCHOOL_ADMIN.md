@@ -1,0 +1,16 @@
+# First School Admin in staging
+
+The owner controls the approval digest through the staging deployment configuration. The hosting operator needs authenticated, interactive console access and the exact manifest the owner approved. The command is disabled by default and only runs with the staging application environment. The browser uses the existing activation form and MFA enrollment.
+
+## Owner handoff
+
+1. Confirm the isolated deployment and database target through the normal staging approval workflow. Apply the reviewed schema before running the command.
+2. Use a password manager on a trusted device to generate and retain 32 random bytes encoded as 64 lowercase hexadecimal characters. Keep the activation secret in the password manager until redemption. Hash its 64-character text as SHA-256 without a trailing newline.
+3. Prepare a single-line JSON manifest with exactly four fields. Use a fresh ULID for `proof_id`, a unique `EDU-STAGE-` school code followed by 4–22 uppercase letters or digits for `school_code`, the lowercase `secret_hash`, and a UTC Unix timestamp in seconds for `expires_at`. Allow at most 30 minutes from issuance.
+4. Approve the exact manifest by placing the SHA-256 of its unmodified bytes in `EDU_STAGING_BOOTSTRAP_APPROVAL_SHA256` on the staging deployment. Refresh cached config through the approved deployment workflow. Give the operator the manifest through a private channel. The manifest contains only the hash commitment and public proof fields. The owner retains the activation secret.
+5. Run `php artisan edu:initialize-staging-school-admin` in an approved interactive staging console and supply the manifest at the hidden prompt. Remove the approval digest and refresh cached config after issuance.
+6. Open the normal HTTPS activation form. Enter the approved school code, proof ID, and the secret from the password manager in their form fields. Set a distinct password there. Sign in with `STAGE-ADMIN` and complete the existing MFA enrollment before opening protected School Admin pages.
+
+The command creates one new provisional synthetic school for up to one day. Its unique school code and proof ID prevent duplicate or replayed issuance. The proof remains redeemable until expiry or first successful redemption after the approval digest is removed. An inactive service identity with zero memberships records offline issuance. The activated identity records redemption. Both events commit in the same database transaction as their respective writes.
+
+If the proof is lost or expires, contact the owner for a separately approved recovery. Keep the existing tenant and audit history. The current release limits this handoff to the initial School Admin. Principal and Teacher staging delivery depends on a reviewed staff activation channel.

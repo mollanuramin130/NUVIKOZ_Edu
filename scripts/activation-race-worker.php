@@ -1,6 +1,9 @@
 <?php
 
 use App\Services\AccountActivation;
+use App\Services\InitialSchoolAdmin;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Validation\ValidationException;
 
@@ -18,6 +21,16 @@ while (! is_file($input['gate'])) {
     if (microtime(true) > $deadline) {
         exit(4);
     }usleep(10000);
+}
+if (isset($input['manifest'])) {
+    try {
+        config(['staging-bootstrap.approval_digest' => hash('sha256', $input['manifest'])]);
+        app(InitialSchoolAdmin::class)->initialize($input['manifest']);
+        echo 'initialized';
+    } catch (AuthorizationException|UniqueConstraintViolationException) {
+        echo 'rejected';
+    }
+    exit;
 }
 try {
     app(AccountActivation::class)->consume($input['data'], 'synthetic-race');
