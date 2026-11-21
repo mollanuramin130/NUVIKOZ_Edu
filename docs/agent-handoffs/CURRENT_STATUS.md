@@ -1,3 +1,53 @@
+# Premium Academic Mobile UI Design System, Navigation & Interactive Preview (AG-UI-001)
+
+2026-11-22 (Asia/Kolkata). Feature branch `feature/m2-premium-ui-preview-v1` branched from verified `feature/m2-academic-compatibility-hardening@799c4480876d97c97c7a95535813505931b25a9a` (Draft PR #24). Transformed the Android mobile presentation into a modern, academic-focused, visually polished, and responsive mobile client with a unified 4-tab global navigation shell (`MainNavigationShell` with Home, Academic, Analytics, Profile), Material 3 design system, Executive Dashboard, Academic Analytics & Marksheet prototype, side navigation drawer with future modules labeled `COMING LATER`, and an interactive offline preview harness verified on physical OPPO F25 Pro.
+
+Changed files:
+- `apps/edu-mobile/lib/theme/app_colors.dart`: Established institutional palette (Primary Navy `#142D4E`, Premium Teal `#009E92`, Accent Violet `#7062DC`, Academic Amber `#F3AA48`, Background `#F4F7FC`), gradients, and semantic status colors.
+- `apps/edu-mobile/lib/theme/app_typography.dart`: Defined typographic hierarchy (`displayLarge`, `titleLarge`, `titleMedium`, `titleSmall`, `bodyLarge`, `bodySmall`, `labelLarge`, `badgeText`).
+- `apps/edu-mobile/lib/theme/app_spacing.dart`: Defined 8-point spacing grid (`xs=4`, `sm=8`, `md=12`, `lg=16`, `xl=20`, `xxl=24`, `xxxl=32`), corner radii, and minimum 48dp touch targets.
+- `apps/edu-mobile/lib/theme/app_theme.dart`: Configured Material 3 light theme with unified colors, app bar, card, input decoration, button themes, and navigation bar styling.
+- `apps/edu-mobile/lib/widgets/brand_logo.dart`: Vector-based `NuvikozBrandMark` and `NuvikozBrandHeader` (zero raster dependencies).
+- `apps/edu-mobile/lib/widgets/app_card.dart`: Modernized with `Stack`-based accent color stripes, uniform borders, rounded corners, and anti-aliased clipping.
+- `apps/edu-mobile/lib/widgets/app_metric_card.dart`: Reusable summary card component with accent container, icon, value, title, and badge.
+- `apps/edu-mobile/lib/widgets/preview_banner.dart`: Reusable `DEMO DATA — NO REAL BACKEND (PREVIEW MODE)` banner.
+- `apps/edu-mobile/lib/navigation/main_navigation_shell.dart`: Unified navigation shell hosting 4 destinations (`Home`, `Academic`, `Analytics`, `Profile`), Top App Bar, Side Navigation Drawer with organized sections (Core Workspace, 6 Academic Catalog modules, and planned future modules with `COMING LATER / NOT IMPLEMENTED` dialog), and safe Android Back button (`PopScope`) handling.
+- `apps/edu-mobile/lib/dashboard/screens/dashboard_screen.dart`: Redesigned Executive Dashboard featuring Welcome & Identity card (compatible with `widget_test.dart`), 2x2 Quick Actions grid, 4 Academic Summary Metric cards, Analytics prototype card, and clean sign-out/exit preview button.
+- `apps/edu-mobile/lib/academic/screens/academic_analytics_screen.dart`: Synthetic preview prototype featuring CustomPainter-driven Attendance Donut chart (94.2% present, 3.8% leave, 2.0% absent), Class Breakdown progress bars, Score Distribution vertical bar chart, and official student Marksheet report card table.
+- `apps/edu-mobile/lib/academic/screens/academic_workspace_screen.dart`: Added `onOpenDrawer` support, drawer button, and responsive overflow protection on session names.
+- `apps/edu-mobile/lib/academic/controllers/academic_controller.dart`: Hardened error code mapping for institutional suspensions.
+- `apps/edu-mobile/lib/auth/screens/security_screen.dart`: Added `onOpenDrawer` support, drawer button, and device name overflow protection.
+- `apps/edu-mobile/lib/auth/screens/login_screen.dart`: Updated to use `MainNavigationShell` on preview entry and aligned casing with test suites.
+- `apps/edu-mobile/lib/main.dart`: Wired `MainNavigationShell` as the authenticated home.
+- `apps/edu-mobile/test/preview_mode_test.dart`: Hardened preview mode integration tests.
+- `apps/edu-mobile/test/premium_ui_design_system_test.dart`: 5 dedicated unit tests verifying theme tokens, typography, brand header rendering, navigation shell tabs, and analytics marksheet.
+
+Migrations: None (Mobile Flutter client UI design system & navigation).
+Commands and results:
+- `flutter analyze`: 0 issues found (clean in 1.1s).
+- `flutter test`: 53/53 tests passed (2.1s).
+- `./gradlew testDebugUnitTest`: 34 tasks passed, BUILD SUCCESSFUL.
+- `./gradlew connectedDebugAndroidTest`: 8 tests executed (0 failures) on physical OPPO F25 Pro (`CPH2603 - 16`, ADB `EM9D5L998XB6599H`).
+- `flutter build apk --debug`: Built `nuvikoz-edu-preview-debug.apk` (SHA-256: `09dae5af3c0e06817d427c2cce40314c795bca2bc58c553e767daf9ceea44e25`).
+- ADB installation & launch: Verified on physical OPPO F25 Pro.
+- Physical Screenshots captured: 12 high-resolution PNG screenshots in artifact directory:
+  - `ui_01_login_screen.png`
+  - `ui_02_dashboard_home.png`
+  - `ui_03_side_drawer.png`
+  - `ui_04_academic_workspace.png`
+  - `ui_05_analytics_attendance.png`
+  - `ui_06_analytics_marksheet.png`
+  - `ui_07_device_security.png`
+  - `ui_08_academic_create_form.png`
+  - `ui_09_dashboard_cards.png`
+  - `ui_10_simulation_sheet.png`
+  - `ui_11_empty_states.png`
+  - `ui_12_simulated_suspension_error.png`
+
+Blockers: None.
+Risks: None. Preview mode is strictly gated behind `PreviewGuard` and excluded in release builds (`kReleaseMode`). Production authentication, token exchange, and PR #24 remain untouched.
+NEXT SAFE TASK: Owner interactive evaluation on physical OPPO device; optional git bundle export for team sharing.
+
 # Phase 01 Physical Android App Preview & Interactive Module Testing (AG-P01-005)
 
 2026-11-22 (Asia/Kolkata). Feature branch `feature/m2-owner-interactive-preview` branched from verified `feature/m2-academic-compatibility-hardening@799c4480876d97c97c7a95535813505931b25a9a` (Draft PR #24). Isolated development-only interactive preview mode enabling owner visual navigation and hardware verification on physical OPPO F25 Pro without live backend or production credential requirements.

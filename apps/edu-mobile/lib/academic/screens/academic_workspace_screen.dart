@@ -24,6 +24,7 @@ class AcademicWorkspaceScreen extends StatefulWidget {
     this.authController,
     this.isPreviewMode = false,
     this.previewRepository,
+    this.onOpenDrawer,
   });
 
   final AcademicController controller;
@@ -31,6 +32,7 @@ class AcademicWorkspaceScreen extends StatefulWidget {
   final AuthController? authController;
   final bool isPreviewMode;
   final PreviewAcademicRepository? previewRepository;
+  final VoidCallback? onOpenDrawer;
 
   @override
   State<AcademicWorkspaceScreen> createState() => _AcademicWorkspaceScreenState();
@@ -177,8 +179,19 @@ class _AcademicWorkspaceScreenState extends State<AcademicWorkspaceScreen>
       builder: (context, _) {
         final c = widget.controller;
 
+        if (_tabController.index != c.activeTab.index && !_tabController.indexIsChanging) {
+          _tabController.animateTo(c.activeTab.index);
+        }
+
         return Scaffold(
           appBar: AppBar(
+            leading: widget.onOpenDrawer != null
+                ? IconButton(
+                    icon: const Icon(Icons.menu_rounded),
+                    tooltip: 'Navigation Menu',
+                    onPressed: widget.onOpenDrawer,
+                  )
+                : null,
             title: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -542,14 +555,18 @@ class _SessionsListView extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      s.name,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primaryText,
+                    Expanded(
+                      child: Text(
+                        s.name,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primaryText,
+                        ),
                       ),
                     ),
+                    const SizedBox(width: 8),
                     if (s.isFuture)
                       StatusBadge.future()
                     else if (s.isActive)

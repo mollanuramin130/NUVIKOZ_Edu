@@ -13,10 +13,12 @@ class SecurityScreen extends StatefulWidget {
     super.key,
     required this.authController,
     this.isPreviewMode = false,
+    this.onOpenDrawer,
   });
 
   final AuthController authController;
   final bool isPreviewMode;
+  final VoidCallback? onOpenDrawer;
 
   @override
   State<SecurityScreen> createState() => _SecurityScreenState();
@@ -193,10 +195,18 @@ class _SecurityScreenState extends State<SecurityScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Device Security & Sessions'),
+        leading: widget.onOpenDrawer != null
+            ? IconButton(
+                icon: const Icon(Icons.menu_rounded),
+                tooltip: 'Navigation Menu',
+                onPressed: widget.onOpenDrawer,
+              )
+            : null,
+        title: const Text('Device Security & Profile'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh Devices',
             onPressed: _loading ? null : _loadDevices,
           ),
         ],
@@ -398,12 +408,15 @@ class _SecurityScreenState extends State<SecurityScreen> {
                         children: [
                           Row(
                             children: [
-                              Text(
-                                name,
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.primaryText,
+                              Flexible(
+                                child: Text(
+                                  name,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.primaryText,
+                                  ),
                                 ),
                               ),
                               if (isCurrent) ...[

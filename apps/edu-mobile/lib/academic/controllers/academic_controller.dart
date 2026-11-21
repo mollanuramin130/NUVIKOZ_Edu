@@ -78,6 +78,12 @@ class AcademicController extends ChangeNotifier {
     loadActiveTabData();
   }
 
+  void setTab(int index) {
+    if (index >= 0 && index < AcademicTab.values.length) {
+      setActiveTab(AcademicTab.values[index]);
+    }
+  }
+
   void selectSession(AcademicSession? session) {
     selectedSession = session;
     selectedClassOffering = null;

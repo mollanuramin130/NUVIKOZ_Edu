@@ -142,11 +142,13 @@ void main() {
 
       // Dashboard screen reached in preview mode
       expect(find.text('DEMO DATA — NO REAL BACKEND (PREVIEW MODE)'), findsWidgets);
-      expect(find.text('Academic Setup'), findsOneWidget);
-      expect(find.text('Device Security & Sessions'), findsOneWidget);
+      expect(find.text('Academic Catalog'), findsWidgets);
+      expect(find.text('Device Security'), findsWidgets);
 
       // Exit preview mode and return to login screen
-      await tester.tap(find.byTooltip('Exit Preview'));
+      final exitButton = find.text('Exit Preview').first;
+      await tester.ensureVisible(exitButton);
+      await tester.tap(exitButton);
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('preview_app_button')), findsOneWidget);
     });
