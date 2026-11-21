@@ -9,6 +9,7 @@ use App\Models\School;
 use App\Models\User;
 use App\Services\PlatformAssurance;
 use App\Services\ProvisionedSchoolAdminActivation;
+use App\Services\SchoolEntitlements;
 use App\Support\Api;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -58,7 +59,10 @@ class PlatformRegistrationController extends Controller
             'id', 'actor_user_id', 'from_state', 'to_state', 'note', 'created_at',
         ]);
 
-        return Api::ok(['registration' => $record, 'history' => $history, 'provisioning' => $this->provisioning($registration), 'activation' => app(ProvisionedSchoolAdminActivation::class)->status($registration)]);
+        $provisioning = $this->provisioning($registration);
+        $entitlement = $provisioning ? app(SchoolEntitlements::class)->summary(School::findOrFail($provisioning['school_id'])) : null;
+
+        return Api::ok(['entitlement' => $entitlement, 'registration' => $record, 'history' => $history, 'provisioning' => $provisioning, 'activation' => app(ProvisionedSchoolAdminActivation::class)->status($registration)]);
     }
 
     private function provisioning(string $registration): ?array
@@ -160,6 +164,36 @@ class PlatformRegistrationController extends Controller
             return Api::ok(app(ProvisionedSchoolAdminActivation::class)->command(
                 $link, $actor, $operation, $command['command_id'], $request->attributes->get('request_id'),
             ));
+        }, 3);
+    }
+
+    public function entitlement(Request $request, string $registration): JsonResponse
+    {
+        $this->authorizeReview($request);
+        abort_unless($request->isJson(), 415);
+        abort_if(strlen($request->getContent()) > 1024, 413);
+        abort_unless($request->query() === [], 422);
+        $input = $request->json()->all();
+        $rules = [
+            'action' => ['required', 'in:'.implode(',', SchoolEntitlements::ACTIONS)],
+            'command_id' => ['required', 'uuid'],
+            'term_days' => ['required_if:action,grant_free_live', 'prohibited_unless:action,grant_free_live', 'integer', 'between:1,365'],
+        ];
+        abort_unless(array_diff_key($input, $rules) === [], 422);
+        $command = Validator::make($input, $rules)->validate();
+        if (isset($command['term_days'])) {
+            $command['term_days'] = (int) $command['term_days'];
+        }
+        $actor = $request->user()->id;
+
+        return DB::transaction(function () use ($request, $registration, $command, $actor): JsonResponse {
+            User::whereKey($actor)->lockForUpdate()->firstOrFail();
+            $this->authorizeReview($request);
+            $link = DB::table('school_provisionings')->where('registration_id', $registration)->first();
+            abort_unless($link, 404);
+            $school = School::whereKey($link->school_id)->lockForUpdate()->firstOrFail();
+
+            return Api::ok(app(SchoolEntitlements::class)->change($school, $link, $actor, $command, $request->attributes->get('request_id')));
         }, 3);
     }
 

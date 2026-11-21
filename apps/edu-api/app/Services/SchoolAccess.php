@@ -26,6 +26,9 @@ class SchoolAccess
     public function canWrite(Membership $membership): bool
     {
         $school = $membership->school;
+        if (in_array($school->access_state, ['suspended', 'archived'], true)) {
+            return false;
+        }
         if ($school->data_stage === 'demo') {
             return $school->demo_ends_at?->isFuture() ?? false;
         }

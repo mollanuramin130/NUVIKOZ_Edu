@@ -4,6 +4,7 @@ use App\Http\Controllers\AcademicCatalogController;
 use App\Http\Controllers\ActivationController;
 use App\Http\Controllers\BrowserAuthController as Browser;
 use App\Http\Controllers\CapabilityController;
+use App\Http\Controllers\DemoSampleController;
 use App\Http\Controllers\MfaController;
 use App\Http\Controllers\MfaReplacementController;
 use App\Http\Controllers\PlatformBrowserController;
@@ -65,6 +66,11 @@ Route::prefix('api/v1/browser/academic')->middleware(['auth:sanctum', BrowserSes
     Route::post('/{kind}', [AcademicCatalogController::class, 'store'])->whereIn('kind', AcademicCatalog::KINDS)->middleware('throttle:20,1,academic-create:');
 });
 
+Route::prefix('api/v1/browser/samples')->middleware(['auth:sanctum', BrowserSession::class, 'throttle:30,1,demo-samples:'])->group(function (): void {
+    Route::get('/', [DemoSampleController::class, 'index']);
+    Route::get('/{id}/preview', [DemoSampleController::class, 'preview'])->whereUlid('id');
+});
+
 Route::prefix('api/v1/browser/registration')->group(function (): void {
     Route::get('/notice', [RegistrationController::class, 'notice'])->middleware('throttle:30,1,browser-registration-notice:');
     Route::post('/submit', [RegistrationController::class, 'submitBrowser'])->middleware('throttle:5,10,registration-submit:');
@@ -81,6 +87,7 @@ Route::prefix('api/v1/browser/platform')->middleware(PlatformBrowser::class)->gr
         Route::get('/registrations/{registration}', [PlatformRegistrationController::class, 'show'])->whereUlid('registration')->middleware('throttle:60,1,platform-registration-show:');
         Route::post('/registrations/{registration}/review', [PlatformRegistrationController::class, 'review'])->whereUlid('registration')->middleware('throttle:20,1,platform-registration-review:');
         Route::post('/registrations/{registration}/provision', [PlatformRegistrationController::class, 'provision'])->whereUlid('registration')->middleware('throttle:20,1,platform-registration-provision:');
+        Route::post('/registrations/{registration}/entitlement', [PlatformRegistrationController::class, 'entitlement'])->whereUlid('registration')->middleware('throttle:20,1,platform-school-entitlement:');
         Route::post('/registrations/{registration}/activation/{operation}', [PlatformRegistrationController::class, 'activation'])
             ->whereUlid('registration')->whereIn('operation', ['issue', 'reissue', 'revoke'])->middleware('throttle:10,1,platform-school-activation:');
         Route::post('/mfa/enrollment', [PlatformBrowserController::class, 'enroll']);
