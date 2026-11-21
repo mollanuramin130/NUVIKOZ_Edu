@@ -1,46 +1,48 @@
-# Current checkpoint — M2 mobile Android live API integration, backend device MFA assurance & physical device acceptance
+# Current checkpoint — M2 mobile Android live API integration, device MFA assurance & OPPO F25 Pro physical device acceptance
 
 2026-11-21 (Asia/Kolkata).
 Branches:
-- Mobile: `feature/m2-mobile-android-implementation` (HEAD commit `17dae44` Stacks on `origin/feature/staging-staff-activation` `94d1554`).
+- Mobile: `feature/m2-mobile-android-implementation` (HEAD commit `e49eae5` Stacks on `origin/feature/staging-staff-activation` `94d1554`).
 - Backend: `feature/m2-mobile-academic-backend-api` (HEAD commit `eb75181` Stacks on `origin/feature/staging-staff-activation` `94d1554`).
 
 ### Implemented Architecture & Test Evidence:
-1. **Mobile Academic API Extension & Security Design (PRIORITY 2)**:
-   - Separated read-only academic catalog queries (`listing`) from privileged creation (`create`) in `AcademicCatalog.php`:
-     - `listing()` requires `requireAdminIdentity()` (verifies confirmed, active School Admin status without demanding 15-minute step-up MFA).
-     - `create()` strictly enforces `requireAdmin()` (requires active, unexpired MFA assurance).
-   - Designed device MFA assurance subsystem in `PrivilegedMfa.php`:
-     - Added `deviceStatus()` and `deviceVerify()` validating password, TOTP counter, or 32-char recovery codes.
-     - Caches cryptographic proof `device_mfa_assurance:{$token->id}` for 900s, bound to `$token->id`, version, and full membership state binding.
-     - Rate-limited to 5 attempts per 5 minutes.
-   - Exposed endpoints in `routes/api.php` under `['auth:sanctum', 'identity.active', 'tenant']`:
-     - `GET /api/v1/security/mfa/status`
-     - `POST /api/v1/security/mfa/challenge`
-     - `GET /api/v1/academic/{kind}`
-     - `POST /api/v1/academic/{kind}` (throttled 20/min)
-   - Created comprehensive backend feature test suite `tests/Feature/MobileAcademicApiTest.php`:
-     - 8/8 tests passed (43 assertions), including complete 6-resource hierarchy creation and query workflow.
-     - `vendor/bin/pint --test` PASSED with zero formatting discrepancies.
-     - Full PHPUnit suite: 50 passed (422 assertions), 3 skipped (isolated MariaDB concurrency), 0 failures.
+1. **Login Error Resolution & Diagnostic Precision**:
+   - Diagnosed root causes of generic "The service is unavailable. Please retry.":
+     - `ApiFailure.toString()` mapped status 0 (network/timeout/format) and 500+ to opaque fallback; refined with exact error codes (`NETWORK_UNAVAILABLE`, `NETWORK_TIMEOUT`, `MALFORMED_RESPONSE`, `SERVER_ERROR`, `INVALID_CREDENTIALS`).
+     - Added case-insensitive matching for ULID regex in `DeviceSession.parse()` to prevent false `MALFORMED_RESPONSE` rejections.
+     - Protected methods now cleanly isolate secondary resource fetch errors without evicting active sessions.
+   - Flutter tests: 23/23 PASSED (`flutter test --no-pub`).
+   - Flutter static analysis: 0 issues (`flutter analyze --no-pub`).
 
-2. **Mobile Client Integration (PRIORITY 4)**:
-   - Updated `HttpAcademicRepository` in `apps/edu-mobile/lib/academic/repository/academic_repository.dart` to target `/api/v1/academic`.
-   - Updated repository unit test in `test/academic_repository_test.dart`.
-   - Executed Flutter test suite: 23/23 tests PASSED across widget tests, transport tests, auth controller tests, and academic workspace tests.
+2. **Mobile MFA Step-Up Challenge (PRIORITY 6)**:
+   - Created `MfaChallengeSheet` in `apps/edu-mobile/lib/auth/screens/mfa_challenge_screen.dart` supporting TOTP 6-digit codes and 32-character hex recovery codes.
+   - Wired MFA challenge trigger into `SecurityScreen` (`/api/v1/security/mfa/status` & `/api/v1/security/mfa/challenge`) and `AcademicWorkspaceScreen`.
+   - Creation forms automatically prompt for step-up verification when privileged mutations require active assurance.
 
-3. **Physical Device Acceptance & Verification (PRIORITY 3 & 5)**:
-   - Physical device: OnePlus Nord CE4 (`CPH2603`, Android 16, serial `EM9D5L998XB6599H`).
-   - Debug APK (158 MB, SHA-256: `17c7fda4b25e0084332966bc36de19ea59fccdf4ee6394528e55d0dc66233db8`) installed and executed.
-   - Cold launch latency measured: `TotalTime: 2807 ms`, `WaitTime: 2831 ms`.
-   - Native Keystore vault verified; Impeller OpenGLES backend initialized; visual screenshots captured (`app_clean_full.png`).
+3. **Backend Mobile Academic API & Device MFA Assurance (PRIORITY 2)**:
+   - Branch `feature/m2-mobile-academic-backend-api` (`eb75181`):
+     - Read-only queries separated from privileged creation in `AcademicCatalog.php`.
+     - Device MFA assurance subsystem in `PrivilegedMfa.php` (`deviceStatus` and `deviceVerify` with 900s token-bound cache).
+     - Endpoints: `GET/POST /api/v1/academic/{kind}`, `GET /api/v1/security/mfa/status`, `POST /api/v1/security/mfa/challenge`.
+     - Feature tests: `MobileAcademicApiTest.php` 8/8 passed (43 assertions).
+     - Native unit tests: `SecureTokenVaultTest.kt` passed with `./gradlew testDebugUnitTest` (34 tasks, BUILD SUCCESSFUL).
 
-4. **GitHub Synchronization Status (PRIORITY 1)**:
-   - Local branches `feature/m2-mobile-android-implementation` and `feature/m2-mobile-academic-backend-api` are cleanly committed.
-   - Remote push dry-run returns HTTP 403 Forbidden because the Fine-Grained Personal Access Token in macOS Keychain lacks "Contents: Read and write" repository permissions.
-   - Requires owner to update token permissions in GitHub Settings -> Developer Settings -> Fine-grained tokens without sharing secrets.
+4. **Physical Device Acceptance & Verification (PRIORITY 3 & 5)**:
+   - Physical device: **OPPO F25 Pro** (`CPH2603`, Android 16 / API 36, ADB Serial `EM9D5L998XB6599H`).
+   - Debug APK installed with streamed install (`Success`).
+   - Cold launch latency measured: `TotalTime: 3096 ms`, `WaitTime: 3127 ms`.
+   - Screen inspection verified: Form validation, Material 3 executive theme, and Keystore security indicators.
 
-NEXT SAFE TASK: Owner updates GitHub PAT permissions (`Contents: Read and write`), pushes branches, creates Draft PRs against `origin/feature/staging-staff-activation`, and approves backend deployment to staging before live end-to-end device write testing.
+5. **GitHub Synchronization Status & Integration Gates (PRIORITY 1 & 14)**:
+   - Local branches cleanly committed and verified.
+   - Awaiting owner to update GitHub PAT permissions (`Contents: Read and write`) in macOS Keychain / GitHub settings.
+   - Draft PR dependency chain:
+     1. Staging staff activation baseline (`feature/staging-staff-activation`)
+     2. Backend Academic & Device MFA API (`feature/m2-mobile-academic-backend-api`)
+     3. Mobile Android implementation (`feature/m2-mobile-android-implementation`)
+   - Merge gate: Awaiting explicit owner authorization before merging to `main`.
+
+NEXT SAFE TASK: Owner updates GitHub PAT permissions, pushes branches, reviews Draft PRs, and authorizes staging backend deployment before live physical device School Admin write acceptance.
 
 # Current checkpoint — M2 mobile Android architecture, native Keystore & academic implementation
 
