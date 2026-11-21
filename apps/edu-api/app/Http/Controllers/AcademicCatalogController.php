@@ -10,11 +10,11 @@ class AcademicCatalogController extends Controller
 {
     public function index(Request $request, AcademicCatalog $service)
     {
-        return Api::ok($service->listing($request->attributes->get('membership'), $request->route('kind'), $request->query()));
+        return Api::ok($service->listing($request->attributes->get('membership'), $request->route('kind'), $request->query(), $request->routeIs('device.academic.*')));
     }
 
     public function store(Request $request, AcademicCatalog $service)
     {
-        return Api::ok($service->create($request->attributes->get('membership'), $request->route('kind'), $request->all(), $request->header('Idempotency-Key'), $request->attributes->get('request_id')));
+        return Api::ok($service->create($request->attributes->get('membership'), $request->route('kind'), $request->all(), $request->header('Idempotency-Key'), $request->attributes->get('request_id'), $request->routeIs('device.academic.*')));
     }
 }

@@ -91,17 +91,24 @@ class AcademicCatalog
         };
     }
 
-    private function current(Membership $actor): Membership
+    private function current(Membership $actor, bool $device = false, bool $write = false): Membership
     {
         $current = Membership::whereKey($actor->id)->where('school_id', $actor->school_id)->where('user_id', $actor->user_id)->with(['school', 'user'])->firstOrFail();
-        app(SchoolAccess::class)->requireAdmin($current);
+        if (! $device) {
+            app(SchoolAccess::class)->requireAdmin($current);
+        } else {
+            app(SchoolAccess::class)->requireAdminIdentity($current);
+            if ($write) {
+                abort_unless(app(PrivilegedMfa::class)->deviceVerified($current, request()), 403, 'MFA required.');
+            }
+        }
 
         return $current;
     }
 
-    public function listing(Membership $actor, string $kind, array $query): array
+    public function listing(Membership $actor, string $kind, array $query, bool $device = false): array
     {
-        $actor = $this->current($actor);
+        $actor = $this->current($actor, $device);
         $filters = $this->filters($kind);
         $rules = ['cursor' => ['sometimes', 'ulid']];
         foreach ($filters as $field => $table) {
@@ -141,10 +148,10 @@ class AcademicCatalog
         return array_intersect_key((array) $row, array_flip($fields));
     }
 
-    public function create(Membership $actor, string $kind, array $data, ?string $key, string $requestId): array
+    public function create(Membership $actor, string $kind, array $data, ?string $key, string $requestId, bool $device = false): array
     {
         $table = $this->table($kind);
-        $this->current($actor);
+        $this->current($actor, $device, true);
         $rules = $this->rules($kind);
         foreach (['name', 'grade_label', 'code'] as $field) {
             if (isset($data[$field]) && is_string($data[$field])) {
@@ -160,12 +167,12 @@ class AcademicCatalog
         ksort($data);
         $hash = hash('sha256', json_encode($data, JSON_THROW_ON_ERROR));
 
-        return DB::transaction(function () use ($actor, $kind, $table, $data, $key, $hash, $requestId) {
+        return DB::transaction(function () use ($actor, $kind, $table, $data, $key, $hash, $requestId, $device) {
             // Same order as identity/security mutation commands: school -> identity -> membership.
             School::whereKey($actor->school_id)->lockForUpdate()->firstOrFail();
             User::whereKey($actor->user_id)->lockForUpdate()->firstOrFail();
             Membership::whereKey($actor->id)->lockForUpdate()->firstOrFail();
-            $actor = $this->current($actor);
+            $actor = $this->current($actor, $device, true);
             abort_unless(app(SchoolAccess::class)->canWrite($actor), 403);
             $scope = ['school_id' => $actor->school_id, 'membership_id' => $actor->id, 'operation' => $kind.'.create', 'key' => $key];
             // Locking reads avoid stale REPEATABLE READ snapshots after a school-lock wait.

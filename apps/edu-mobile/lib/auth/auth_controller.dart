@@ -36,6 +36,7 @@ class AuthController extends ChangeNotifier {
     }); _storage=next; return next;
   }
   void _failure(Object e, {bool login = false}) {
+    debugPrint('[AUTH_FAILURE] Type: ${e.runtimeType}, Details: $e, login: $login');
     ++_generation; _expiry?.cancel();
     _session=null;
     state=e is SecureStorageUnavailable?AuthState.storageUnavailable:e is ApiFailure?(e.code=='PASSWORD_CHANGE_REQUIRED'?AuthState.reauthenticationRequired:e.status==401?(login?AuthState.invalidCredentials:AuthState.expired):e.status==403?AuthState.denied:AuthState.networkError):AuthState.networkError;
@@ -83,6 +84,15 @@ class AuthController extends ChangeNotifier {
       if(generation!=_generation||_disposed)throw const ApiFailure(401,'SESSION_CHANGED');
       return result;
     }catch(e){if(generation==_generation&&!_disposed){try{await _write(null);}catch(_){} _failure(e);}rethrow;}
+  }
+  Future<Map<String,dynamic>> protectedPost(String path, {Map<String,dynamic>? body}) async {
+    final current=_session; final generation=_generation;
+    try {
+      if(current==null||current.expired(_now()))throw const ApiFailure(401,'TOKEN_EXPIRED');
+      final result=_data(await api.send('POST',path,body:body,token:current.token,school:current.school));
+      if(generation!=_generation||_disposed)throw const ApiFailure(401,'SESSION_CHANGED');
+      return result;
+    }catch(e){if(generation==_generation&&!_disposed && !(path=='/api/v1/security/mfa/challenge' && e is ApiFailure && (e.status==422 || e.status==429))){try{await _write(null);}catch(_){} _failure(e);}rethrow;}
   }
   Future<void> _revoke(DeviceSession session) async {
     try{await api.send('POST','/api/v1/auth/logout',body:{},token:session.token,school:session.school);}catch(_){}
