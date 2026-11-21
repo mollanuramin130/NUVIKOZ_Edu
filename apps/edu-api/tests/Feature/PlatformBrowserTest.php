@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Membership;
 use App\Models\School;
 use App\Models\User;
 use App\Services\ProvisionedSchoolAdminActivation;
@@ -275,6 +276,35 @@ class PlatformBrowserTest extends TestCase
 
         $this->browser('POST', 'platform/logout')->assertOk();
         $this->browser('GET', $detail)->assertUnauthorized();
+    }
+
+    public function test_session_review_requires_platform_context_and_approval_is_audited_once(): void
+    {
+        $this->travelTo(now()->setDate(2027, 4, 10)->setTime(12, 0));
+        $this->authenticate();
+        $requester = User::create(['name' => 'Synthetic School Admin', 'password' => 'Synthetic-School-Password']);
+        $school = School::create(['code' => 'SESSION', 'name' => 'Synthetic School', 'settings' => ['timezone' => 'Asia/Kolkata'],
+            'data_stage' => 'live', 'access_state' => 'live_enabled', 'entitlement_ends_at' => now()->addYear()]);
+        Membership::create(['school_id' => $school->id, 'user_id' => $requester->id, 'role' => 'school_admin', 'status' => 'active', 'login_identifier' => 'ADMIN']);
+        $session = (string) Str::ulid();
+        DB::table('academic_sessions')->insert(['id' => $session, 'school_id' => $school->id, 'name' => 'Synthetic Term',
+            'starts_on' => '2027-04-01', 'ends_on' => '2027-06-30', 'state' => 'active', 'version' => 1]);
+        $id = (string) Str::ulid();
+        DB::table('session_change_requests')->insert(['id' => $id, 'school_id' => $school->id, 'session_id' => $session, 'requester_id' => $requester->id,
+            'proposed_start' => '2027-04-01', 'proposed_end' => '2027-07-31', 'session_version' => 1, 'state' => 'pending',
+            'reason' => 'Synthetic revision', 'submit_key' => (string) Str::ulid(), 'submit_hash' => str_repeat('a', 64),
+            'impact' => json_encode(['before' => ['starts_on' => '2027-04-01', 'ends_on' => '2027-06-30'],
+                'proposed' => ['starts_on' => '2027-04-01', 'ends_on' => '2027-07-31'], 'class_offerings' => 0])]);
+        $body = ['decision' => 'approve', 'reason' => 'Reviewed preview', 'version' => 1];
+        $path = "platform/sessions/change-requests/{$id}/review";
+        $this->withHeader('Idempotency-Key', (string) Str::ulid());
+        $this->browser('POST', $path, $body)->assertOk()->assertJsonPath('data.state', 'approved');
+        $this->browser('POST', $path, $body)->assertOk()->assertJsonPath('data.replayed', true);
+        $this->browser('POST', $path, array_replace($body, ['decision' => 'reject']))->assertConflict();
+        $this->assertDatabaseHas('academic_sessions', ['id' => $session, 'state' => 'active', 'version' => 2, 'ends_on' => '2027-07-31']);
+        $this->assertSame(1, DB::table('audit_events')->where('action', 'academic.session_change.approved')->count());
+        $this->browser('POST', 'platform/logout')->assertOk();
+        $this->browser('POST', $path, $body)->assertUnauthorized();
     }
 
     public function test_real_cookie_csrf_platform_enrollment_and_protected_identity(): void

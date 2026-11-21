@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\Role;
 use App\Models\Membership;
+use App\Models\School;
 use Illuminate\Auth\Access\AuthorizationException;
 
 class SchoolAccess
@@ -25,7 +26,11 @@ class SchoolAccess
 
     public function canWrite(Membership $membership): bool
     {
-        $school = $membership->school;
+        return $this->schoolCanWrite($membership->school);
+    }
+
+    public function schoolCanWrite(School $school): bool
+    {
         if (in_array($school->access_state, ['suspended', 'archived'], true)) {
             return false;
         }
