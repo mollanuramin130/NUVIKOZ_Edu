@@ -5,9 +5,12 @@ use App\Http\Controllers\ActivationController;
 use App\Http\Controllers\BrowserAuthController as Browser;
 use App\Http\Controllers\CapabilityController;
 use App\Http\Controllers\MfaController;
+use App\Http\Controllers\MfaReplacementController;
+use App\Http\Controllers\PlatformBrowserController;
 use App\Http\Controllers\RecoveryController;
 use App\Http\Controllers\SecurityInventoryController;
 use App\Http\Middleware\BrowserSession;
+use App\Http\Middleware\PlatformBrowser;
 use App\Services\AcademicCatalog;
 use Illuminate\Support\Facades\Route;
 
@@ -58,4 +61,26 @@ Route::prefix('api/v1/browser/security')->middleware(['auth:sanctum', BrowserSes
 Route::prefix('api/v1/browser/academic')->middleware(['auth:sanctum', BrowserSession::class])->group(function (): void {
     Route::get('/{kind}', [AcademicCatalogController::class, 'index'])->whereIn('kind', AcademicCatalog::KINDS);
     Route::post('/{kind}', [AcademicCatalogController::class, 'store'])->whereIn('kind', AcademicCatalog::KINDS)->middleware('throttle:20,1,academic-create:');
+});
+
+Route::prefix('api/v1/browser/platform')->middleware(PlatformBrowser::class)->group(function (): void {
+    Route::post('/login', [PlatformBrowserController::class, 'login'])->middleware('throttle:5,1,platform-login:');
+    Route::post('/logout', [PlatformBrowserController::class, 'logout']);
+    Route::middleware('auth:sanctum')->group(function (): void {
+        Route::get('/status', [PlatformBrowserController::class, 'status']);
+        Route::get('/identity', [PlatformBrowserController::class, 'identity']);
+        Route::post('/mfa/enrollment', [PlatformBrowserController::class, 'enroll']);
+        Route::post('/mfa/confirm', [PlatformBrowserController::class, 'confirm']);
+        Route::post('/mfa/challenge', [PlatformBrowserController::class, 'challenge']);
+        Route::post('/mfa/recovery', [PlatformBrowserController::class, 'recovery']);
+    });
+});
+
+Route::prefix('api/v1/browser/security/mfa/replacement')->middleware(['auth:sanctum', BrowserSession::class])->group(function (): void {
+    Route::post('/start', [MfaReplacementController::class, 'start']);
+    Route::post('/confirm', [MfaReplacementController::class, 'confirm']);
+});
+Route::prefix('api/v1/browser/platform/mfa/replacement')->middleware([PlatformBrowser::class, 'auth:sanctum'])->group(function (): void {
+    Route::post('/start', [MfaReplacementController::class, 'start']);
+    Route::post('/confirm', [MfaReplacementController::class, 'confirm']);
 });

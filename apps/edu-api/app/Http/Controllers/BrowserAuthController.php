@@ -43,6 +43,7 @@ class BrowserAuthController extends Controller
             if (! $current || $current->status !== 'active' || in_array($current->school->access_state, ['suspended', 'archived'], true) || $user->status !== 'active' || $user->is_platform_admin || $user->activation_required || $user->must_change_password || ! Hash::check($data['password'], $user->password)) {
                 return Api::error('INVALID_CREDENTIALS', 'Credentials could not be verified.', 401);
             }
+            $request->session()->forget(['platform_context', 'platform_assurance']);
             Auth::guard('web')->login($user);
             $request->session()->regenerate(true);
             $request->session()->regenerateToken();

@@ -365,3 +365,16 @@ test('academic relationship APIs deny cross-school references and retain browser
   expect((await create('sections', {class_offering_id: o.id, name: 'Mixed', session_id: s.id}, 'synthetic-mixed-session')).status()).toBe(422);
   expect((await create('sections', {class_offering_id: o.id, name: 'Teacher', class_teacher_membership_id: '01ARZ3NDEKTSV4RRFFQ69G5FAV'}, 'synthetic-teacher-deferred')).status()).toBe(422);
 });
+
+test('School Admin replaces authenticator with old-factor proof and revokes every existing browser',async({context,page,browser})=>{
+ expect((await login(context,'A','ADMIN',password,false)).status()).toBe(200);
+ const csrf=await bootstrap(context);const setup=await context.request.post(`${api}/security/mfa/enrollment`,{headers:{Origin:origin,'X-CSRF-TOKEN':csrf},data:{password}});expect(setup.status()).toBe(200);
+ const seed=(await setup.json()).data.secret;
+ const confirmed=await context.request.post(`${api}/security/mfa/enrollment/confirm`,{headers:{Origin:origin,'X-CSRF-TOKEN':csrf},data:{password,code:totp(seed)}});expect(confirmed.status()).toBe(200);const oldCodes=(await confirmed.json()).data.recovery_codes;
+ const other=await browser.newContext({ignoreHTTPSErrors:true});expect((await login(other,'A','ADMIN',password,false)).status()).toBe(200);
+ await page.goto('/profile/security');const region=page.getByRole('region',{name:'Authenticator replacement'});
+ await region.getByLabel('Password for replacement').fill(password);await region.getByLabel('Existing factor type').selectOption('recovery');await region.getByLabel('Existing factor code').fill(oldCodes[0]);await region.getByRole('button',{name:'Begin authenticator replacement'}).click();
+ const replacement=await region.getByTestId('replacement-seed').textContent();
+ await region.getByLabel('Password for replacement').fill(password);await region.getByLabel('New authenticator code').fill(totp(replacement!));await region.getByRole('button',{name:'Confirm replacement',exact:true}).click();await expect(page.getByRole('heading',{name:'Authenticator replaced',exact:true})).toBeVisible();expect(await page.getByRole('listitem').count()).toBe(8);
+ expect((await context.request.get(`${api}/me`,{headers:{Origin:origin}})).status()).toBe(401);expect((await other.request.get(`${api}/me`,{headers:{Origin:origin}})).status()).toBe(401);await other.close();
+});

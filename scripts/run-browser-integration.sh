@@ -16,7 +16,8 @@ php scripts/browser-fixtures.php
 pids=()
 cleanup() { for pid in "${pids[@]}"; do kill "$pid" 2>/dev/null || true; done; rm -f "$EDU_TEST_KEY" "$EDU_TEST_CERT"; }
 trap cleanup EXIT
-(cd apps/edu-api && exec php artisan serve --host=127.0.0.1 --port=8000) >"$RUNNER_TEMP/edu-api-test.log" 2>&1 & pids+=("$!")
+(exec php -S 127.0.0.1:8000 scripts/platform-browser-router.php) >"$RUNNER_TEMP/edu-api-test.log" 2>&1 & pids+=("$!")
+(cd apps/edu-api && APP_ENV=production exec php -S 127.0.0.1:8001 -t public) >"$RUNNER_TEMP/edu-platform-disabled.log" 2>&1 & pids+=("$!")
 (cd apps/edu-web && exec npm start -- --hostname 127.0.0.1 --port 3000) >"$RUNNER_TEMP/edu-web-test.log" 2>&1 & pids+=("$!")
 node scripts/browser-https.mjs >"$RUNNER_TEMP/edu-proxy-test.log" 2>&1 & pids+=("$!")
 for attempt in $(seq 1 30); do

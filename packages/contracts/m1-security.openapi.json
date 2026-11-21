@@ -3,7 +3,7 @@
   "info": {
     "title": "NUVIKOZ Edu implemented browser security and permission subset",
     "version": "0.2.0",
-    "description": "AUTH-06\u201308 supported browser subset. Platform/native privileged MFA and independently verified MFA reset remain unavailable. Capability probes are synthetic, not academic modules. See ADR-022/023 and canonical handoff."
+    "description": "AUTH-06\u201308 supported school browser subset. Real production platform issuer, native privileged-device MFA and independently verified lost-factor reset remain unavailable. Synthetic platform and authenticator replacement routes are in m1-platform-replacement.openapi.json. Capability probes are synthetic, not academic modules. See canonical handoff."
   },
   "paths": {
     "/api/v1/browser/security/mfa/status": {
