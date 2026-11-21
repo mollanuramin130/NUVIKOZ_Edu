@@ -32,6 +32,13 @@ class _EduAppState extends State<EduApp> {
           PlatformSecureTokenStore(),
         );
     auth.restore();
+    if (widget.controller == null) {
+      EduApiClient(Uri.parse(AppConfig.apiBaseUrl)).health().then((res) {
+        debugPrint('[DIAGNOSTIC_PROBE] Healthcheck SUCCESS: $res');
+      }).catchError((e) {
+        debugPrint('[DIAGNOSTIC_PROBE] Healthcheck FAILED: $e');
+      });
+    }
   }
 
   @override

@@ -4,6 +4,7 @@ import '../../widgets/app_card.dart';
 import '../../widgets/empty_state_view.dart';
 import '../../widgets/error_banner.dart';
 import '../auth_controller.dart';
+import 'mfa_challenge_screen.dart';
 
 class SecurityScreen extends StatefulWidget {
   const SecurityScreen({
@@ -19,6 +20,7 @@ class SecurityScreen extends StatefulWidget {
 
 class _SecurityScreenState extends State<SecurityScreen> {
   List<Map<String, dynamic>> _devices = [];
+  Map<String, dynamic>? _mfaStatus;
   bool _loading = false;
   String? _error;
   String? _success;
@@ -27,6 +29,27 @@ class _SecurityScreenState extends State<SecurityScreen> {
   void initState() {
     super.initState();
     _loadDevices();
+    _loadMfaStatus();
+  }
+
+  Future<void> _loadMfaStatus() async {
+    final s = widget.authController.session;
+    if (s == null || !s.privileged) return;
+    try {
+      final res = await widget.authController.api.send(
+        'GET',
+        '/api/v1/security/mfa/status',
+        token: s.token,
+        school: s.school,
+      );
+      if (mounted) {
+        setState(() {
+          _mfaStatus = res['data'] is Map<String, dynamic> ? res['data'] as Map<String, dynamic> : null;
+        });
+      }
+    } catch (_) {
+      // Endpoint may not be active yet on earlier staging deployments
+    }
   }
 
   Future<void> _loadDevices() async {
@@ -179,7 +202,85 @@ class _SecurityScreenState extends State<SecurityScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
+
+          // MFA Assurance Card (for privileged school admins)
+          if (widget.authController.session?.privileged == true) ...[
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: (_mfaStatus?['verified'] == true)
+                              ? AppColors.successLight
+                              : const Color(0xFFEFF6FF),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          (_mfaStatus?['verified'] == true)
+                              ? Icons.verified_user_rounded
+                              : Icons.security_rounded,
+                          color: (_mfaStatus?['verified'] == true)
+                              ? AppColors.success
+                              : AppColors.primaryBlue,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Two-Factor Authentication (MFA)',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primaryText,
+                              ),
+                            ),
+                            Text(
+                              (_mfaStatus?['verified'] == true)
+                                  ? 'Step-up assurance active (15 min)'
+                                  : 'Step-up verification required for creations',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: (_mfaStatus?['verified'] == true)
+                                    ? AppColors.success
+                                    : AppColors.secondaryText,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.shield_outlined, size: 18),
+                      label: Text((_mfaStatus?['verified'] == true)
+                          ? 'Re-verify MFA Step-up'
+                          : 'Verify MFA Step-up Now'),
+                      onPressed: () {
+                        MfaChallengeSheet.show(
+                          context,
+                          authController: widget.authController,
+                          onSuccess: _loadMfaStatus,
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
 
           if (_error != null)
             ErrorBanner(message: _error!, onDismiss: () => setState(() => _error = null)),

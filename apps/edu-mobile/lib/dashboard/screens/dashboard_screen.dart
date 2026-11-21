@@ -76,6 +76,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         builder: (_) => AcademicWorkspaceScreen(
           controller: academicController,
           schoolName: _schoolDetails?['name'] as String? ?? 'School ${session.school.substring(0, 6)}',
+          authController: widget.authController,
         ),
       ),
     );

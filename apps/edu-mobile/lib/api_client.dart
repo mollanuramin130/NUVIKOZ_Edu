@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 
 class ApiFailure implements Exception {
   const ApiFailure(this.status, this.code, {this.details});
@@ -11,15 +12,29 @@ class ApiFailure implements Exception {
   @override
   String toString() => switch (status) {
     400 => 'Bad request. Please check submitted values.',
-    401 => 'Sign in again. Credentials or session could not be verified.',
-    403 => 'School context or operation is not authorized.',
+    401 => code == 'INVALID_CREDENTIALS'
+        ? 'Invalid school code, identifier, or password.'
+        : 'Sign in again. Credentials or session could not be verified.',
+    403 => code == 'PASSWORD_CHANGE_REQUIRED'
+        ? 'Password change required before proceeding.'
+        : 'School context or operation is not authorized.',
     404 => 'The requested resource was not found.',
     409 => code == 'CONFLICT' || code == 'DUPLICATE'
         ? 'A record with these details already exists or conflict detected.'
         : 'Conflict detected. Please review and retry.',
     422 => 'Validation error. Please verify all required fields.',
     429 => 'Too many attempts. Please wait before trying again.',
-    _ => 'The service is unavailable. Please retry.',
+    _ => switch (code) {
+      'NETWORK_UNAVAILABLE' => 'Cannot connect to server. Please check your internet connection.',
+      'NETWORK_TIMEOUT' => 'Connection timed out. Please check your network and retry.',
+      'MALFORMED_RESPONSE' => details != null
+          ? 'Unexpected server response format: $details'
+          : 'Unexpected server response format. Please retry.',
+      'SERVER_ERROR' => 'Server encountered an error (HTTP $status). Please retry shortly.',
+      _ => status >= 500
+          ? 'Server is temporarily unavailable (HTTP $status). Please retry shortly.'
+          : 'The service is unavailable. Please retry.',
+    },
   };
 }
 
@@ -106,6 +121,7 @@ class EduApiClient implements ApiTransport, AcademicApiTransport {
       }
 
       final response = await request.close().timeout(const Duration(seconds: 10));
+      debugPrint('[API] $method ${targetUri.path} -> HTTP ${response.statusCode}');
       final bytes = <int>[];
       await for (final chunk in response.timeout(const Duration(seconds: 10))) {
         bytes.addAll(chunk);
@@ -117,8 +133,9 @@ class EduApiClient implements ApiTransport, AcademicApiTransport {
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
         final error = decoded['error'];
-        final code = error is Map && error['code'] is String ? error['code'] as String : 'API_ERROR';
+        final code = error is Map && error['code'] is String ? error['code'] as String : (response.statusCode >= 500 ? 'SERVER_ERROR' : 'API_ERROR');
         final details = error is Map ? error['details'] : null;
+        debugPrint('[API_ERROR] HTTP ${response.statusCode} code: $code details: $details');
         throw ApiFailure(response.statusCode, code, details: details);
       }
 
@@ -126,11 +143,26 @@ class EduApiClient implements ApiTransport, AcademicApiTransport {
       return decoded;
     } on ApiFailure {
       rethrow;
-    } on TimeoutException {
-      throw const ApiFailure(0, 'NETWORK_TIMEOUT');
-    } on IOException {
+    } on SocketException catch (e) {
+      debugPrint('[API_NETWORK_ERROR] SocketException: ${e.osError?.message ?? e.message}');
       throw const ApiFailure(0, 'NETWORK_UNAVAILABLE');
-    } on FormatException {
+    } on HandshakeException catch (e) {
+      debugPrint('[API_NETWORK_ERROR] HandshakeException: ${e.osError?.message ?? e.message}');
+      throw const ApiFailure(0, 'NETWORK_UNAVAILABLE');
+    } on TlsException catch (e) {
+      debugPrint('[API_NETWORK_ERROR] TlsException: ${e.osError?.message ?? e.message}');
+      throw const ApiFailure(0, 'NETWORK_UNAVAILABLE');
+    } on HttpException catch (e) {
+      debugPrint('[API_NETWORK_ERROR] HttpException: ${e.message}');
+      throw const ApiFailure(0, 'NETWORK_UNAVAILABLE');
+    } on TimeoutException {
+      debugPrint('[API_NETWORK_ERROR] TimeoutException: 10s connection limit exceeded');
+      throw const ApiFailure(0, 'NETWORK_TIMEOUT');
+    } on IOException catch (e) {
+      debugPrint('[API_NETWORK_ERROR] IOException (${e.runtimeType}): $e');
+      throw const ApiFailure(0, 'NETWORK_UNAVAILABLE');
+    } on FormatException catch (e) {
+      debugPrint('[API_FORMAT_ERROR] FormatException: ${e.message}');
       throw const ApiFailure(0, 'MALFORMED_RESPONSE');
     }
   }

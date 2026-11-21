@@ -1,0 +1,286 @@
+import 'package:flutter/material.dart';
+import '../../theme/app_colors.dart';
+import '../../widgets/error_banner.dart';
+import '../auth_controller.dart';
+
+class MfaChallengeSheet extends StatefulWidget {
+  const MfaChallengeSheet({
+    super.key,
+    required this.authController,
+    this.onSuccess,
+  });
+
+  final AuthController authController;
+  final VoidCallback? onSuccess;
+
+  static Future<bool?> show(BuildContext context, {required AuthController authController, VoidCallback? onSuccess}) {
+    return showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => MfaChallengeSheet(
+        authController: authController,
+        onSuccess: onSuccess,
+      ),
+    );
+  }
+
+  @override
+  State<MfaChallengeSheet> createState() => _MfaChallengeSheetState();
+}
+
+class _MfaChallengeSheetState extends State<MfaChallengeSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _passwordController = TextEditingController();
+  final _codeController = TextEditingController();
+
+  String _mode = 'totp'; // 'totp' or 'recovery'
+  bool _obscurePassword = true;
+  bool _isSubmitting = false;
+  String? _errorMessage;
+
+  @override
+  void dispose() {
+    _passwordController.dispose();
+    _codeController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() {
+      _isSubmitting = true;
+      _errorMessage = null;
+    });
+
+    final password = _passwordController.text;
+    final code = _codeController.text.trim();
+
+    try {
+      final res = await widget.authController.protectedPost(
+        '/api/v1/security/mfa/challenge',
+        body: {
+          'password': password,
+          'code': code,
+          'mode': _mode,
+        },
+      );
+
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+        _passwordController.clear();
+        _codeController.clear();
+
+        if (res['verified'] == true || res['data']?['verified'] == true) {
+          widget.onSuccess?.call();
+          Navigator.of(context).pop(true);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('MFA verification active. Privileged operations enabled for 15 minutes.'),
+              backgroundColor: AppColors.primaryBlue,
+            ),
+          );
+        } else {
+          setState(() {
+            _errorMessage = 'Verification could not be confirmed.';
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+          _errorMessage = e.toString();
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    return Container(
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 24,
+        bottom: bottomInset + 24,
+      ),
+      decoration: const BoxDecoration(
+        color: AppColors.whiteSurface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header
+              Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.security_rounded,
+                      color: AppColors.primaryBlue,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Step-up Verification (MFA)',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primaryText,
+                          ),
+                        ),
+                        Text(
+                          'Requires password & 2FA to authorize actions',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.secondaryText,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: () => Navigator.of(context).pop(false),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              if (_errorMessage != null) ...[
+                ErrorBanner(message: _errorMessage!),
+                const SizedBox(height: 12),
+              ],
+
+              // Mode toggle (TOTP vs Recovery)
+              SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment(
+                    value: 'totp',
+                    label: Text('Authenticator (TOTP)'),
+                    icon: Icon(Icons.pin_rounded, size: 16),
+                  ),
+                  ButtonSegment(
+                    value: 'recovery',
+                    label: Text('Recovery Code'),
+                    icon: Icon(Icons.vpn_key_rounded, size: 16),
+                  ),
+                ],
+                selected: {_mode},
+                onSelectionChanged: (set) {
+                  setState(() {
+                    _mode = set.first;
+                    _codeController.clear();
+                    _errorMessage = null;
+                  });
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Account Password
+              TextFormField(
+                controller: _passwordController,
+                obscureText: _obscurePassword,
+                enabled: !_isSubmitting,
+                decoration: InputDecoration(
+                  labelText: 'Account Password',
+                  prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                      size: 20,
+                    ),
+                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                  ),
+                ),
+                validator: (val) {
+                  if (val == null || val.isEmpty) return 'Password is required';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 14),
+
+              // Code field
+              if (_mode == 'totp')
+                TextFormField(
+                  controller: _codeController,
+                  enabled: !_isSubmitting,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  decoration: const InputDecoration(
+                    labelText: '6-digit Authenticator Code',
+                    hintText: 'e.g. 123456',
+                    prefixIcon: Icon(Icons.pin_outlined, size: 20),
+                    counterText: '',
+                  ),
+                  validator: (val) {
+                    if (val == null || val.trim().length != 6) {
+                      return 'Enter 6 digits from your authenticator app';
+                    }
+                    return null;
+                  },
+                )
+              else
+                TextFormField(
+                  controller: _codeController,
+                  enabled: !_isSubmitting,
+                  maxLength: 32,
+                  decoration: const InputDecoration(
+                    labelText: '32-character Hex Recovery Code',
+                    hintText: 'e.g. 0123456789abcdef0123456789abcdef',
+                    prefixIcon: Icon(Icons.key_outlined, size: 20),
+                    counterText: '',
+                  ),
+                  validator: (val) {
+                    if (val == null || !RegExp(r'^[a-fA-F0-9]{32}$').hasMatch(val.trim())) {
+                      return 'Enter a valid 32-character hexadecimal recovery code';
+                    }
+                    return null;
+                  },
+                ),
+              const SizedBox(height: 20),
+
+              // Submit Button
+              FilledButton(
+                onPressed: _isSubmitting ? null : _submit,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primaryBlue,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: _isSubmitting
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text(
+                        'Verify & Authorize (15 min)',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

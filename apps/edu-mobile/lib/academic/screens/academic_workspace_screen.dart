@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../auth/auth_controller.dart';
+import '../../auth/screens/mfa_challenge_screen.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/empty_state_view.dart';
@@ -15,10 +17,12 @@ class AcademicWorkspaceScreen extends StatefulWidget {
     super.key,
     required this.controller,
     required this.schoolName,
+    this.authController,
   });
 
   final AcademicController controller;
   final String schoolName;
+  final AuthController? authController;
 
   @override
   State<AcademicWorkspaceScreen> createState() => _AcademicWorkspaceScreenState();
@@ -57,6 +61,7 @@ class _AcademicWorkspaceScreenState extends State<AcademicWorkspaceScreen>
       builder: (ctx) => _CreateResourceSheet(
         controller: widget.controller,
         tab: tab,
+        authController: widget.authController,
       ),
     );
   }
@@ -124,9 +129,31 @@ class _AcademicWorkspaceScreenState extends State<AcademicWorkspaceScreen>
               if (c.errorMessage != null)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  child: ErrorBanner(
-                    message: c.errorMessage!,
-                    onDismiss: c.clearMessages,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      ErrorBanner(
+                        message: c.errorMessage!,
+                        onDismiss: c.clearMessages,
+                      ),
+                      if (widget.authController != null && (c.errorMessage!.contains('MFA') || c.errorMessage!.contains('Privileged'))) ...[
+                        const SizedBox(height: 6),
+                        FilledButton.tonalIcon(
+                          icon: const Icon(Icons.shield_outlined, size: 18),
+                          label: const Text('Verify MFA Step-up (15 min)'),
+                          onPressed: () {
+                            MfaChallengeSheet.show(
+                              context,
+                              authController: widget.authController!,
+                              onSuccess: () {
+                                c.clearMessages();
+                                c.loadActiveTabData();
+                              },
+                            );
+                          },
+                        ),
+                      ],
+                    ],
                   ),
                 ),
 
@@ -685,10 +712,12 @@ class _CreateResourceSheet extends StatefulWidget {
   const _CreateResourceSheet({
     required this.controller,
     required this.tab,
+    this.authController,
   });
 
   final AcademicController controller;
   final AcademicTab tab;
+  final AuthController? authController;
 
   @override
   State<_CreateResourceSheet> createState() => _CreateResourceSheetState();
@@ -793,6 +822,17 @@ class _CreateResourceSheetState extends State<_CreateResourceSheet> {
 
     if (mounted && success) {
       Navigator.of(context).pop();
+      return;
+    }
+
+    if (!success && c.errorMessage != null && (c.errorMessage!.contains('MFA') || c.errorMessage!.contains('Privileged'))) {
+      if (widget.authController != null && mounted) {
+        final verified = await MfaChallengeSheet.show(context, authController: widget.authController!);
+        if (verified == true && mounted) {
+          c.clearMessages();
+          return _submit();
+        }
+      }
     }
   }
 
