@@ -18,6 +18,7 @@ test('platform UI enrolls MFA and binds rotated host-only HTTPS cookie',async({p
  const codes=await enroll(page);expect(codes).toHaveLength(8);
  const current=(await context.cookies()).find(c=>c.name==='edu_browser_session')!;expect(current.value).not.toBe(pending.value);expect(current.domain).toBe('api.edu.test');expect(current.httpOnly&&current.secure).toBe(true);expect(current.sameSite).toBe('Lax');
  expect((await context.request.get(`${api}/platform/identity`,{headers:{Origin:origin}})).status()).toBe(200);expect(await page.evaluate(()=>Object.keys(localStorage))).toEqual([]);
+ expect((await context.request.get(`${api}/academic/sessions`,{headers:{Origin:origin}})).status()).toBe(401);
  await page.getByRole('button',{name:'Sign out of platform'}).click();await expect(page.getByRole('heading',{name:'Platform sign-in'})).toBeVisible();
  const isolated=await httpRequest.newContext({ignoreHTTPSErrors:true});for(const c of[pending,current])expect((await isolated.get(`${api}/platform/identity`,{headers:{Origin:origin,Cookie:`edu_browser_session=${c.value}`}})).status()).toBe(401);await isolated.dispose();
 });
