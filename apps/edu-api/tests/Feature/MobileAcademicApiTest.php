@@ -44,7 +44,7 @@ class MobileAcademicApiTest extends TestCase
             'login_identifier' => 'ADMIN_'.$user->id,
         ]);
 
-        $tokenResult = $user->createToken('test_mobile_device', ['school:'.$school->id]);
+        $tokenResult = $user->createToken('test_mobile_device', ['school:'.$school->id], now()->addHours(12));
 
         return [
             'school' => $school,
@@ -224,6 +224,19 @@ class MobileAcademicApiTest extends TestCase
         $this->assertNotNull($audit);
         $this->assertSame($setup['school']->id, $audit->school_id);
         $this->assertSame($setup['user']->id, $audit->actor_user_id);
+
+        // Mobile assurance cannot satisfy the existing browser-only admin inventory guard.
+        $this->getJson('/api/v1/security/devices')->assertForbidden();
+
+        // Assurance belongs to the exact bearer token, not just the school or identity.
+        $otherToken = $setup['user']->createToken(
+            'another_device', ['school:'.$setup['school']->id], now()->addHours(12)
+        );
+        app('auth')->forgetGuards();
+        $this->withToken($otherToken->plainTextToken)
+            ->getJson('/api/v1/security/mfa/status')
+            ->assertOk()
+            ->assertJsonPath('data.verified', false);
     }
 
     public function test_expired_device_mfa_assurance_is_rejected(): void

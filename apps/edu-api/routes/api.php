@@ -40,8 +40,8 @@ Route::prefix('v1')->group(function (): void {
             Route::post('/security/devices/{id}/revoke', [SecurityInventoryController::class, 'revokeDevice'])->middleware('throttle:10,1,device-revoke:');
             Route::get('/schools/{school}', [C::class, 'school']);
             Route::post('/accounts', [C::class, 'provision']);
-            Route::get('/academic/{kind}', [AcademicCatalogController::class, 'index'])->whereIn('kind', AcademicCatalog::KINDS);
-            Route::post('/academic/{kind}', [AcademicCatalogController::class, 'store'])->whereIn('kind', AcademicCatalog::KINDS)->middleware('throttle:20,1,academic-create:');
+            Route::get('/academic/{kind}', [AcademicCatalogController::class, 'index'])->name('device.academic.index')->whereIn('kind', AcademicCatalog::KINDS);
+            Route::post('/academic/{kind}', [AcademicCatalogController::class, 'store'])->name('device.academic.store')->whereIn('kind', AcademicCatalog::KINDS)->middleware('throttle:20,1,academic-create:');
             Route::post('/storage/reservations', [C::class, 'fileDenied']);
             Route::post('/imports/files', [C::class, 'fileDenied']);
             Route::post('/ingestion/remote', [C::class, 'fileDenied']);

@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class PrivilegedMfa
 {
@@ -27,18 +28,19 @@ class PrivilegedMfa
 
     public function verified(Membership $m, Request $r): bool
     {
-        if ($r->hasSession()) {
-            if (DB::table('session_revocations')->where('session_hash', hash('sha256', $r->session()->getId()))->exists() || $m->user->status !== 'active' || $m->status !== 'active' || $m->user->activation_required || $m->user->must_change_password || $m->user->is_platform_admin || in_array($m->school->access_state, ['suspended', 'archived'], true) || ! hash_equals((string) $r->session()->get('credential_hash', ''), hash('sha256', $m->user->password)) || now()->timestamp - $r->session()->get('issued_at', 0) >= 43200 || now()->timestamp - $r->session()->get('seen_at', 0) >= 1800 || Auth::guard('web')->id() !== $m->user_id || $r->session()->get('school_id') !== $m->school_id) {
-                return false;
-            }
-            $proof = $r->session()->get('mfa_assurance');
-            $credential = DB::table('mfa_credentials')->where('user_id', $m->user_id)->whereNotNull('confirmed_at')->first();
-
-            return $credential && is_array($proof) && ($proof['version'] ?? null) === $credential->version && ($proof['session'] ?? null) === hash('sha256', $r->session()->getId()) && ($proof['at'] ?? 0) <= now()->timestamp && now()->timestamp - ($proof['at'] ?? 0) < 900 && hash_equals($this->binding($m), (string) ($proof['binding'] ?? ''));
+        if (! $r->hasSession() || DB::table('session_revocations')->where('session_hash', hash('sha256', $r->session()->getId()))->exists() || $m->user->status !== 'active' || $m->status !== 'active' || $m->user->activation_required || $m->user->must_change_password || $m->user->is_platform_admin || in_array($m->school->access_state, ['suspended', 'archived'], true) || ! hash_equals((string) $r->session()->get('credential_hash', ''), hash('sha256', $m->user->password)) || now()->timestamp - $r->session()->get('issued_at', 0) >= 43200 || now()->timestamp - $r->session()->get('seen_at', 0) >= 1800 || Auth::guard('web')->id() !== $m->user_id || $r->session()->get('school_id') !== $m->school_id) {
+            return false;
         }
+        $proof = $r->session()->get('mfa_assurance');
+        $credential = DB::table('mfa_credentials')->where('user_id', $m->user_id)->whereNotNull('confirmed_at')->first();
 
+        return $credential && is_array($proof) && ($proof['version'] ?? null) === $credential->version && ($proof['session'] ?? null) === hash('sha256', $r->session()->getId()) && ($proof['at'] ?? 0) <= now()->timestamp && now()->timestamp - ($proof['at'] ?? 0) < 900 && hash_equals($this->binding($m), (string) ($proof['binding'] ?? ''));
+    }
+
+    public function deviceVerified(Membership $m, Request $r): bool
+    {
         $token = $r->user()?->currentAccessToken();
-        if (! $token || $m->user->status !== 'active' || $m->status !== 'active' || $m->user->activation_required || $m->user->must_change_password || $m->user->is_platform_admin || in_array($m->school->access_state, ['suspended', 'archived'], true) || ! in_array('school:'.$m->school_id, $token->abilities ?? [], true)) {
+        if (! $this->validDeviceToken($m, $r) || $m->role !== Role::SchoolAdmin || $m->user->status !== 'active' || $m->status !== 'active' || $m->user->activation_required || $m->user->must_change_password || $m->user->is_platform_admin || in_array($m->school->access_state, ['suspended', 'archived'], true)) {
             return false;
         }
         $proof = cache()->get('device_mfa_assurance:'.$token->id);
@@ -67,10 +69,22 @@ class PrivilegedMfa
         return ['enrolled' => DB::table('mfa_credentials')->where('user_id', $m->user_id)->whereNotNull('confirmed_at')->exists(), 'verified' => $this->verified($m, $r), 'assurance_seconds' => 900, 'challenge_expires_at' => $r->session()->get('mfa_challenge_expires_at')];
     }
 
-    private function eligibleDevice(Membership $m, Request $r): Membership
+    private function validDeviceToken(Membership $m, Request $r): bool
     {
         $token = $r->user()?->currentAccessToken();
-        abort_unless($token, 401);
+
+        return ! $r->hasSession() && $r->bearerToken() !== null
+            && $r->header('X-School-ID') === $m->school_id
+            && $token instanceof PersonalAccessToken
+            && $r->user()->id === $m->user_id
+            && $r->user()->tokens()->whereKey($token->id)
+                ->whereJsonContains('abilities', 'school:'.$m->school_id)
+                ->where('expires_at', '>', now())->exists();
+    }
+
+    private function eligibleDevice(Membership $m, Request $r): Membership
+    {
+        abort_unless($this->validDeviceToken($m, $r), 403);
         $current = Membership::whereKey($m->id)->where('school_id', $m->school_id)->where('user_id', $m->user_id)->with(['user', 'school'])->firstOrFail();
         abort_unless(
             $r->user()->id === $current->user_id &&
@@ -81,7 +95,7 @@ class PrivilegedMfa
             ! $current->user->must_change_password &&
             ! $current->user->is_platform_admin &&
             ! in_array($current->school->access_state, ['suspended', 'archived'], true) &&
-            in_array('school:'.$current->school_id, $token->abilities ?? [], true),
+            $current->school_id === $r->header('X-School-ID'),
             403
         );
 
@@ -94,7 +108,7 @@ class PrivilegedMfa
 
         return [
             'enrolled' => DB::table('mfa_credentials')->where('user_id', $current->user_id)->whereNotNull('confirmed_at')->exists(),
-            'verified' => $this->verified($current, $r),
+            'verified' => $this->deviceVerified($current, $r),
             'assurance_seconds' => 900,
         ];
     }
@@ -140,15 +154,15 @@ class PrivilegedMfa
 
             $this->audit($actor, $r, 'mfa.device_verified');
 
-            return ['verified' => true, 'version' => $row->version];
+            return ['version' => $row->version, 'binding' => $this->binding($actor), 'at' => now()->timestamp];
         }, 3);
 
         $token = $r->user()->currentAccessToken();
         cache()->put('device_mfa_assurance:'.$token->id, [
             'version' => $result['version'],
             'token_id' => $token->id,
-            'binding' => $this->binding($current),
-            'at' => now()->timestamp,
+            'binding' => $result['binding'],
+            'at' => $result['at'],
         ], now()->addSeconds(900));
 
         RateLimiter::clear($key);
