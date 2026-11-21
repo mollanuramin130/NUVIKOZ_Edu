@@ -10,6 +10,7 @@ type Decision = Exclude<State, 'submitted'>;
 type Row = { id: string; organization_name: string; category: string; state: State; submitted_at: string };
 type Page = { items: Row[]; next_cursor: string | null };
 type Detail = {
+  provisioning: { school_id: string; code: string; created_at: string; actor_user_id: string; activation_state: string } | null;
   registration: Row & { contact_name: string; contact: string; notice_version: string };
   history: { id: string; actor_user_id: string; from_state: State; to_state: State; created_at: string; note: string }[];
 };
@@ -29,7 +30,7 @@ export default function ReviewQueue() {
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState('');
   const [feedback, setFeedback] = useState('');
-  const [command, setCommand] = useState<{ state: Decision; note: string; command_id: string }>();
+  const [command, setCommand] = useState<{ state: Decision; note: string; command_id: string } | { state: 'provision'; command_id: string }>();
   const pending = useRef<AbortController | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
 
@@ -102,11 +103,12 @@ export default function ReviewQueue() {
     pending.current = request;
     setBusy(true); setError('');
     try {
-      await browserRequest(`platform/registrations/${detail.registration.id}/review`, command, { signal: request.signal });
+      const provisioning = command.state === 'provision';
+      await browserRequest(`platform/registrations/${detail.registration.id}/${provisioning ? 'provision' : 'review'}`, provisioning ? { command_id: command.command_id } : command, { signal: request.signal });
       if (request.signal.aborted) return;
       dialog.current?.close();
       setCommand(undefined);
-      setFeedback('Review decision recorded.');
+      setFeedback(provisioning ? 'School provisioned. Access is pending activation.' : 'Review decision recorded.');
       await load(filters);
     } catch (failure) {
       if (!request.signal.aborted) {
@@ -148,6 +150,16 @@ export default function ReviewQueue() {
         <h2>{detail.registration.organization_name}</h2>
         <dl><dt>Reference</dt><dd>{detail.registration.id}</dd><dt>Applicant</dt><dd>{detail.registration.contact_name}</dd><dt>Contact</dt><dd>{detail.registration.contact}</dd>
           <dt>Privacy notice version</dt><dd>{detail.registration.notice_version}</dd><dt>Status</dt><dd className="onboard-badge">{state}</dd></dl>
+        {state === 'approved' && <section aria-label="School provisioning">
+          <h3>School provisioning</h3>
+          {detail.provisioning ? <dl><dt>School code</dt><dd>{detail.provisioning.code}</dd>
+            <dt>Activation</dt><dd>Awaiting verified delivery</dd>
+            <dt>Provisioned at</dt><dd>{detail.provisioning.created_at}</dd>
+            <dt>Provisioned by</dt><dd>{detail.provisioning.actor_user_id}</dd></dl>
+            : <><p>No school record has been provisioned.</p><button disabled={busy} onClick={() => {
+              setError(''); setCommand({ state: 'provision', command_id: crypto.randomUUID() }); dialog.current?.showModal();
+            }}>Provision school</button></>}
+        </section>}
         <h3>Review history</h3>
         {detail.history.length ? <ol>{detail.history.map(entry => <li key={entry.id}><strong>{entry.from_state} → {entry.to_state}</strong>
           <p>{entry.note}</p><small>{entry.created_at} · {entry.actor_user_id}</small></li>)}</ol> : <p>No review decisions yet.</p>}
@@ -158,8 +170,8 @@ export default function ReviewQueue() {
       </section>}
       <dialog ref={dialog} aria-labelledby="decision-heading" onCancel={event => { if (busy) event.preventDefault(); }}>
         <h2 id="decision-heading">Confirm decision</h2>
-        <p>Change {detail?.registration.organization_name} to <strong>{command?.state}</strong>?</p>
-        <p>This records an application decision. Provisioning and access activation are separate.</p>
+        <p hidden={command?.state === 'provision'}>Change {detail?.registration.organization_name} to <strong>{command?.state}</strong>?</p>
+        <p>{command?.state === 'provision' ? 'Create a suspended school and inactive School Admin. Activation and entitlements remain pending.' : 'This records an application decision. Provisioning and access activation are separate.'}</p>
         {error && <p role="alert" className="onboard-error">{error}</p>}
         <div className="onboard-actions"><button className="onboard-secondary" disabled={busy} onClick={() => dialog.current?.close()}>Cancel</button>
           <button disabled={busy} onClick={() => void commit()}>{busy ? 'Saving…' : 'Confirm decision'}</button></div>
