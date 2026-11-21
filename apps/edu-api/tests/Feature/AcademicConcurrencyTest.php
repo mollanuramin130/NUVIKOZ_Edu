@@ -30,6 +30,16 @@ class AcademicConcurrencyTest extends TestCase
         $this->race('classes', false, ['created', 'denied']);
     }
 
+    public function test_concurrent_session_activation_commits_once(): void
+    {
+        $this->race('transitions', false, ['created', 'denied']);
+    }
+
+    public function test_concurrent_session_transition_retry_replays_once(): void
+    {
+        $this->race('transitions', true, ['created', 'replayed']);
+    }
+
     private function race(string $kind, bool $replay, array $expected): void
     {
         if (config('database.default') !== 'mysql') {
@@ -45,10 +55,19 @@ class AcademicConcurrencyTest extends TestCase
         $jobs = [];
         $env = ['APP_ENV' => 'testing', 'APP_KEY' => config('app.key'), 'DB_CONNECTION' => 'mysql', 'DB_DATABASE' => 'edu_test', 'DB_HOST' => config('database.connections.mysql.host'), 'DB_PORT' => (string) config('database.connections.mysql.port'), 'DB_USERNAME' => config('database.connections.mysql.username'), 'DB_PASSWORD' => config('database.connections.mysql.password'), 'SESSION_DRIVER' => 'array', 'CACHE_STORE' => 'array'];
         $key = (string) Str::ulid();
+        $session = null;
+        if ($kind === 'transitions') {
+            $session = (string) Str::ulid();
+            DB::table('academic_sessions')->insert(['id' => $session, 'school_id' => $school->id, 'name' => 'Today',
+                'starts_on' => now('Asia/Kolkata')->toDateString(), 'ends_on' => now('Asia/Kolkata')->addDay()->toDateString()]);
+        }
         try {
             foreach ([0, 1] as $i) {
                 $data = $kind === 'sessions' ? ['name' => 'Synthetic year '.($replay ? 0 : $i), 'starts_on' => '2035-04-01', 'ends_on' => '2036-03-31'] : ['name' => 'Synthetic class', 'sort_order' => 1];
-                $job = new Process([PHP_BINARY, base_path('../../scripts/academic-race-worker.php')], base_path(), $env, json_encode(['membership' => $member->id, 'kind' => $kind, 'data' => $data, 'key' => $replay ? $key : (string) Str::ulid(), 'ready' => $dir.'/ready'.$i, 'gate' => $dir.'/go']), 25);
+                if ($session) {
+                    $data = ['action' => 'activate', 'version' => 1];
+                }
+                $job = new Process([PHP_BINARY, base_path('../../scripts/academic-race-worker.php')], base_path(), $env, json_encode(['membership' => $member->id, 'kind' => $kind, 'session' => $session, 'data' => $data, 'key' => $replay ? $key : (string) Str::ulid(), 'ready' => $dir.'/ready'.$i, 'gate' => $dir.'/go']), 25);
                 $job->start();
                 $jobs[] = $job;
             }
@@ -65,9 +84,12 @@ class AcademicConcurrencyTest extends TestCase
             }
             sort($results);
             $this->assertSame($expected, $results);
-            $this->assertSame(1, DB::table($kind === 'sessions' ? 'academic_sessions' : 'classes')->count());
+            $this->assertSame(1, DB::table($kind === 'classes' ? 'classes' : 'academic_sessions')->count());
             $this->assertSame(1, DB::table('academic_command_receipts')->count());
-            $this->assertSame(1, DB::table('audit_events')->where('action', 'academic.'.$kind.'.created')->count());
+            if ($session) {
+                $this->assertDatabaseHas('academic_sessions', ['id' => $session, 'state' => 'active', 'version' => 2]);
+            }
+            $this->assertSame(1, DB::table('audit_events')->where('action', $session ? 'academic.sessions.transitioned' : 'academic.'.$kind.'.created')->count());
         } finally {
             foreach ($jobs as $job) {
                 if ($job->isRunning()) {

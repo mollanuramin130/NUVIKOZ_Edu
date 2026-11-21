@@ -42,7 +42,10 @@ while (! is_file($in['gate'])) {
     usleep(10000);
 }
 try {
-    $result = app(AcademicCatalog::class)->create($m, $in['kind'], $in['data'], $in['key'], 'synthetic-academic-race');
+    $catalog = app(AcademicCatalog::class);
+    $result = isset($in['session'])
+        ? $catalog->transitionSession($m, $in['session'], $in['data'], $in['key'], 'synthetic-academic-race')
+        : $catalog->create($m, $in['kind'], $in['data'], $in['key'], 'synthetic-academic-race');
     echo $result['replayed'] ? 'replayed' : 'created';
 } catch (AuthorizationException) {
     echo 'denied';

@@ -16,7 +16,8 @@ export type Inputs = {
   'subject-offerings': {class_offering_id: string; subject_id: string; compulsory: boolean};
 };
 export type Filters = {sessions: object; classes: object; subjects: object; 'class-offerings': {session_id?: string; class_id?: string}; sections: {class_offering_id?: string}; 'subject-offerings': {class_offering_id?: string; subject_id?: string}};
-export type AcademicPage<K extends Kind> = {items: Resources[K][]; next_cursor: string | null};
+export type SchoolCalendar = {timezone: string | null; today: string | null; can_write: boolean; has_active_session: boolean};
+export type AcademicPage<K extends Kind> = {items: Resources[K][]; next_cursor: string | null; calendar?: SchoolCalendar};
 export function listAcademic<K extends Kind>(kind: K, filters: Filters[K] & {cursor?: string} = {}, signal?: AbortSignal) {
   return browserRequest<AcademicPage<K>>(`academic/${kind}`, undefined, {query: filters as Record<string, string | undefined>, signal});
 }

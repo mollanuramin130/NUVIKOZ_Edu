@@ -128,7 +128,65 @@ class AcademicCatalog
         $more = $rows->count() > 25;
         $rows = $rows->take(25);
 
-        return ['items' => $rows->map(fn ($r) => $this->projection($r, $kind))->all(), 'next_cursor' => $more ? $rows->last()->id : null];
+        $calendar = [];
+        if (! $device && $kind === 'sessions') {
+            $zone = $actor->school->settings['timezone'] ?? null;
+            $valid = is_string($zone) && in_array($zone, timezone_identifiers_list(), true);
+            $calendar['calendar'] = ['timezone' => $valid ? $zone : null, 'today' => $valid ? CarbonImmutable::now($zone)->toDateString() : null,
+                'can_write' => app(SchoolAccess::class)->canWrite($actor),
+                'has_active_session' => DB::table('academic_sessions')->where(['school_id' => $actor->school_id, 'state' => 'active'])->exists()];
+        }
+
+        return $calendar + ['items' => $rows->map(fn ($r) => $this->projection($r, $kind))->all(), 'next_cursor' => $more ? $rows->last()->id : null];
+    }
+
+    public function transitionSession(Membership $actor, string $id, array $data, ?string $key, string $requestId): array
+    {
+        abort_unless(in_array($data['action'] ?? null, ['activate', 'close'], true)
+            && is_int($data['version'] ?? null) && $data['version'] > 0
+            && count($data) === 2 && is_string($key) && preg_match('/\A[A-Za-z0-9_-]{16,160}\z/', $key), 422);
+        $target = $data['action'] === 'activate' ? 'active' : 'closed';
+        $source = $target === 'active' ? 'future' : 'active';
+        $hash = hash('sha256', json_encode([$id, $data['action'], $data['version']], JSON_THROW_ON_ERROR));
+
+        return DB::transaction(function () use ($actor, $id, $data, $key, $requestId, $target, $source, $hash): array {
+            $school = School::whereKey($actor->school_id)->lockForUpdate()->firstOrFail();
+            User::whereKey($actor->user_id)->lockForUpdate()->firstOrFail();
+            Membership::whereKey($actor->id)->lockForUpdate()->firstOrFail();
+            $actor = $this->current($actor, false, true);
+            abort_unless(app(SchoolAccess::class)->canWrite($actor), 403, 'School write access is required.');
+            $zone = $school->settings['timezone'] ?? null;
+            abort_unless(is_string($zone) && in_array($zone, timezone_identifiers_list(), true), 403, 'Configure a valid school timezone.');
+            $query = DB::table('academic_sessions')->where(['school_id' => $school->id, 'id' => $id]);
+            $session = (clone $query)->lockForUpdate()->firstOrFail();
+            $scope = ['school_id' => $school->id, 'membership_id' => $actor->id, 'operation' => 'sessions.transition', 'key' => $key];
+            $receipt = DB::table('academic_command_receipts')->where($scope)->lockForUpdate()->first();
+            $result = ['id' => $id, 'state' => $target, 'version' => $data['version'] + 1];
+            if ($receipt) {
+                abort_unless(hash_equals($receipt->body_hash, $hash), 409, 'This key was used for a different transition.');
+
+                return $result + ['replayed' => true];
+            }
+            abort_unless($session->state === $source && $session->version === $data['version'], 409, 'Session changed. Refresh before continuing.');
+            $today = CarbonImmutable::now($zone)->toDateString();
+            if ($target === 'active') {
+                abort_if($today < $session->starts_on, 409, 'Activation starts on the school-local start date.');
+                abort_if($today > $session->ends_on, 409, 'The activation window has passed.');
+                abort_if(DB::table('academic_sessions')->where(['school_id' => $school->id, 'state' => 'active'])->lockForUpdate()->first(), 409, 'Close the existing active session first.');
+                app(AcademicSessionChanges::class)->requireNoOverlap($school->id, $session->starts_on, $session->ends_on, $id);
+            } else {
+                abort_unless($today > $session->ends_on, 409, 'Closure is available after the school-local end date.');
+            }
+
+            $query->update(['state' => $target, 'version' => $result['version'], 'updated_at' => now()]);
+            AuditEvent::create(['school_id' => $school->id, 'actor_user_id' => $actor->user_id, 'action' => 'academic.sessions.transitioned',
+                'resource_id' => $id, 'request_id' => $requestId, 'details' => ['from' => $source, 'to' => $target,
+                    'version' => $result['version'], 'school_date' => $today, 'timezone' => $zone]]);
+            DB::table('academic_command_receipts')->insert($scope + ['id' => (string) Str::ulid(), 'body_hash' => $hash,
+                'resource_id' => $id, 'created_at' => now(), 'updated_at' => now()]);
+
+            return $result + ['replayed' => false];
+        }, 3);
     }
 
     private function projection(object $row, string $kind): array

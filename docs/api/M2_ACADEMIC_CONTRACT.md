@@ -49,3 +49,11 @@ Development-only browser implementations of the approved SessionChange and Revie
 - Existing mobile Academic routes, DTOs and assurance are unchanged. No Android changes. Web School Admin submission displays the server-generated impact and request ID. No Platform queue or preflight API is introduced.
 
 **Blocked for contract approval:** the trigger, actor and timing for future-to-active or active-to-closed transitions, the future-edit transport, Platform request discovery and preview transport, and the versioned global-default workflow. The implemented boundary approval operates only on already-active sessions and never implicitly changes lifecycle state.
+
+## F015 manual session transitions
+
+`POST /api/v1/browser/academic/sessions/{id}/transitions` accepts only JSON `{action:"activate"|"close",version:integer}` and the existing `Idempotency-Key` header. The current tenant's School Admin needs valid browser MFA, write entitlement and Origin/CSRF. Activate changes future to active within the inclusive school-local date range; any other active session or an inclusive overlap blocks activation. Close changes active to closed strictly after the end date. The server uses the configured IANA timezone. No scheduler, retroactive activation or entitlement override exists.
+
+The school lock serializes Academic creation, transitions and protected Platform date approvals. State, version, receipt and audit commit together. Responses contain `{id,state,version,replayed}`; exact authorized replay returns the original transition result, including after subsequent state changes. Conflicting key use, stale versions, invalid states, dates and overlap return 409. Cross-school or missing sessions return 404. Invalid payloads return 422; missing authorization, timezone or entitlement returns 403 subject to the existing authentication/CSRF guards.
+
+Browser session listing adds `calendar:{timezone,today,can_write,has_active_session}` for action eligibility. Mobile session listing is unchanged. Transitions preserve dates, offerings and references; historical date requests keep the existing Platform approval and stale-state/version checks. No schema migration.
