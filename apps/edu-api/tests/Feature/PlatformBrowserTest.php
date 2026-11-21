@@ -228,7 +228,7 @@ class PlatformBrowserTest extends TestCase
         $this->assertDatabaseHas('memberships', ['school_id' => $school, 'role' => 'school_admin', 'status' => 'active']);
         $this->assertSame(1, DB::table('audit_events')->where('action', 'school_admin.activation.consumed')->count());
         $this->browser('POST', $detail.'/entitlement', $grantDemo)->assertUnauthorized();
-        $this->authenticate();
+        $conversionActor = $this->authenticate();
         $this->browser('POST', $detail.'/entitlement', $grantDemo)->assertOk()
             ->assertJsonPath('data.entitlement.access', 'suspended')->assertJsonPath('data.entitlement.policy', 'demo-v1');
         $this->browser('POST', $detail.'/entitlement', $grantDemo)->assertOk()->assertJsonPath('data.replayed', true);
@@ -252,6 +252,14 @@ class PlatformBrowserTest extends TestCase
             ->assertJsonPath('data.conflicts.0.id', $record)->assertJsonPath('data.conflicts.0.code', 'invalid_session_dates');
         DB::table('academic_sessions')->where('id', $record)->update(['ends_on' => '2027-12-31']);
         $this->browser('POST', $detail.'/conversion', array_replace($finish, ['preview' => $stale]))->assertConflict();
+        $service = app(SchoolEntitlements::class);
+        $currentSchool = School::findOrFail($school);
+        $otherActorProof = $service->conversionPreview($currentSchool, (string) Str::ulid())['preview'];
+        $this->browser('POST', $detail.'/conversion', array_replace($finish, ['preview' => $otherActorProof]))->assertConflict();
+        $this->travel(-10)->minutes();
+        $expiredProof = $service->conversionPreview($currentSchool, $conversionActor->id)['preview'];
+        $this->travelBack();
+        $this->browser('POST', $detail.'/conversion', array_replace($finish, ['preview' => $expiredProof]))->assertConflict();
         $fresh = $this->browser('GET', $detail.'/conversion')->assertOk()->assertJsonPath('data.record_counts.academic_sessions', 1)->json('data.preview');
         $finish['preview'] = $fresh;
         $this->browser('POST', $detail.'/conversion', $finish)->assertOk()
@@ -261,6 +269,9 @@ class PlatformBrowserTest extends TestCase
         $this->assertDatabaseHas('schools', ['id' => $school, 'data_stage' => 'live', 'access_state' => 'suspended']);
         $this->assertSame(1, DB::table('school_entitlement_events')->where('action', 'convert_demo')->count());
         $this->assertDatabaseHas('academic_sessions', ['id' => $record, 'school_id' => $school]);
+        $this->browser('POST', $detail.'/entitlement', ['command_id' => (string) Str::uuid(), 'action' => 'enable'])
+            ->assertOk()->assertJsonPath('data.entitlement.access', 'live_enabled');
+
         $this->browser('POST', 'platform/logout')->assertOk();
         $this->browser('GET', $detail)->assertUnauthorized();
     }

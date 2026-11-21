@@ -7,14 +7,12 @@ use App\Models\School;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Symfony\Component\Process\Exception\ExceptionInterface;
-use Symfony\Component\Process\Process;
 
 class LocalPdfStorage
 {
     private const TABLE = 'local_pdf_objects';
 
-    public function __construct(private readonly SchoolEntitlements $quota) {}
+    public function __construct(private readonly SchoolEntitlements $quota, private readonly PdfInspection $inspection) {}
 
     private function root(): string
     {
@@ -91,7 +89,7 @@ class LocalPdfStorage
             $row = DB::table(self::TABLE)->where($key)->lockForUpdate()->firstOrFail();
             $path = $this->path($root, $row->id);
             if ($row->state === 'published') {
-                $this->verifyStored($path, $row);
+                $this->verifiedBytes($path, $row);
 
                 return ['object_id' => $row->id, 'status' => 'published', 'bytes' => $row->bytes, 'replayed' => true];
             }
@@ -99,7 +97,7 @@ class LocalPdfStorage
             $this->removeCandidate($path);
             try {
                 $this->write($body, $path);
-                $this->inspect($path);
+                $this->inspection->inspect($path);
                 abort_unless(hash_file('sha256', $path) === $digest, 503);
                 $this->quota->settlePdf($school, $command, $actor, $bytes, 'application/pdf', $request);
                 DB::table(self::TABLE)->where('id', $row->id)->update(['state' => 'published', 'bytes' => $bytes, 'sha256' => $digest]);
@@ -128,43 +126,35 @@ class LocalPdfStorage
         }
     }
 
-    private function inspect(string $path): void
-    {
-        $data = file_get_contents($path);
-        abort_unless(is_string($data) && preg_match('/\A%PDF-(?:1\.[0-7]|2\.0)\r?\n/', $data)
-            && preg_match('/startxref\s+([0-9]{1,8})\s+%%EOF\s*\z/', $data, $xref)
-            && preg_match('/\A(?:xref\s|[0-9]+\s+[0-9]+\s+obj\b)/', substr($data, (int) $xref[1], 64))
-            && (new \finfo(FILEINFO_MIME_TYPE))->file($path) === 'application/pdf', 422, 'Invalid PDF.');
-        $process = new Process([config('pdf-storage.pdfinfo'), '-js', $path], env: ['LC_ALL' => 'C'], timeout: 5);
-        try {
-            $process->run();
-        } catch (ExceptionInterface) {
-            abort(503, 'PDF inspection is unavailable.');
-        }
-        abort_unless($process->isSuccessful() && trim($process->getErrorOutput()) === '' && trim($process->getOutput()) === '', 422, 'PDF inspection rejected the document.');
-        $info = new Process([config('pdf-storage.pdfinfo'), $path], env: ['LC_ALL' => 'C'], timeout: 5);
-        try {
-            $info->run();
-        } catch (ExceptionInterface) {
-            abort(503, 'PDF inspection is unavailable.');
-        }
-        $metadata = $info->getOutput();
-        abort_unless($info->isSuccessful() && trim($info->getErrorOutput()) === ''
-            && preg_match('/^Pages:\s+[1-9]\d*\s*$/m', $metadata)
-            && preg_match('/^Encrypted:\s+no\s*$/m', $metadata)
-            && preg_match('/^Form:\s+none\s*$/m', $metadata), 422, 'PDF inspection rejected the document.');
-    }
-
     private function removeCandidate(string $path): void
     {
-        if (is_link($path) || is_file($path)) {
-            abort_unless(@unlink($path), 503);
+        clearstatcache(true, $path);
+        if (is_link($path) || file_exists($path)) {
+            abort_unless((is_link($path) || is_file($path)) && @unlink($path), 503);
+            clearstatcache(true, $path);
+            abort_if(is_link($path) || file_exists($path), 503);
         }
     }
 
-    private function verifyStored(string $path, object $row): void
+    private function verifiedBytes(string $path, object $row): string
     {
-        abort_unless(! is_link($path) && is_file($path) && filesize($path) === $row->bytes && hash_file('sha256', $path) === $row->sha256, 503, 'Stored PDF needs reconciliation.');
+        clearstatcache(true, $path);
+        $expected = @lstat($path);
+        abort_unless($expected && ($expected['mode'] & 0170000) === 0100000
+            && $expected['size'] === $row->bytes && $row->bytes <= SchoolEntitlements::FREE['max_pdf_bytes'], 503, 'Stored PDF needs reconciliation.');
+        $source = @fopen($path, 'rb');
+        abort_unless(is_resource($source), 503, 'Stored PDF needs reconciliation.');
+        try {
+            $opened = fstat($source);
+            abort_unless($opened && $opened['ino'] === $expected['ino'] && $opened['dev'] === $expected['dev'], 503, 'Stored PDF needs reconciliation.');
+            $body = stream_get_contents($source, $row->bytes + 1);
+            abort_unless(is_string($body) && strlen($body) === $row->bytes
+                && hash('sha256', $body) === $row->sha256, 503, 'Stored PDF needs reconciliation.');
+
+            return $body;
+        } finally {
+            fclose($source);
+        }
     }
 
     public function open(string $school, string $actor, string $object)
@@ -172,10 +162,13 @@ class LocalPdfStorage
         $root = $this->root();
         $this->member($school, $actor);
         $row = DB::table(self::TABLE)->where(['school_id' => $school, 'id' => $object, 'state' => 'published'])->firstOrFail();
-        $path = $this->path($root, $row->id);
-        $this->verifyStored($path, $row);
-        $stream = @fopen($path, 'rb');
+        $body = $this->verifiedBytes($this->path($root, $row->id), $row);
+        $stream = fopen('php://memory', 'w+b');
         abort_unless(is_resource($stream), 503);
+        if (fwrite($stream, $body) !== strlen($body) || ! rewind($stream)) {
+            fclose($stream);
+            abort(503);
+        }
 
         return $stream;
     }

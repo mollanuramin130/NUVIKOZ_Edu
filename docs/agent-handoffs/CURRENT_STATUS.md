@@ -1,3 +1,7 @@
+# Phase 01 local PDF parser and recovery hardening
+
+2026-11-22 (Asia/Kolkata). WORK-P01-007 on `feature/m3-pdf-storage-hardening`, directly based on `fae1ce851e8cacf88e158bcf08afede1caa16612`. Limits Poppler resources and adds a fail-closed scanner interface, bounded verified reads and recovery/physical-capacity regression tests. No new migrations or routes. See the [implemented API contract](../api/F008_F010_ENTITLEMENTS_V1.md). The parent PR #22 passed both workflows and all 38 HTTPS tests. This branch's local browser harness could not start because sudo was unavailable. Next safe task: publish and verify the exact commit in CI. No deployment is authorized.
+
 # Phase 01 local PDF storage and conversion review
 
 2026-11-22 (Asia/Kolkata). WORK-P01-006 on `feature/m3-pdf-storage-lifecycle` directly from `c56784b89e388a4ba39497cae80ee27e56536212`. Adds local-only private PDF inspection, a capacity lock and recoverable inventory journal, expired quarantine cleanup, and academic record manifest checks for Demo conversion. The Platform application detail shows conflict and reservation counts. See the [implemented API contract](../api/F008_F010_ENTITLEMENTS_V1.md) for the migration and security boundary.
