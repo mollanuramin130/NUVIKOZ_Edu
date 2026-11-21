@@ -1,25 +1,33 @@
-# Current checkpoint — M2 mobile Android live API integration, device MFA assurance & OPPO F25 Pro physical device acceptance
+# Current checkpoint — AG-P00-001: Mobile Android Design System Expansion & Cross-Agent Baseline Alignment
 
 2026-11-21 (Asia/Kolkata).
 Branches:
-- Mobile: `feature/m2-mobile-android-implementation` (HEAD commit `e49eae5` Stacks on `origin/feature/staging-staff-activation` `94d1554`).
+- Mobile: `feature/m2-mobile-android-implementation` (HEAD commit `a2eafe1` Stacks on `origin/feature/staging-staff-activation` `94d1554`).
 - Backend: `feature/m2-mobile-academic-backend-api` (HEAD commit `eb75181` Stacks on `origin/feature/staging-staff-activation` `94d1554`).
+- Cross-Agent Handoff Reference: `WORK-P00-001` (reported baseline commit `7b8f664` on unpushed `docs/phase-00-development-baseline`).
 
 ### Implemented Architecture & Test Evidence:
-1. **Login Error Resolution & Diagnostic Precision**:
+1. **Design System & Reusable Component Polish (AG-P00-001)**:
+   - Added `AppSectionHeader` (`lib/widgets/app_section_header.dart`): standardizes section headings, uppercase typography, letter spacing, and action affordances across screens.
+   - Added `AppModalHeader` (`lib/widgets/app_modal_header.dart`): unifies bottom-sheet headers with iconography, titles, subtitles, and dismiss actions.
+   - Added `AppLoadingView` (`lib/widgets/app_loading_view.dart`): replaces raw circular progress indicators with branded, captioned loading states (compact and full).
+   - Refactored `DashboardScreen`, `SecurityScreen`, `MfaChallengeSheet`, and `AcademicWorkspaceScreen` to utilize standardized widgets.
+   - Added `test/design_system_test.dart`: 4 new widget tests verifying component typography, interactions, and token conformance.
+   - Total Flutter test suite: 27/27 PASSED (`flutter test --no-pub`).
+   - Flutter static analysis: 0 issues (`flutter analyze --no-pub`).
+
+2. **Login Error Resolution & Diagnostic Precision**:
    - Diagnosed root causes of generic "The service is unavailable. Please retry.":
      - `ApiFailure.toString()` mapped status 0 (network/timeout/format) and 500+ to opaque fallback; refined with exact error codes (`NETWORK_UNAVAILABLE`, `NETWORK_TIMEOUT`, `MALFORMED_RESPONSE`, `SERVER_ERROR`, `INVALID_CREDENTIALS`).
      - Added case-insensitive matching for ULID regex in `DeviceSession.parse()` to prevent false `MALFORMED_RESPONSE` rejections.
      - Protected methods now cleanly isolate secondary resource fetch errors without evicting active sessions.
-   - Flutter tests: 23/23 PASSED (`flutter test --no-pub`).
-   - Flutter static analysis: 0 issues (`flutter analyze --no-pub`).
 
-2. **Mobile MFA Step-Up Challenge (PRIORITY 6)**:
+3. **Mobile MFA Step-Up Challenge (PRIORITY 6)**:
    - Created `MfaChallengeSheet` in `apps/edu-mobile/lib/auth/screens/mfa_challenge_screen.dart` supporting TOTP 6-digit codes and 32-character hex recovery codes.
    - Wired MFA challenge trigger into `SecurityScreen` (`/api/v1/security/mfa/status` & `/api/v1/security/mfa/challenge`) and `AcademicWorkspaceScreen`.
    - Creation forms automatically prompt for step-up verification when privileged mutations require active assurance.
 
-3. **Backend Mobile Academic API & Device MFA Assurance (PRIORITY 2)**:
+4. **Backend Mobile Academic API & Device MFA Assurance**:
    - Branch `feature/m2-mobile-academic-backend-api` (`eb75181`):
      - Read-only queries separated from privileged creation in `AcademicCatalog.php`.
      - Device MFA assurance subsystem in `PrivilegedMfa.php` (`deviceStatus` and `deviceVerify` with 900s token-bound cache).
@@ -27,13 +35,13 @@ Branches:
      - Feature tests: `MobileAcademicApiTest.php` 8/8 passed (43 assertions).
      - Native unit tests: `SecureTokenVaultTest.kt` passed with `./gradlew testDebugUnitTest` (34 tasks, BUILD SUCCESSFUL).
 
-4. **Physical Device Acceptance & Verification (PRIORITY 3 & 5)**:
+5. **Physical Device Acceptance & Verification**:
    - Physical device: **OPPO F25 Pro** (`CPH2603`, Android 16 / API 36, ADB Serial `EM9D5L998XB6599H`).
    - Debug APK installed with streamed install (`Success`).
-   - Cold launch latency measured: `TotalTime: 3096 ms`, `WaitTime: 3127 ms`.
+   - Cold launch latency measured: `TotalTime: 3348 ms`, `WaitTime: 3378 ms`.
    - Screen inspection verified: Form validation, Material 3 executive theme, and Keystore security indicators.
 
-5. **GitHub Synchronization Status & Integration Gates (PRIORITY 1 & 14)**:
+6. **GitHub Synchronization Status & Integration Gates**:
    - Local branches cleanly committed and verified.
    - Awaiting owner to update GitHub PAT permissions (`Contents: Read and write`) in macOS Keychain / GitHub settings.
    - Draft PR dependency chain:
@@ -42,7 +50,7 @@ Branches:
      3. Mobile Android implementation (`feature/m2-mobile-android-implementation`)
    - Merge gate: Awaiting explicit owner authorization before merging to `main`.
 
-NEXT SAFE TASK: Owner updates GitHub PAT permissions, pushes branches, reviews Draft PRs, and authorizes staging backend deployment before live physical device School Admin write acceptance.
+NEXT SAFE TASK: Owner updates GitHub PAT permissions, pushes branches, and reviews Phase 01 Mobile Scope (`AG-P01-001`) before proceeding to Onboarding implementation.
 
 # Current checkpoint — M2 mobile Android architecture, native Keystore & academic implementation
 
