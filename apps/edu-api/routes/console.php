@@ -1,6 +1,7 @@
 <?php
 
 use App\Services\InitialSchoolAdmin;
+use App\Services\LocalPdfStorage;
 use App\Services\ProvisionedSchoolAdminActivation;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -63,3 +64,9 @@ Artisan::command('edu:deliver-school-admin-proof {registration}', function (): i
 Artisan::command('edu:expire-school-admin-proofs', function (): void {
     app(ProvisionedSchoolAdminActivation::class)->expire();
 })->purpose('Erase expired School Admin proof material')->everyMinute();
+
+if (app()->environment(['local', 'testing']) && config('pdf-storage.enabled')) {
+    Artisan::command('edu:reconcile-local-pdf', function (): void {
+        app(LocalPdfStorage::class)->reconcile();
+    })->purpose('Clean expired private PDF candidates')->everyFiveMinutes();
+}

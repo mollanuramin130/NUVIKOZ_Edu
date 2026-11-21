@@ -244,7 +244,15 @@ class PlatformBrowserTest extends TestCase
         $this->travelTo(Carbon::parse($end));
         $this->assertSame('expired', app(SchoolEntitlements::class)->summary(School::findOrFail($school))['state']);
         $this->travelBack();
-        $fresh = $this->browser('GET', $detail.'/conversion')->assertOk()->json('data.preview');
+        $stale = $this->browser('GET', $detail.'/conversion')->assertOk()->json('data.preview');
+        $record = (string) Str::ulid();
+        DB::table('academic_sessions')->insert(['id' => $record, 'school_id' => $school, 'name' => 'Synthetic session',
+            'starts_on' => '2027-02-01', 'ends_on' => '2027-01-01', 'created_at' => now(), 'updated_at' => now()]);
+        $this->browser('GET', $detail.'/conversion')->assertOk()->assertJsonPath('data.eligible', false)
+            ->assertJsonPath('data.conflicts.0.id', $record)->assertJsonPath('data.conflicts.0.code', 'invalid_session_dates');
+        DB::table('academic_sessions')->where('id', $record)->update(['ends_on' => '2027-12-31']);
+        $this->browser('POST', $detail.'/conversion', array_replace($finish, ['preview' => $stale]))->assertConflict();
+        $fresh = $this->browser('GET', $detail.'/conversion')->assertOk()->assertJsonPath('data.record_counts.academic_sessions', 1)->json('data.preview');
         $finish['preview'] = $fresh;
         $this->browser('POST', $detail.'/conversion', $finish)->assertOk()
             ->assertJsonPath('data.entitlement.policy', 'free-live-v1')->assertJsonPath('data.entitlement.access', 'suspended');
@@ -252,6 +260,7 @@ class PlatformBrowserTest extends TestCase
         $this->browser('POST', $detail.'/conversion', array_replace($finish, ['command_id' => (string) Str::uuid()]))->assertConflict();
         $this->assertDatabaseHas('schools', ['id' => $school, 'data_stage' => 'live', 'access_state' => 'suspended']);
         $this->assertSame(1, DB::table('school_entitlement_events')->where('action', 'convert_demo')->count());
+        $this->assertDatabaseHas('academic_sessions', ['id' => $record, 'school_id' => $school]);
         $this->browser('POST', 'platform/logout')->assertOk();
         $this->browser('GET', $detail)->assertUnauthorized();
     }

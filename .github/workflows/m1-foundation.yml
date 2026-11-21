@@ -50,6 +50,10 @@ jobs:
       - run: composer install --no-interaction --prefer-dist --no-progress
       - run: composer check-platform-reqs
       - run: vendor/bin/pint --test
+      - name: Install PDF inspection tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes poppler-utils
       - run: vendor/bin/phpunit --display-warnings --fail-on-warning
       - name: Verify reversible initial schema on disposable CI database
         run: |
