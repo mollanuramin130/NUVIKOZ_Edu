@@ -1,3 +1,43 @@
+# Current checkpoint — AG-P00-002: Cross-Agent Code Synchronization, Premium UI Contract Alignment & Phase 01 Readiness
+
+2026-11-21 (Asia/Kolkata).
+Branches:
+- Mobile: `feature/m2-mobile-android-implementation` (HEAD commit `a9b5702` Stacks on `origin/feature/staging-staff-activation` `94d1554`).
+- Backend: `feature/m2-mobile-academic-backend-api` (HEAD commit `eb75181` Stacks on `origin/feature/staging-staff-activation` `94d1554`).
+- Cross-Agent Handoff Dependencies: `WORK-P00-001` (reported baseline commit `7b8f664` on unpushed `docs/phase-00-development-baseline`) & `WORK-P00-002` (recovery/status pending in ChatGPT Work Mode).
+
+### Implemented Architecture & Test Evidence:
+1. **Cross-Agent Synchronization & Work Mode Audit (AG-P00-002)**:
+   - Verified local and remote git logs: Reported Work Mode commit `7b8f664` and branch `docs/phase-00-development-baseline` are **unpushed and unavailable** in repository.
+   - Status marked `BLOCKED` for all mobile features dependent on unpushed Work Mode onboarding code (`feature/m3-platform-school-onboarding`).
+   - Mobile development preserves all 8 local commits on `feature/m2-mobile-android-implementation` (`a9b5702`).
+
+2. **Phase 01 Android Scope Validation (Section 7 A–G Analysis)**:
+   - **Candidate 1 & 2: School Registration Intake & Tracking**: Marked `CANDIDATE / PENDING OWNER CONFIRMATION`. Endpoints exist on public API but mobile UI inclusion requires explicit owner approval.
+   - **Candidate 3 & 4: School Admin & Staff Activation**: Strictly **EXCLUDED FROM MOBILE (BROWSER-ONLY)**. M1 Auth Increment 2 Contract (line 33) mandates browser-only CSRF/cookie activation transport; mobile bearer tokens must never be reused for bootstrap proofs.
+   - **Approved Mobile Core Scope**: School Login (`POST /api/v1/auth/login`), Identity/School verification (`GET /api/v1/me`, `GET /api/v1/schools/{id}`), Session Lifecycle/Atomic Logout (`POST /api/v1/auth/logout`), Device Inventory/Revocation (`GET/POST /api/v1/security/devices/*`), Privileged Device MFA (`GET/POST /api/v1/security/mfa/*`), and Academic Catalog Setup (6 modules: Sessions, Classes, Offerings, Sections, Subjects, Subject Offerings).
+
+3. **Authoritative API Contract Handoff Matrix (Section 11)**:
+   - Complete status mapped across all 15 endpoints in `AG_P00_002_ALIGNMENT_REPORT.md`:
+     - `AUTH-09A` (Login): `DEVICE TESTED`
+     - `AUTH-09B` (Me), `AUTH-09C` (Logout): `UNIT TESTED`
+     - `AUTH-06A/B` (Devices & Revocation): `UNIT TESTED`
+     - `AUTH-05M/C` (Device MFA Status & Challenge): `UNIT TESTED`
+     - `ACAD-01` to `ACAD-06` (6 Academic Catalog Setup modules): `UNIT TESTED`
+     - `REG-01/02` (Registration Intake & Status): `BLOCKED` (Unpushed in Work Mode)
+     - `ACT-01` (Bootstrap Activation): `EXCLUDED (BROWSER-ONLY)`
+
+4. **Design System & Test Verification**:
+   - `flutter analyze --no-pub`: **0 issues found** (Clean).
+   - `flutter test --no-pub`: **27/27 PASSED** (0 failures).
+   - Native Android unit tests: `./gradlew testDebugUnitTest` **34 tasks PASSED** (`BUILD SUCCESSFUL`).
+   - Physical device: **OPPO F25 Pro** (`CPH2603`, Android 16, Serial `EM9D5L998XB6599H`) cold launch and input validation verified.
+
+5. **Phase 01 Readiness Gate**:
+   - `READY_FOR_AG_P01_001: NO` until ChatGPT Work pushes `WORK-P00-002` baseline and owner confirms mobile registration scope.
+
+NEXT SAFE TASK: ChatGPT Work pushes `WORK-P00-002` integration baseline to remote repository, Owner confirms mobile registration scope, and Owner updates GitHub PAT write permissions to push `feature/m2-mobile-android-implementation`.
+
 # Current checkpoint — AG-P00-001: Mobile Android Design System Expansion & Cross-Agent Baseline Alignment
 
 2026-11-21 (Asia/Kolkata).
