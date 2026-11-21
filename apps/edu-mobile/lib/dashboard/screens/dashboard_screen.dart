@@ -7,6 +7,7 @@ import '../../auth/auth_controller.dart';
 import '../../auth/screens/security_screen.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/app_card.dart';
+import '../../widgets/app_section_header.dart';
 import '../../widgets/status_badge.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -246,16 +247,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const SizedBox(height: 20),
 
                 // Module Navigation Grid
-                const Text(
-                  'PORTAL MODULES',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.secondaryText,
-                    letterSpacing: 0.8,
-                  ),
+                const AppSectionHeader(
+                  title: 'Portal Modules',
+                  subtitle: 'Select an administrative or academic module',
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
 
                 // Academic Setup Tile
                 AppCard(

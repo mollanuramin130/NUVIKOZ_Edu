@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/app_modal_header.dart';
 import '../../widgets/error_banner.dart';
 import '../auth_controller.dart';
 
@@ -119,49 +120,11 @@ class _MfaChallengeSheetState extends State<MfaChallengeSheet> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Header
-              Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEFF6FF),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.security_rounded,
-                      color: AppColors.primaryBlue,
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Step-up Verification (MFA)',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.primaryText,
-                          ),
-                        ),
-                        Text(
-                          'Requires password & 2FA to authorize actions',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.secondaryText,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded),
-                    onPressed: () => Navigator.of(context).pop(false),
-                  ),
-                ],
+              AppModalHeader(
+                icon: Icons.security_rounded,
+                title: 'Step-up Verification (MFA)',
+                subtitle: 'Requires password & 2FA to authorize actions',
+                onClose: () => Navigator.of(context).pop(false),
               ),
               const SizedBox(height: 16),
 

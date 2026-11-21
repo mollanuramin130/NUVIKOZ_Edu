@@ -3,6 +3,8 @@ import '../../auth/auth_controller.dart';
 import '../../auth/screens/mfa_challenge_screen.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/app_card.dart';
+import '../../widgets/app_loading_view.dart';
+import '../../widgets/app_modal_header.dart';
 import '../../widgets/empty_state_view.dart';
 import '../../widgets/error_banner.dart';
 import '../../widgets/status_badge.dart';
@@ -193,7 +195,7 @@ class _AcademicWorkspaceScreenState extends State<AcademicWorkspaceScreen>
               // Main Tab Content
               Expanded(
                 child: c.isLoading
-                    ? const Center(child: CircularProgressIndicator())
+                    ? const AppLoadingView(message: 'Loading academic catalog…')
                     : TabBarView(
                         controller: _tabController,
                         children: [
@@ -859,22 +861,11 @@ class _CreateResourceSheetState extends State<_CreateResourceSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primaryText,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
+              AppModalHeader(
+                title: 'Create $title',
+                subtitle: 'Enter required fields to configure institutional setup',
+                icon: Icons.add_circle_outline_rounded,
+                onClose: () => Navigator.of(context).pop(),
               ),
               const SizedBox(height: 16),
 

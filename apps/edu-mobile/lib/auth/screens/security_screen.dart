@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/app_card.dart';
+import '../../widgets/app_loading_view.dart';
+import '../../widgets/app_section_header.dart';
 import '../../widgets/empty_state_view.dart';
 import '../../widgets/error_banner.dart';
 import '../auth_controller.dart';
@@ -296,19 +298,14 @@ class _SecurityScreenState extends State<SecurityScreen> {
               child: Text(_success!, style: const TextStyle(color: AppColors.success, fontSize: 13)),
             ),
 
-          const Text(
-            'ACTIVE AUTHORIZED DEVICES',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: AppColors.secondaryText,
-              letterSpacing: 0.8,
-            ),
+          const AppSectionHeader(
+            title: 'Active Authorized Devices',
+            subtitle: 'Authorized devices with access to your school credentials',
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
 
           if (_loading)
-            const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()))
+            const AppLoadingView(message: 'Loading active device sessions…')
           else if (_devices.isEmpty)
             const EmptyStateView(
               icon: Icons.devices_other,
