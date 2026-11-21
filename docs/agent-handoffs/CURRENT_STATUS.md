@@ -1,3 +1,7 @@
+# Staging first School Admin development checkpoint
+
+2026-11-21. Branch `feature/staging-first-school-admin` stacks on Draft PR #10 at `19729ac9`. Adds the owner-approved manifest command, a tenant-bound proof migration and existing-browser activation integration. The normal School Admin MFA gate still applies. The offline handoff is documented in `docs/deployment/STAGING_FIRST_SCHOOL_ADMIN.md`. No database or hosting operation was performed. Repository integrity and diff checks passed locally. API, Pint, MariaDB races and dependency audit run in the Draft PR CI. Next safe task is review of CI and separate staging migration/deployment/initialization authorization.
+
 # Current checkpoint — F007 registration intake
 
 Updated 2026-11-21 (owner local date). Branch: `feature/f007-registration-intake`, based on the verified Academic Setup branch at `491385b8a085049bb4162448f9cb98043d103bd2`. Verify the published branch head and hosted results before continuing.
