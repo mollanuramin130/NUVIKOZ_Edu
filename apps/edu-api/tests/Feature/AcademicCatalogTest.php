@@ -74,6 +74,61 @@ class AcademicCatalogTest extends TestCase
         $service->submit($other, $id, $change, $key, 'test');
     }
 
+    public function test_manual_session_transitions_use_local_day_and_audit_once(): void
+    {
+        $actor = $this->member();
+        $catalog = app(AcademicCatalog::class);
+        $id = (string) Str::ulid();
+        $otherId = (string) Str::ulid();
+        $other = $this->member('OTHER-LIFECYCLE');
+        foreach ([[$id, $actor], [$otherId, $other]] as [$session, $member]) {
+            DB::table('academic_sessions')->insert(['id' => $session, 'school_id' => $member->school_id, 'name' => 'Term',
+                'starts_on' => '2027-04-10', 'ends_on' => '2027-04-10', 'state' => 'future', 'version' => 1]);
+        }
+        $key = (string) Str::ulid();
+        $activate = ['action' => 'activate', 'version' => 1];
+        $close = ['action' => 'close', 'version' => 2];
+        $run = fn ($data, $intent) => $catalog->transitionSession($actor, $id, $data, $intent, 'test');
+        $this->travelTo(now()->setDate(2027, 4, 9)->setTime(18, 29, 59));
+        $actor->school->update(['entitlement_ends_at' => now()->addWeek()]);
+        $this->denied(fn () => $run($activate, $key), 403);
+        $this->mfaFixture($actor);
+        $this->denied(fn () => $run($activate, $key), 409);
+        $this->travel(1)->seconds();
+        $this->mfaFixture($actor);
+        $this->assertSame(['id' => $id, 'state' => 'active', 'version' => 2, 'replayed' => false], $run($activate, $key));
+        $this->denied(fn () => $run($close, $key), 409);
+        $this->denied(fn () => $run($close, (string) Str::ulid()), 409);
+        $this->travel(1)->day();
+        $this->mfaFixture($actor);
+        $this->assertSame('closed', $run($close, (string) Str::ulid())['state']);
+        $this->assertSame(['id' => $id, 'state' => 'active', 'version' => 2, 'replayed' => true], $run($activate, $key));
+        $this->assertDatabaseHas('academic_sessions', ['id' => $id, 'state' => 'closed', 'version' => 3]);
+        $this->assertDatabaseCount('audit_events', 2);
+        $this->assertDatabaseCount('academic_command_receipts', 2);
+        $this->expectException(RecordNotFoundException::class);
+        $catalog->transitionSession($actor, $otherId, $activate, (string) Str::ulid(), 'test');
+    }
+
+    public function test_transition_audit_failure_rolls_back_state_version_and_receipt(): void
+    {
+        $actor = $this->member();
+        $this->mfaFixture($actor);
+        $id = (string) Str::ulid();
+        $today = now('Asia/Kolkata')->toDateString();
+        DB::table('academic_sessions')->insert(['id' => $id, 'school_id' => $actor->school_id, 'name' => 'Term',
+            'starts_on' => $today, 'ends_on' => $today]);
+        AuditEvent::creating(fn () => throw new \RuntimeException('Synthetic transition audit failure'));
+        try {
+            app(AcademicCatalog::class)->transitionSession($actor, $id, ['action' => 'activate', 'version' => 1], (string) Str::ulid(), 'test');
+            $this->fail('Audit failure ignored.');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('Synthetic transition audit failure', $e->getMessage());
+        }
+        $this->assertDatabaseHas('academic_sessions', ['id' => $id, 'state' => 'future', 'version' => 1]);
+        $this->assertDatabaseCount('academic_command_receipts', 0);
+    }
+
     public function test_future_session_and_unrestricted_grade_catalog_have_scoped_audits(): void
     {
         $m = $this->member();

@@ -122,3 +122,19 @@ test('returning to the tab revalidates the session and clears the unsaved academ
   await expect(nameField).toHaveValue('');
   await expect(page.getByRole('row').filter({hasText: 'UNSAVED_FOCUS'})).toHaveCount(0);
 });
+
+test('School Admin confirms manual activation and closure over HTTPS', async ({page, context}) => {
+  await apiAdmin(context);
+  execFileSync('php', [fixture, 'academic-ui-transition'], {stdio: 'pipe'});
+  await page.goto('/academic/sessions');
+  const row = page.getByRole('row').filter({hasText: 'Lifecycle fixture'});
+  await row.getByRole('button', {name: 'Activate', exact: true}).click();
+  await page.getByRole('dialog').getByRole('button', {name: 'Confirm activate'}).click();
+  await expect(row.getByText('active', {exact: true})).toBeVisible();
+  await expect(row.getByText('Closure opens after the school-local end date.')).toBeVisible();
+  execFileSync('php', [fixture, 'academic-ui-transition-end'], {stdio: 'pipe'});
+  await page.reload();
+  await row.getByRole('button', {name: 'Close', exact: true}).click();
+  await page.getByRole('dialog').getByRole('button', {name: 'Confirm close'}).click();
+  await expect(row.getByText('closed', {exact: true})).toBeVisible();
+});

@@ -22,6 +22,18 @@ if (($argv[1] ?? '') === 'expire') {
 $command = $argv[1] ?? '';
 $schoolA = School::where('code', 'A')->first();
 $memberA = $schoolA ? Membership::where('school_id', $schoolA->id)->where('login_identifier', 'TEACHER')->first() : null;
+if ($schoolA && $command === 'academic-ui-transition') {
+    $today = now('Asia/Kolkata')->toDateString();
+    DB::table('academic_sessions')->insert(['id' => (string) \Illuminate\Support\Str::ulid(), 'school_id' => $schoolA->id,
+        'name' => 'Lifecycle fixture', 'starts_on' => $today, 'ends_on' => $today, 'state' => 'future']);
+    exit;
+}
+if ($schoolA && $command === 'academic-ui-transition-end') {
+    $yesterday = now('Asia/Kolkata')->subDay()->toDateString();
+    DB::table('academic_sessions')->where('school_id', $schoolA->id)->where('name', 'Lifecycle fixture')
+        ->update(['starts_on' => $yesterday, 'ends_on' => $yesterday]);
+    exit;
+}
 if ($schoolA && $command === 'academic-ui-expire') {
     $schoolA->update(['entitlement_ends_at' => now()->subMinute()]);
     exit;

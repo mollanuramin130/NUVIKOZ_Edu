@@ -1,6 +1,6 @@
 'use client';
 import {useCallback, useEffect, useRef, useState} from 'react';
-import {createAcademic, listAcademic, newAcademicIntent, type Filters, type Inputs, type Kind, type Resources} from '../../lib/academic-api';
+import {createAcademic, listAcademic, newAcademicIntent, type Filters, type Inputs, type Kind, type Resources, type SchoolCalendar} from '../../lib/academic-api';
 import {AuthError} from '../../lib/browser-auth';
 import {useAcademicAccess} from './workspace';
 export function academicError(e: unknown): string {
@@ -15,6 +15,7 @@ export function academicError(e: unknown): string {
   return 'The service could not confirm this request. Check your connection, refresh the records, and retry only when ready.';
 }
 export function useAcademicList<K extends Kind>(kind: K, filters: Filters[K] = {}, enabled = true, append = false) {
+  const [calendar, setCalendar] = useState<SchoolCalendar>();
   const [items, setItems] = useState<Resources[K][]>([]); const [next, setNext] = useState<string | null>(null);
   const [cursors, setCursors] = useState<(string | undefined)[]>([undefined]);
   const [loadedKey, setLoadedKey] = useState('');
@@ -29,7 +30,7 @@ export function useAcademicList<K extends Kind>(kind: K, filters: Filters[K] = {
     try {
       const result = await listAcademic(kind, {...JSON.parse(filterKey), cursor: history[history.length - 1]}, controller.signal);
       if (sequence.current !== id || controller.signal.aborted) return;
-      setItems(old => more ? [...old, ...result.items.filter(x => !old.some(p => p.id === x.id))] : result.items); setNext(result.next_cursor); setCursors(history); setLoadedKey(kind + filterKey);
+      setItems(old => more ? [...old, ...result.items.filter(x => !old.some(p => p.id === x.id))] : result.items); setNext(result.next_cursor); setCalendar(result.calendar); setCursors(history); setLoadedKey(kind + filterKey);
     } catch (e) { if (sequence.current === id && !controller.signal.aborted) {setError(academicError(e)); failure(e);} }
     finally {if (sequence.current === id && !controller.signal.aborted) setBusy(false);}
   }, [kind, filterKey, failure]);
@@ -39,7 +40,7 @@ export function useAcademicList<K extends Kind>(kind: K, filters: Filters[K] = {
     void Promise.resolve().then(() => {if (mounted && enabled) void load([undefined]);});
     return () => {mounted = false; cancel();};
   }, [enabled, load, cancel]);
-  return {items: enabled && loadedKey === kind + filterKey ? items : [], next: enabled && loadedKey === kind + filterKey ? next : null, busy: enabled && busy, error: enabled ? error : '', page: cursors.length,
+  return {calendar: enabled && loadedKey === kind + filterKey ? calendar : undefined, items: enabled && loadedKey === kind + filterKey ? items : [], next: enabled && loadedKey === kind + filterKey ? next : null, busy: enabled && busy, error: enabled ? error : '', page: cursors.length,
     refresh: () => void load([undefined]),
     forward: () => {if (next && !busy) void load([...cursors, next], append);},
     back: () => {if (cursors.length > 1 && !busy) void load(cursors.slice(0, -1));},
