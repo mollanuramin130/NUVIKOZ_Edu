@@ -455,17 +455,25 @@ class AcademicController extends ChangeNotifier {
     if (error is ApiFailure) {
       lastErrorCode = error.code;
       if (error.status == 401) {
-        errorMessage = 'Authentication expired or invalid. Please sign in again.';
+        if (error.code == 'TOKEN_EXPIRED' || error.code == 'SESSION_CHANGED') {
+          errorMessage = 'Session has expired or changed. Please sign in again.';
+        } else {
+          errorMessage = 'Authentication expired or invalid. Please sign in again.';
+        }
       } else if (error.status == 403) {
         if (isMfaRequired) {
           errorMessage = 'Privileged MFA verification required to modify Academic resources.';
-        } else if (error.code == 'ROLE_UNAUTHORIZED' || error.code == 'FORBIDDEN') {
+        } else if (error.code == 'ROLE_UNAUTHORIZED' || error.code == 'FORBIDDEN' || error.code == 'UNAUTHORIZED') {
           errorMessage = 'Academic management requires School Admin role.';
+        } else if (error.code == 'ACCESS_SUSPENDED' || error.code == 'SCHOOL_SUSPENDED' || error.code == 'TENANT_SUSPENDED') {
+          errorMessage = 'Institution access is currently suspended. Please contact platform administration.';
         } else if (error.code == 'ENTITLEMENT_REQUIRED' || error.code == 'ENTITLEMENT_EXPIRED') {
           errorMessage = 'School write entitlement has expired. Academic catalog is in read-only mode.';
         } else if (error.code == 'DEMO_LIMIT_EXCEEDED') {
           errorMessage = 'Evaluation limit reached for this demo institution.';
-        } else if (error.code == 'CROSS_TENANT_DENIED' || error.code == 'TENANT_MISMATCH') {
+        } else if (error.code == 'DEMO_EXPIRED') {
+          errorMessage = 'Evaluation period has expired for this demo institution.';
+        } else if (error.code == 'CROSS_TENANT_DENIED' || error.code == 'TENANT_MISMATCH' || error.code == 'TOKEN_SCHOOL_MISMATCH' || error.code == 'TENANT_CONTEXT_REQUIRED') {
           errorMessage = 'Cross-tenant access violation: selected resource belongs to another institution.';
         } else {
           errorMessage = 'Academic operation not permitted. Please verify your permissions.';

@@ -355,69 +355,83 @@ class _SessionsListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (controller.sessions.isEmpty) {
-      return EmptyStateView(
-        icon: Icons.calendar_today_rounded,
-        title: 'No Academic Sessions',
-        description: 'Create future academic sessions matching your school timezone.',
+      return RefreshIndicator(
+        onRefresh: controller.loadActiveTabData,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          children: const [
+            SizedBox(height: 48),
+            EmptyStateView(
+              icon: Icons.calendar_today_rounded,
+              title: 'No Academic Sessions',
+              description: 'Create future academic sessions matching your school timezone.',
+            ),
+          ],
+        ),
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: controller.sessions.length + 1,
-      separatorBuilder: (_, index) => index < controller.sessions.length - 1 ? const SizedBox(height: 12) : const SizedBox.shrink(),
-      itemBuilder: (context, index) {
-        if (index == controller.sessions.length) {
-          return _EndOfListIndicator(count: controller.sessions.length, label: 'sessions');
-        }
-        final s = controller.sessions[index];
-        final isSelected = controller.selectedSession?.id == s.id;
+    return RefreshIndicator(
+      onRefresh: controller.loadActiveTabData,
+      child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        itemCount: controller.sessions.length + 1,
+        separatorBuilder: (_, index) => index < controller.sessions.length - 1 ? const SizedBox(height: 12) : const SizedBox.shrink(),
+        itemBuilder: (context, index) {
+          if (index == controller.sessions.length) {
+            return _EndOfListIndicator(count: controller.sessions.length, label: 'sessions');
+          }
+          final s = controller.sessions[index];
+          final isSelected = controller.selectedSession?.id == s.id;
 
-        return AppCard(
-          borderColor: isSelected ? AppColors.primaryBlue : AppColors.border,
-          onTap: () => controller.selectSession(s),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    s.name,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primaryText,
+          return AppCard(
+            borderColor: isSelected ? AppColors.primaryBlue : AppColors.border,
+            onTap: () => controller.selectSession(s),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      s.name,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primaryText,
+                      ),
                     ),
-                  ),
-                  if (s.isFuture)
-                    StatusBadge.future()
-                  else if (s.isActive)
-                    StatusBadge.active()
-                  else
-                    StatusBadge.completed(),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  const Icon(Icons.date_range, size: 14, color: AppColors.secondaryText),
-                  const SizedBox(width: 6),
-                  Text(
-                    '${s.startsOn}  to  ${s.endsOn}',
-                    style: const TextStyle(fontSize: 13, color: AppColors.secondaryText),
-                  ),
-                  const Spacer(),
-                  Text(
-                    'v${s.version}',
-                    style: const TextStyle(fontSize: 11, color: AppColors.secondaryText),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
+                    if (s.isFuture)
+                      StatusBadge.future()
+                    else if (s.isActive)
+                      StatusBadge.active()
+                    else
+                      StatusBadge.completed(),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.date_range, size: 14, color: AppColors.secondaryText),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${s.startsOn}  to  ${s.endsOn}',
+                      style: const TextStyle(fontSize: 13, color: AppColors.secondaryText),
+                    ),
+                    const Spacer(),
+                    Text(
+                      'v${s.version}',
+                      style: const TextStyle(fontSize: 11, color: AppColors.secondaryText),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -429,73 +443,87 @@ class _ClassesListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (controller.classes.isEmpty) {
-      return const EmptyStateView(
-        icon: Icons.class_outlined,
-        title: 'No Classes Configured',
-        description: 'Define grade levels and curriculum classes for your institution.',
+      return RefreshIndicator(
+        onRefresh: controller.loadActiveTabData,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          children: const [
+            SizedBox(height: 48),
+            EmptyStateView(
+              icon: Icons.class_outlined,
+              title: 'No Classes Configured',
+              description: 'Define grade levels and curriculum classes for your institution.',
+            ),
+          ],
+        ),
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: controller.classes.length + 1,
-      separatorBuilder: (_, index) => index < controller.classes.length - 1 ? const SizedBox(height: 12) : const SizedBox.shrink(),
-      itemBuilder: (context, index) {
-        if (index == controller.classes.length) {
-          return _EndOfListIndicator(count: controller.classes.length, label: 'classes');
-        }
-        final cls = controller.classes[index];
+    return RefreshIndicator(
+      onRefresh: controller.loadActiveTabData,
+      child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        itemCount: controller.classes.length + 1,
+        separatorBuilder: (_, index) => index < controller.classes.length - 1 ? const SizedBox(height: 12) : const SizedBox.shrink(),
+        itemBuilder: (context, index) {
+          if (index == controller.classes.length) {
+            return _EndOfListIndicator(count: controller.classes.length, label: 'classes');
+          }
+          final cls = controller.classes[index];
 
-        return AppCard(
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEFF6FF),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Center(
-                  child: Text(
-                    '#${cls.sortOrder}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primaryBlue,
+          return AppCard(
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '#${cls.sortOrder}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primaryBlue,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      cls.name,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primaryText,
-                      ),
-                    ),
-                    if (cls.gradeLabel != null && cls.gradeLabel!.isNotEmpty)
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        'Grade: ${cls.gradeLabel}',
-                        style: const TextStyle(fontSize: 13, color: AppColors.secondaryText),
+                        cls.name,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primaryText,
+                        ),
                       ),
-                  ],
+                      if (cls.gradeLabel != null && cls.gradeLabel!.isNotEmpty)
+                        Text(
+                          'Grade: ${cls.gradeLabel}',
+                          style: const TextStyle(fontSize: 13, color: AppColors.secondaryText),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-              Text(
-                'v${cls.version}',
-                style: const TextStyle(fontSize: 11, color: AppColors.secondaryText),
-              ),
-            ],
-          ),
-        );
-      },
+                Text(
+                  'v${cls.version}',
+                  style: const TextStyle(fontSize: 11, color: AppColors.secondaryText),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -507,63 +535,77 @@ class _ClassOfferingsListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (controller.classOfferings.isEmpty) {
-      return const EmptyStateView(
-        icon: Icons.link_rounded,
-        title: 'No Class Offerings',
-        description: 'Link existing classes to the active or selected academic session.',
+      return RefreshIndicator(
+        onRefresh: controller.loadActiveTabData,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          children: const [
+            SizedBox(height: 48),
+            EmptyStateView(
+              icon: Icons.link_rounded,
+              title: 'No Class Offerings',
+              description: 'Link existing classes to the active or selected academic session.',
+            ),
+          ],
+        ),
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: controller.classOfferings.length + 1,
-      separatorBuilder: (_, index) => index < controller.classOfferings.length - 1 ? const SizedBox(height: 12) : const SizedBox.shrink(),
-      itemBuilder: (context, index) {
-        if (index == controller.classOfferings.length) {
-          return _EndOfListIndicator(count: controller.classOfferings.length, label: 'class offerings');
-        }
-        final o = controller.classOfferings[index];
-        final cls = controller.classes.firstWhere(
-          (c) => c.id == o.classId,
-          orElse: () => SchoolClass(id: o.classId, name: 'Class ${o.classId.substring(0, 6)}', sortOrder: 0, version: 1),
-        );
-        final sess = controller.sessions.firstWhere(
-          (s) => s.id == o.sessionId,
-          orElse: () => AcademicSession(id: o.sessionId, name: 'Session', startsOn: '', endsOn: '', state: '', version: 1),
-        );
+    return RefreshIndicator(
+      onRefresh: controller.loadActiveTabData,
+      child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        itemCount: controller.classOfferings.length + 1,
+        separatorBuilder: (_, index) => index < controller.classOfferings.length - 1 ? const SizedBox(height: 12) : const SizedBox.shrink(),
+        itemBuilder: (context, index) {
+          if (index == controller.classOfferings.length) {
+            return _EndOfListIndicator(count: controller.classOfferings.length, label: 'class offerings');
+          }
+          final o = controller.classOfferings[index];
+          final cls = controller.classes.firstWhere(
+            (c) => c.id == o.classId,
+            orElse: () => SchoolClass(id: o.classId, name: 'Class ${o.classId.substring(0, 6)}', sortOrder: 0, version: 1),
+          );
+          final sess = controller.sessions.firstWhere(
+            (s) => s.id == o.sessionId,
+            orElse: () => AcademicSession(id: o.sessionId, name: 'Session', startsOn: '', endsOn: '', state: '', version: 1),
+          );
 
-        return AppCard(
-          onTap: () => controller.selectClassOffering(o),
-          borderColor: controller.selectedClassOffering?.id == o.id ? AppColors.primaryBlue : AppColors.border,
-          child: Row(
-            children: [
-              const Icon(Icons.school_outlined, color: AppColors.primaryBlue, size: 28),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      cls.name,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primaryText,
+          return AppCard(
+            onTap: () => controller.selectClassOffering(o),
+            borderColor: controller.selectedClassOffering?.id == o.id ? AppColors.primaryBlue : AppColors.border,
+            child: Row(
+              children: [
+                const Icon(Icons.school_outlined, color: AppColors.primaryBlue, size: 28),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        cls.name,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primaryText,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Session: ${sess.name}',
-                      style: const TextStyle(fontSize: 12, color: AppColors.secondaryText),
-                    ),
-                  ],
+                      const SizedBox(height: 2),
+                      Text(
+                        'Session: ${sess.name}',
+                        style: const TextStyle(fontSize: 12, color: AppColors.secondaryText),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              StatusBadge(label: 'Linked', color: AppColors.premiumTeal, backgroundColor: const Color(0xFFE6F4F4)),
-            ],
-          ),
-        );
-      },
+                StatusBadge(label: 'Linked', color: AppColors.premiumTeal, backgroundColor: const Color(0xFFE6F4F4)),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -575,71 +617,95 @@ class _SectionsListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (controller.selectedClassOffering == null) {
-      return const EmptyStateView(
-        icon: Icons.filter_alt_outlined,
-        title: 'No Class Offering Selected',
-        description: 'Select an offering from the context bar above or create one in the Offerings tab.',
+      return RefreshIndicator(
+        onRefresh: controller.loadActiveTabData,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          children: const [
+            SizedBox(height: 48),
+            EmptyStateView(
+              icon: Icons.filter_alt_outlined,
+              title: 'No Class Offering Selected',
+              description: 'Select an offering from the context bar above or create one in the Offerings tab.',
+            ),
+          ],
+        ),
       );
     }
 
     if (controller.sections.isEmpty) {
-      return const EmptyStateView(
-        icon: Icons.group_work_outlined,
-        title: 'No Sections Found',
-        description: 'Add sections (e.g. Section A, Section B) to the selected class offering.',
+      return RefreshIndicator(
+        onRefresh: controller.loadActiveTabData,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          children: const [
+            SizedBox(height: 48),
+            EmptyStateView(
+              icon: Icons.group_work_outlined,
+              title: 'No Sections Found',
+              description: 'Add sections (e.g. Section A, Section B) to the selected class offering.',
+            ),
+          ],
+        ),
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: controller.sections.length + 1,
-      separatorBuilder: (_, index) => index < controller.sections.length - 1 ? const SizedBox(height: 12) : const SizedBox.shrink(),
-      itemBuilder: (context, index) {
-        if (index == controller.sections.length) {
-          return _EndOfListIndicator(count: controller.sections.length, label: 'sections');
-        }
-        final sec = controller.sections[index];
+    return RefreshIndicator(
+      onRefresh: controller.loadActiveTabData,
+      child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        itemCount: controller.sections.length + 1,
+        separatorBuilder: (_, index) => index < controller.sections.length - 1 ? const SizedBox(height: 12) : const SizedBox.shrink(),
+        itemBuilder: (context, index) {
+          if (index == controller.sections.length) {
+            return _EndOfListIndicator(count: controller.sections.length, label: 'sections');
+          }
+          final sec = controller.sections[index];
 
-        return AppCard(
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(8),
+          return AppCard(
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.groups_rounded, color: AppColors.deepNavy, size: 20),
                 ),
-                child: const Icon(Icons.groups_rounded, color: AppColors.deepNavy, size: 20),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      sec.name,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primaryText,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        sec.name,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primaryText,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    const Text(
-                      'Teacher assignment pending backend scope',
-                      style: TextStyle(fontSize: 11, color: AppColors.secondaryText),
-                    ),
-                  ],
+                      const SizedBox(height: 2),
+                      const Text(
+                        'Teacher assignment pending backend scope',
+                        style: TextStyle(fontSize: 11, color: AppColors.secondaryText),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Text(
-                'v${sec.version}',
-                style: const TextStyle(fontSize: 11, color: AppColors.secondaryText),
-              ),
-            ],
-          ),
-        );
-      },
+                Text(
+                  'v${sec.version}',
+                  style: const TextStyle(fontSize: 11, color: AppColors.secondaryText),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -651,60 +717,74 @@ class _SubjectsListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (controller.subjects.isEmpty) {
-      return const EmptyStateView(
-        icon: Icons.menu_book_rounded,
-        title: 'No Subjects Cataloged',
-        description: 'Define institutional subjects with standardized course codes.',
+      return RefreshIndicator(
+        onRefresh: controller.loadActiveTabData,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          children: const [
+            SizedBox(height: 48),
+            EmptyStateView(
+              icon: Icons.menu_book_rounded,
+              title: 'No Subjects Cataloged',
+              description: 'Define institutional subjects with standardized course codes.',
+            ),
+          ],
+        ),
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: controller.subjects.length + 1,
-      separatorBuilder: (_, index) => index < controller.subjects.length - 1 ? const SizedBox(height: 12) : const SizedBox.shrink(),
-      itemBuilder: (context, index) {
-        if (index == controller.subjects.length) {
-          return _EndOfListIndicator(count: controller.subjects.length, label: 'subjects');
-        }
-        final sub = controller.subjects[index];
+    return RefreshIndicator(
+      onRefresh: controller.loadActiveTabData,
+      child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        itemCount: controller.subjects.length + 1,
+        separatorBuilder: (_, index) => index < controller.subjects.length - 1 ? const SizedBox(height: 12) : const SizedBox.shrink(),
+        itemBuilder: (context, index) {
+          if (index == controller.subjects.length) {
+            return _EndOfListIndicator(count: controller.subjects.length, label: 'subjects');
+          }
+          final sub = controller.subjects[index];
 
-        return AppCard(
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEBF3FB),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  sub.code,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primaryBlue,
+          return AppCard(
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEBF3FB),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    sub.code,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primaryBlue,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Text(
-                  sub.name,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primaryText,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    sub.name,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primaryText,
+                    ),
                   ),
                 ),
-              ),
-              Text(
-                'v${sub.version}',
-                style: const TextStyle(fontSize: 11, color: AppColors.secondaryText),
-              ),
-            ],
-          ),
-        );
-      },
+                Text(
+                  'v${sub.version}',
+                  style: const TextStyle(fontSize: 11, color: AppColors.secondaryText),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -716,68 +796,92 @@ class _SubjectOfferingsListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (controller.selectedClassOffering == null) {
-      return const EmptyStateView(
-        icon: Icons.filter_alt_outlined,
-        title: 'No Class Offering Selected',
-        description: 'Select an offering from the context bar above to view and link subjects.',
+      return RefreshIndicator(
+        onRefresh: controller.loadActiveTabData,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          children: const [
+            SizedBox(height: 48),
+            EmptyStateView(
+              icon: Icons.filter_alt_outlined,
+              title: 'No Class Offering Selected',
+              description: 'Select an offering from the context bar above to view and link subjects.',
+            ),
+          ],
+        ),
       );
     }
 
     if (controller.subjectOfferings.isEmpty) {
-      return const EmptyStateView(
-        icon: Icons.assignment_outlined,
-        title: 'No Subject Offerings',
-        description: 'Map subjects as compulsory or optional to class offerings.',
+      return RefreshIndicator(
+        onRefresh: controller.loadActiveTabData,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          children: const [
+            SizedBox(height: 48),
+            EmptyStateView(
+              icon: Icons.assignment_outlined,
+              title: 'No Subject Offerings',
+              description: 'Map subjects as compulsory or optional to class offerings.',
+            ),
+          ],
+        ),
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: controller.subjectOfferings.length + 1,
-      separatorBuilder: (_, index) => index < controller.subjectOfferings.length - 1 ? const SizedBox(height: 12) : const SizedBox.shrink(),
-      itemBuilder: (context, index) {
-        if (index == controller.subjectOfferings.length) {
-          return _EndOfListIndicator(count: controller.subjectOfferings.length, label: 'subject offerings');
-        }
-        final so = controller.subjectOfferings[index];
-        final sub = controller.subjects.firstWhere(
-          (s) => s.id == so.subjectId,
-          orElse: () => Subject(id: so.subjectId, code: 'SUB', name: 'Subject ${so.subjectId.substring(0, 6)}', version: 1),
-        );
+    return RefreshIndicator(
+      onRefresh: controller.loadActiveTabData,
+      child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        itemCount: controller.subjectOfferings.length + 1,
+        separatorBuilder: (_, index) => index < controller.subjectOfferings.length - 1 ? const SizedBox(height: 12) : const SizedBox.shrink(),
+        itemBuilder: (context, index) {
+          if (index == controller.subjectOfferings.length) {
+            return _EndOfListIndicator(count: controller.subjectOfferings.length, label: 'subject offerings');
+          }
+          final so = controller.subjectOfferings[index];
+          final sub = controller.subjects.firstWhere(
+            (s) => s.id == so.subjectId,
+            orElse: () => Subject(id: so.subjectId, code: 'SUB', name: 'Subject ${so.subjectId.substring(0, 6)}', version: 1),
+          );
 
-        return AppCard(
-          child: Row(
-            children: [
-              Icon(
-                so.compulsory ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-                color: so.compulsory ? AppColors.primaryBlue : AppColors.warning,
-                size: 22,
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      sub.name,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primaryText,
-                      ),
-                    ),
-                    Text(
-                      'Code: ${sub.code}',
-                      style: const TextStyle(fontSize: 12, color: AppColors.secondaryText),
-                    ),
-                  ],
+          return AppCard(
+            child: Row(
+              children: [
+                Icon(
+                  so.compulsory ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                  color: so.compulsory ? AppColors.primaryBlue : AppColors.warning,
+                  size: 22,
                 ),
-              ),
-              so.compulsory ? StatusBadge.compulsory() : StatusBadge.optional(),
-            ],
-          ),
-        );
-      },
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        sub.name,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primaryText,
+                        ),
+                      ),
+                      Text(
+                        'Code: ${sub.code}',
+                        style: const TextStyle(fontSize: 12, color: AppColors.secondaryText),
+                      ),
+                    ],
+                  ),
+                ),
+                so.compulsory ? StatusBadge.compulsory() : StatusBadge.optional(),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -815,6 +919,7 @@ class _CreateResourceSheetState extends State<_CreateResourceSheet> {
   String? _selectedOfferingId;
   String? _selectedSubjectId;
   bool _compulsory = true;
+  bool _isSubmitting = false;
 
   String? _activeSubmissionIdempotencyKey;
 
@@ -866,77 +971,89 @@ class _CreateResourceSheetState extends State<_CreateResourceSheet> {
   }
 
   Future<void> _submit() async {
+    if (_isSubmitting || widget.controller.isCreating) return;
     if (!_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
+    setState(() => _isSubmitting = true);
     final idempotencyKey = _getOrCreateIdempotencyKey();
     bool success = false;
     final c = widget.controller;
 
-    switch (widget.tab) {
-      case AcademicTab.sessions:
-        success = await c.createSession(
-          name: _nameController.text.trim(),
-          startsOn: _startsOnController.text.trim(),
-          endsOn: _endsOnController.text.trim(),
-          idempotencyKey: idempotencyKey,
-        );
-        break;
-      case AcademicTab.classes:
-        success = await c.createClass(
-          name: _nameController.text.trim(),
-          gradeLabel: _gradeLabelController.text.trim().isEmpty ? null : _gradeLabelController.text.trim(),
-          sortOrder: int.tryParse(_sortOrderController.text.trim()) ?? 1,
-          idempotencyKey: idempotencyKey,
-        );
-        break;
-      case AcademicTab.classOfferings:
-        if (_selectedSessionId == null || _selectedClassId == null) return;
-        success = await c.createClassOffering(
-          sessionId: _selectedSessionId!,
-          classId: _selectedClassId!,
-          idempotencyKey: idempotencyKey,
-        );
-        break;
-      case AcademicTab.sections:
-        if (_selectedOfferingId == null) return;
-        success = await c.createSection(
-          classOfferingId: _selectedOfferingId!,
-          name: _nameController.text.trim(),
-          idempotencyKey: idempotencyKey,
-        );
-        break;
-      case AcademicTab.subjects:
-        success = await c.createSubject(
-          code: _codeController.text.trim().toUpperCase(),
-          name: _nameController.text.trim(),
-          idempotencyKey: idempotencyKey,
-        );
-        break;
-      case AcademicTab.subjectOfferings:
-        if (_selectedOfferingId == null || _selectedSubjectId == null) return;
-        success = await c.createSubjectOffering(
-          classOfferingId: _selectedOfferingId!,
-          subjectId: _selectedSubjectId!,
-          compulsory: _compulsory,
-          idempotencyKey: idempotencyKey,
-        );
-        break;
-    }
+    try {
+      switch (widget.tab) {
+        case AcademicTab.sessions:
+          success = await c.createSession(
+            name: _nameController.text.trim(),
+            startsOn: _startsOnController.text.trim(),
+            endsOn: _endsOnController.text.trim(),
+            idempotencyKey: idempotencyKey,
+          );
+          break;
+        case AcademicTab.classes:
+          success = await c.createClass(
+            name: _nameController.text.trim(),
+            gradeLabel: _gradeLabelController.text.trim().isEmpty ? null : _gradeLabelController.text.trim(),
+            sortOrder: int.tryParse(_sortOrderController.text.trim()) ?? 1,
+            idempotencyKey: idempotencyKey,
+          );
+          break;
+        case AcademicTab.classOfferings:
+          if (_selectedSessionId == null || _selectedClassId == null) return;
+          success = await c.createClassOffering(
+            sessionId: _selectedSessionId!,
+            classId: _selectedClassId!,
+            idempotencyKey: idempotencyKey,
+          );
+          break;
+        case AcademicTab.sections:
+          if (_selectedOfferingId == null) return;
+          success = await c.createSection(
+            classOfferingId: _selectedOfferingId!,
+            name: _nameController.text.trim(),
+            idempotencyKey: idempotencyKey,
+          );
+          break;
+        case AcademicTab.subjects:
+          success = await c.createSubject(
+            code: _codeController.text.trim().toUpperCase(),
+            name: _nameController.text.trim(),
+            idempotencyKey: idempotencyKey,
+          );
+          break;
+        case AcademicTab.subjectOfferings:
+          if (_selectedOfferingId == null || _selectedSubjectId == null) return;
+          success = await c.createSubjectOffering(
+            classOfferingId: _selectedOfferingId!,
+            subjectId: _selectedSubjectId!,
+            compulsory: _compulsory,
+            idempotencyKey: idempotencyKey,
+          );
+          break;
+      }
 
-    if (mounted && success) {
-      _activeSubmissionIdempotencyKey = null;
-      Navigator.of(context).pop();
-      return;
-    }
+      if (mounted && success) {
+        _activeSubmissionIdempotencyKey = null;
+        Navigator.of(context).pop();
+        return;
+      }
 
-    if (!success && c.isMfaRequired) {
-      if (widget.authController != null && mounted) {
-        final verified = await MfaChallengeSheet.show(context, authController: widget.authController!);
-        if (verified == true && mounted) {
-          c.clearMessages();
-          // Safe retry using the exact same active idempotency key
-          return _submit();
+      if (!success && c.isMfaRequired) {
+        if (widget.authController != null && mounted) {
+          final verified = await MfaChallengeSheet.show(context, authController: widget.authController!);
+          if (verified == true && mounted) {
+            c.clearMessages();
+            // Safe retry using the exact same active idempotency key
+            if (mounted) {
+              setState(() => _isSubmitting = false);
+            }
+            await _submit();
+            return;
+          }
         }
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
       }
     }
   }
@@ -977,8 +1094,8 @@ class _CreateResourceSheetState extends State<_CreateResourceSheet> {
 
               const SizedBox(height: 24),
               FilledButton(
-                onPressed: widget.controller.isCreating ? null : _submit,
-                child: widget.controller.isCreating
+                onPressed: (widget.controller.isCreating || _isSubmitting) ? null : _submit,
+                child: (widget.controller.isCreating || _isSubmitting)
                     ? const SizedBox(
                         height: 20,
                         width: 20,
