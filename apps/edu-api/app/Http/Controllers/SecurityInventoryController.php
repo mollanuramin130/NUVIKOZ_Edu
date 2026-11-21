@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\PrivilegedMfa;
 use App\Services\SecurityInventory;
 use App\Support\Api;
 use Illuminate\Http\Request;
@@ -18,6 +19,23 @@ class SecurityInventoryController extends Controller
     public function devices(Request $r, SecurityInventory $service)
     {
         return Api::ok(['devices' => $service->devices($r->attributes->get('membership'), $r)]);
+    }
+
+    public function mfaStatus(Request $r, PrivilegedMfa $mfa)
+    {
+        return Api::ok($mfa->deviceStatus($r->attributes->get('membership'), $r));
+    }
+
+    public function mfaChallenge(Request $r, PrivilegedMfa $mfa)
+    {
+        $data = $r->validate([
+            'password' => ['required', 'string', 'max:72'],
+            'code' => ['required', 'string', 'max:32'],
+            'mode' => ['sometimes', 'string', 'in:totp,recovery'],
+        ]);
+        $mode = $data['mode'] ?? 'totp';
+
+        return Api::ok($mfa->deviceVerify($r->attributes->get('membership'), $r, $data['password'], $data['code'], $mode));
     }
 
     public function revokeSession(Request $r, SecurityInventory $service, string $id)

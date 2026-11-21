@@ -91,17 +91,21 @@ class AcademicCatalog
         };
     }
 
-    private function current(Membership $actor): Membership
+    private function current(Membership $actor, bool $requireMfa = true): Membership
     {
         $current = Membership::whereKey($actor->id)->where('school_id', $actor->school_id)->where('user_id', $actor->user_id)->with(['school', 'user'])->firstOrFail();
-        app(SchoolAccess::class)->requireAdmin($current);
+        if ($requireMfa) {
+            app(SchoolAccess::class)->requireAdmin($current);
+        } else {
+            app(SchoolAccess::class)->requireAdminIdentity($current);
+        }
 
         return $current;
     }
 
     public function listing(Membership $actor, string $kind, array $query): array
     {
-        $actor = $this->current($actor);
+        $actor = $this->current($actor, false);
         $filters = $this->filters($kind);
         $rules = ['cursor' => ['sometimes', 'ulid']];
         foreach ($filters as $field => $table) {
