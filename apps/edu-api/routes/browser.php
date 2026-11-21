@@ -7,7 +7,9 @@ use App\Http\Controllers\CapabilityController;
 use App\Http\Controllers\MfaController;
 use App\Http\Controllers\MfaReplacementController;
 use App\Http\Controllers\PlatformBrowserController;
+use App\Http\Controllers\PlatformRegistrationController;
 use App\Http\Controllers\RecoveryController;
+use App\Http\Controllers\RegistrationController;
 use App\Http\Controllers\SecurityInventoryController;
 use App\Http\Middleware\BrowserSession;
 use App\Http\Middleware\PlatformBrowser;
@@ -63,12 +65,21 @@ Route::prefix('api/v1/browser/academic')->middleware(['auth:sanctum', BrowserSes
     Route::post('/{kind}', [AcademicCatalogController::class, 'store'])->whereIn('kind', AcademicCatalog::KINDS)->middleware('throttle:20,1,academic-create:');
 });
 
+Route::prefix('api/v1/browser/registration')->group(function (): void {
+    Route::get('/notice', [RegistrationController::class, 'notice'])->middleware('throttle:30,1,browser-registration-notice:');
+    Route::post('/submit', [RegistrationController::class, 'submitBrowser'])->middleware('throttle:5,10,registration-submit:');
+    Route::post('/status', [RegistrationController::class, 'statusBrowser'])->middleware('throttle:30,1,registration-status:');
+});
+
 Route::prefix('api/v1/browser/platform')->middleware(PlatformBrowser::class)->group(function (): void {
     Route::post('/login', [PlatformBrowserController::class, 'login'])->middleware('throttle:5,1,platform-login:');
     Route::post('/logout', [PlatformBrowserController::class, 'logout']);
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::get('/status', [PlatformBrowserController::class, 'status']);
         Route::get('/identity', [PlatformBrowserController::class, 'identity']);
+        Route::get('/registrations', [PlatformRegistrationController::class, 'index'])->middleware('throttle:60,1,platform-registration-list:');
+        Route::get('/registrations/{registration}', [PlatformRegistrationController::class, 'show'])->whereUlid('registration')->middleware('throttle:60,1,platform-registration-show:');
+        Route::post('/registrations/{registration}/review', [PlatformRegistrationController::class, 'review'])->whereUlid('registration')->middleware('throttle:20,1,platform-registration-review:');
         Route::post('/mfa/enrollment', [PlatformBrowserController::class, 'enroll']);
         Route::post('/mfa/confirm', [PlatformBrowserController::class, 'confirm']);
         Route::post('/mfa/challenge', [PlatformBrowserController::class, 'challenge']);

@@ -71,3 +71,45 @@ test('platform authenticator replacement requires both factors and signs out bef
  expect((await post(context,'mfa/recovery',{password,code:oldCodes[1]})).status()).toBe(422);
  expect((await post(context,'mfa/recovery',{password,code:codes[0]})).status()).toBe(200);
 });
+
+test('public school application can be privately tracked after an MFA-bound platform decision', async ({ page, browser }) => {
+  const applicant = await browser.newContext({ ignoreHTTPSErrors: true });
+  try {
+    const registration = await applicant.newPage();
+    await registration.goto(origin + '/register');
+    const school = 'Synthetic Onboarding ' + crypto.randomUUID();
+    await registration.getByLabel('School or organisation name').fill(school);
+    await registration.getByLabel('Organisation category').fill('School');
+    await registration.getByLabel('Applicant name').fill('Synthetic Applicant');
+    await registration.getByLabel('Email or international phone number').fill('synthetic@example.test');
+    await registration.getByLabel('I have read the privacy notice.').check();
+    await registration.getByRole('button', { name: 'Submit application' }).click();
+    await expect(registration.getByRole('heading', { name: 'Application submitted' })).toBeVisible();
+    const tracking = await registration.getByLabel('Private tracking code').inputValue();
+
+    await login(page, id);
+    await enroll(page);
+    await page.getByRole('link', { name: 'Review school applications' }).click();
+    await page.getByLabel('School name').fill(school);
+    await page.getByRole('button', { name: 'Filter' }).click();
+    const open = page.getByRole('button', { name: 'Open ' + school, exact: true });
+    await open.click();
+    await page.getByLabel('Review note').fill('Synthetic review started');
+    await page.getByRole('button', { name: 'Review decision' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Confirm decision' }).click();
+    await expect(page.getByText('Review decision recorded.')).toBeVisible();
+    await open.click();
+    await page.getByLabel('Review action').selectOption('approved');
+    await page.getByLabel('Review note').fill('Synthetic review approved');
+    await page.getByRole('button', { name: 'Review decision' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Confirm decision' }).click();
+    await expect(page.getByText('Review decision recorded.')).toBeVisible();
+
+    await registration.getByRole('button', { name: 'Track an application' }).click();
+    await registration.getByLabel('Private tracking code').fill(tracking);
+    await registration.getByRole('button', { name: 'Check status' }).click();
+    await expect(registration.getByRole('heading', { name: 'Application approved' })).toBeVisible();
+  } finally {
+    await applicant.close();
+  }
+});

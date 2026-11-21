@@ -15,7 +15,40 @@ use Illuminate\Validation\ValidationException;
 
 class RegistrationController extends Controller
 {
+    public function notice(Request $request): JsonResponse
+    {
+        $version = $this->requireIntake($request);
+        $notice = $this->noticeText();
+        abort_unless($request->query() === [], 422);
+
+        return Api::ok(['notice_version' => $version, 'notice_text' => $notice]);
+    }
+
+    public function submitBrowser(Request $request): JsonResponse
+    {
+        $this->noticeText();
+
+        return $this->submit($request, true);
+    }
+
+    public function statusBrowser(Request $request): JsonResponse
+    {
+        $this->requireIntake($request);
+        abort_unless($request->isJson(), 415);
+        abort_if(strlen($request->getContent()) > 4096, 413);
+        abort_unless($request->query() === [], 422);
+        $input = $request->json()->all();
+        abort_unless(array_keys($input) === ['tracking_token'], 422);
+
+        return $this->lookupStatus($input['tracking_token']);
+    }
+
     public function store(Request $request): JsonResponse
+    {
+        return $this->submit($request, false);
+    }
+
+    private function submit(Request $request, bool $browser): JsonResponse
     {
         $noticeVersion = $this->requireIntake($request);
         abort_unless($request->isJson(), 415);
@@ -30,6 +63,12 @@ class RegistrationController extends Controller
             'notice_version' => ['required', 'string', Rule::in([$noticeVersion])],
         ];
         $input = $request->json()->all();
+        if ($browser) {
+            if (($input['notice_acknowledged'] ?? null) !== true) {
+                throw ValidationException::withMessages(['notice_acknowledged' => 'Acknowledge the current privacy notice.']);
+            }
+            unset($input['notice_acknowledged']);
+        }
         abort_unless(array_diff_key($input, $rules) === [], 422);
         $data = Validator::make($input, $rules)->validate();
         $contact = $data['contact'];
@@ -68,7 +107,12 @@ class RegistrationController extends Controller
     {
         $this->requireIntake($request);
         abort_unless($request->query() === [], 422);
-        $token = $request->header('X-Registration-Token');
+
+        return $this->lookupStatus($request->header('X-Registration-Token'));
+    }
+
+    private function lookupStatus(mixed $token): JsonResponse
+    {
         abort_unless(is_string($token) && preg_match('/\A[A-Za-z0-9_-]{43}\z/', $token), 404);
 
         $record = DB::table('registration_requests')
@@ -77,6 +121,14 @@ class RegistrationController extends Controller
         abort_unless($record, 404);
 
         return Api::ok($this->projection($record->id, $record->state));
+    }
+
+    private function noticeText(): string
+    {
+        $notice = config('registration.notice_text');
+        abort_unless(is_string($notice) && trim($notice) !== '', 404);
+
+        return $notice;
     }
 
     private function requireIntake(Request $request): string

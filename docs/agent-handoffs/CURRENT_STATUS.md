@@ -1,3 +1,9 @@
+# Phase 01 browser registration and platform review
+
+Base: `integration/edu-mobile-academic@2fc9ab327aa1cf29f1ec5e75fcf41c36cd7dab9d`. Development branch: `feature/m3-platform-school-onboarding`. The [browser onboarding contract](../api/F007_BROWSER_ONBOARDING_V1.md) covers opt-in intake, private tracking and MFA-gated platform review. The review migration adds append-only history. An approval records the decision and does not issue activation credentials or entitlements.
+
+Disposable MariaDB: 208 tests passed, 1,751 assertions. Fresh, rollback and forward migration rehearsal passed. HTTPS browser execution requires the isolated browser CI runner. Real platform issuer access, applicant contact verification, school provisioning and Demo/Live entitlement activation remain open. No hosted operation was performed.
+
 # Phase 00 development baseline
 
 2026-11-21 (Asia/Kolkata). Documentation branch `docs/phase-00-development-baseline` from `main@c9ae3cd`. The owner froze hosted code, schema and configuration until final release approval. The [baseline report](../milestones/DEVELOPMENT_BASELINE_REPORT.md), [roadmap](../milestones/DEVELOPMENT_MASTER_ROADMAP.md), [dependency matrix](../milestones/MODULE_DEPENDENCY_MATRIX.md), [definition of done](../milestones/DEFINITION_OF_DONE.md), [43-feature tracker](../requirements/IMPLEMENTATION_PROGRESS.csv), and [Phase 01 plan](../milestones/PHASE_01_IMPLEMENTATION_PLAN.md) record the audit, branch-specific tests and remaining gates. No migrations or application code changed. NEXT SAFE TASK: obtain owner approval for isolated branch consolidation, verify it, then start the approved Phase 01 scope. Earlier handoff entries below remain historical.

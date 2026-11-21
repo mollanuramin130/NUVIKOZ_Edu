@@ -29,11 +29,15 @@ export async function browserRequest<T>(path: string, body?: unknown, options: B
   const url = new URL(`/api/v1/browser/${path}`, target.origin);
   const kind = path.startsWith('academic/') ? path.slice(9) : '';
   if (options.query) {
-    if (body !== undefined || !academicFilters[kind]) throw new Error('Query parameters are not available for this request.');
+    const reviewQueue = path === 'platform/registrations';
+    if (body !== undefined || (!reviewQueue && !academicFilters[kind])) throw new Error('Query parameters are not available for this request.');
     for (const [key, value] of Object.entries(options.query)) {
-      if (!academicFilters[kind].includes(key)) throw new Error('Unsupported academic filter.');
+      if (!(reviewQueue ? ['cursor', 'state', 'search'] : academicFilters[kind]).includes(key)) throw new Error('Unsupported academic filter.');
       if (value !== undefined) {
-        if (!/^[0-9A-HJKMNP-TV-Z]{26}$/i.test(value)) throw new Error('Invalid academic reference.');
+        const valid = reviewQueue && key === 'search' ? value.length >= 2 && value.length <= 80
+          : reviewQueue && key === 'state' ? ['submitted', 'reviewing', 'approved', 'rejected'].includes(value)
+          : /^[0-9A-HJKMNP-TV-Z]{26}$/i.test(value);
+        if (!valid) throw new Error('Invalid filter.');
         url.searchParams.set(key, value);
       }
     }

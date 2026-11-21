@@ -12,7 +12,7 @@ class PlatformAssurance
     public function allows(Request $request, string $capability): bool
     {
         if (! app()->environment('testing') || config('platform.synthetic_auth') !== true
-            || $capability !== 'platform.health' || ! $request->hasSession()
+            || ! in_array($capability, ['platform.health', 'platform.registrations.review'], true) || ! $request->hasSession()
             || $request->hasHeader('Authorization') || $request->hasHeader('X-School-ID')) {
             return false;
         }
