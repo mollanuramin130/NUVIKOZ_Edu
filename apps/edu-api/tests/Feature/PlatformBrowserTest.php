@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Services\ProvisionedSchoolAdminActivation;
 use App\Services\Totp;
+use App\Services\VerifiedSchoolAdminDelivery;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -160,7 +162,66 @@ class PlatformBrowserTest extends TestCase
         $this->assertDatabaseHas('memberships', ['school_id' => $school, 'role' => 'school_admin', 'status' => 'inactive']);
         $this->assertDatabaseHas('audit_events', ['school_id' => $school, 'action' => 'platform.registration.provisioned']);
         $this->assertDatabaseCount('audit_events', 1);
+        $issue = ['command_id' => (string) Str::uuid()];
+        $this->browser('POST', $detail.'/activation/issue', $issue)->assertStatus(503);
+        $this->assertDatabaseCount('school_admin_activation_proofs', 0);
+
+        $adapter = new class implements VerifiedSchoolAdminDelivery
+        {
+            public bool $verified = false;
+
+            public array $proof = [];
+
+            public function recipient(string $registrationId, string $submittedContact): ?string
+            {
+                return $this->verified ? 'synthetic-verified-recipient' : null;
+            }
+
+            public function deliver(string $recipient, array $proof): bool
+            {
+                $this->proof = $proof;
+
+                return true;
+            }
+        };
+        app()->instance(VerifiedSchoolAdminDelivery::class, $adapter);
+        $this->browser('POST', $detail.'/activation/issue', $issue)->assertConflict();
+        $adapter->verified = true;
+        $this->browser('POST', $detail.'/activation/issue', $issue)->assertOk()->assertJsonPath('data.activation.state', 'pending_delivery')
+            ->assertJsonMissingPath('data.activation.history.0.delivery_envelope');
+        $this->browser('POST', $detail.'/activation/issue', $issue)->assertOk()->assertJsonPath('data.replayed', true);
+        $service = app(ProvisionedSchoolAdminActivation::class);
+        $this->assertTrue($service->deliver($id));
+        $this->assertFalse($service->deliver($id));
+        $revoked = $adapter->proof;
+        $this->browser('POST', $detail.'/activation/revoke', ['command_id' => (string) Str::uuid()])->assertOk()
+            ->assertJsonPath('data.activation.state', 'revoked');
+        $reissue = ['command_id' => (string) Str::uuid()];
+        $this->browser('POST', $detail.'/activation/reissue', $reissue)->assertOk()->assertJsonPath('data.activation.state', 'pending_delivery');
+        DB::table('school_admin_activation_proofs')->where('registration_id', $id)->where('state', 'pending_delivery')
+            ->update(['expires_at' => now()->subSecond()]);
+        $service->expire();
+        $this->assertDatabaseHas('school_admin_activation_proofs', ['state' => 'expired', 'delivery_envelope' => null, 'secret_hash' => null]);
+        $this->assertFalse($service->deliver($id));
+        $this->browser('POST', $detail.'/activation/reissue', ['command_id' => (string) Str::uuid()])->assertOk();
+        $this->assertTrue($service->deliver($id));
+        $this->assertDatabaseHas('school_admin_activation_proofs', ['id' => $adapter->proof['proof_id'], 'delivery_envelope' => null]);
         $this->browser('POST', 'platform/logout')->assertOk();
+        $payload = fn (array $proof) => array_diff_key($proof, ['expires_at' => true]) + [
+            'password' => 'Synthetic-passphrase-for-test-only',
+            'password_confirmation' => 'Synthetic-passphrase-for-test-only',
+        ];
+        $this->browser('POST', 'activation/consume', $payload($revoked))->assertUnprocessable();
+        $this->browser('POST', 'activation/consume', array_replace($payload($adapter->proof), ['school_code' => 'OTHER-SCHOOL']))->assertUnprocessable();
+        $adapter->verified = false;
+        $this->browser('POST', 'activation/consume', $payload($adapter->proof))->assertUnprocessable();
+        $adapter->verified = true;
+        $this->browser('POST', 'activation/consume', $payload($adapter->proof))->assertOk()->assertJsonPath('data.activated', true);
+        $this->browser('GET', 'csrf')->assertOk();
+        $this->browser('POST', 'activation/consume', $payload($adapter->proof))->assertUnprocessable();
+        $this->assertDatabaseHas('schools', ['id' => $school, 'access_state' => 'suspended', 'demo_ends_at' => null, 'entitlement_ends_at' => null]);
+        $this->assertDatabaseHas('memberships', ['school_id' => $school, 'role' => 'school_admin', 'status' => 'active']);
+        $this->assertSame(1, DB::table('audit_events')->where('action', 'school_admin.activation.consumed')->count());
         $this->browser('GET', $detail)->assertUnauthorized();
     }
 

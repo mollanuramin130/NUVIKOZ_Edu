@@ -8,6 +8,7 @@ use App\Models\Membership;
 use App\Models\School;
 use App\Models\User;
 use App\Services\PlatformAssurance;
+use App\Services\ProvisionedSchoolAdminActivation;
 use App\Support\Api;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -57,7 +58,7 @@ class PlatformRegistrationController extends Controller
             'id', 'actor_user_id', 'from_state', 'to_state', 'note', 'created_at',
         ]);
 
-        return Api::ok(['registration' => $record, 'history' => $history, 'provisioning' => $this->provisioning($registration)]);
+        return Api::ok(['registration' => $record, 'history' => $history, 'provisioning' => $this->provisioning($registration), 'activation' => app(ProvisionedSchoolAdminActivation::class)->status($registration)]);
     }
 
     private function provisioning(string $registration): ?array
@@ -67,7 +68,7 @@ class PlatformRegistrationController extends Controller
             ->where('registration_id', $registration)
             ->first(['school_provisionings.school_id', 'schools.code', 'school_provisionings.created_at', 'school_provisionings.actor_user_id']);
 
-        return $row ? (array) $row + ['state' => 'provisioned', 'activation_state' => 'awaiting_verified_delivery'] : null;
+        return $row ? (array) $row + ['state' => 'provisioned', 'activation_state' => app(ProvisionedSchoolAdminActivation::class)->status($registration)['state']] : null;
     }
 
     public function provision(Request $request, string $registration): JsonResponse
@@ -134,6 +135,31 @@ class PlatformRegistrationController extends Controller
             ]);
 
             return Api::ok(['provisioning' => $this->provisioning($registration), 'replayed' => false], 201);
+        }, 3);
+    }
+
+    public function activation(Request $request, string $registration, string $operation): JsonResponse
+    {
+        $this->authorizeReview($request);
+        abort_unless($request->isJson(), 415);
+        abort_if(strlen($request->getContent()) > 1024, 413);
+        abort_unless($request->query() === [], 422);
+        $input = $request->json()->all();
+        abort_unless(array_keys($input) === ['command_id'], 422);
+        $command = Validator::make($input, ['command_id' => ['required', 'uuid']])->validate();
+        $actor = $request->user()->id;
+
+        return DB::transaction(function () use ($request, $registration, $operation, $command, $actor): JsonResponse {
+            User::whereKey($actor)->lockForUpdate()->firstOrFail();
+            $this->authorizeReview($request);
+            $link = DB::table('school_provisionings')->where('registration_id', $registration)->first();
+            abort_unless($link, 404);
+            $school = School::whereKey($link->school_id)->lockForUpdate()->firstOrFail();
+            abort_unless($school->access_state === 'suspended', 409);
+
+            return Api::ok(app(ProvisionedSchoolAdminActivation::class)->command(
+                $link, $actor, $operation, $command['command_id'], $request->attributes->get('request_id'),
+            ));
         }, 3);
     }
 

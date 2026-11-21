@@ -9,7 +9,14 @@ type State = 'submitted' | 'reviewing' | 'approved' | 'rejected';
 type Decision = Exclude<State, 'submitted'>;
 type Row = { id: string; organization_name: string; category: string; state: State; submitted_at: string };
 type Page = { items: Row[]; next_cursor: string | null };
+type ActivationAction = 'issue' | 'reissue' | 'revoke';
+const activationLabels: Record<string, string> = {
+  awaiting_verified_delivery: 'Awaiting verified delivery', pending_delivery: 'Pending delivery',
+  delivered: 'Delivered · awaiting password setup', expired: 'Expired', revoked: 'Revoked',
+  superseded: 'Superseded', consumed: 'Account activated',
+};
 type Detail = {
+  activation: { state: string; delivery_configured: boolean; history: { sequence: number; state: string; operation: string; expires_at: string | null; created_at: string; actor_id: string }[] };
   provisioning: { school_id: string; code: string; created_at: string; actor_user_id: string; activation_state: string } | null;
   registration: Row & { contact_name: string; contact: string; notice_version: string };
   history: { id: string; actor_user_id: string; from_state: State; to_state: State; created_at: string; note: string }[];
@@ -30,7 +37,7 @@ export default function ReviewQueue() {
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState('');
   const [feedback, setFeedback] = useState('');
-  const [command, setCommand] = useState<{ state: Decision; note: string; command_id: string } | { state: 'provision'; command_id: string }>();
+  const [command, setCommand] = useState<{ state: Decision; note: string; command_id: string } | { state: 'provision' | ActivationAction; command_id: string }>();
   const pending = useRef<AbortController | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
 
@@ -103,12 +110,14 @@ export default function ReviewQueue() {
     pending.current = request;
     setBusy(true); setError('');
     try {
+      const reviewing = 'note' in command;
       const provisioning = command.state === 'provision';
-      await browserRequest(`platform/registrations/${detail.registration.id}/${provisioning ? 'provision' : 'review'}`, provisioning ? { command_id: command.command_id } : command, { signal: request.signal });
+      const endpoint = reviewing ? 'review' : provisioning ? 'provision' : `activation/${command.state}`;
+      await browserRequest(`platform/registrations/${detail.registration.id}/${endpoint}`, reviewing ? command : { command_id: command.command_id }, { signal: request.signal });
       if (request.signal.aborted) return;
       dialog.current?.close();
       setCommand(undefined);
-      setFeedback(provisioning ? 'School provisioned. Access is pending activation.' : 'Review decision recorded.');
+      setFeedback(provisioning ? 'School provisioned. Access is pending activation.' : reviewing ? 'Review decision recorded.' : 'Activation action recorded.');
       await load(filters);
     } catch (failure) {
       if (!request.signal.aborted) {
@@ -123,6 +132,10 @@ export default function ReviewQueue() {
   }
 
   const state = detail?.registration.state;
+  const activation = detail?.activation;
+  const actions: ActivationAction[] = !activation || activation.state === 'consumed' ? []
+    : activation.state === 'awaiting_verified_delivery' ? ['issue']
+    : ['pending_delivery', 'delivered'].includes(activation.state) ? ['reissue', 'revoke'] : ['reissue'];
   const reviewable = state === 'submitted' || state === 'reviewing';
   return <main className="onboard">
     <nav className="onboard-nav" aria-label="Platform"><Link href="/platform">Platform security</Link></nav>
@@ -153,12 +166,24 @@ export default function ReviewQueue() {
         {state === 'approved' && <section aria-label="School provisioning">
           <h3>School provisioning</h3>
           {detail.provisioning ? <dl><dt>School code</dt><dd>{detail.provisioning.code}</dd>
-            <dt>Activation</dt><dd>Awaiting verified delivery</dd>
+            <dt>Activation</dt><dd>{activationLabels[detail.activation.state] ?? detail.activation.state}</dd>
             <dt>Provisioned at</dt><dd>{detail.provisioning.created_at}</dd>
             <dt>Provisioned by</dt><dd>{detail.provisioning.actor_user_id}</dd></dl>
             : <><p>No school record has been provisioned.</p><button disabled={busy} onClick={() => {
               setError(''); setCommand({ state: 'provision', command_id: crypto.randomUUID() }); dialog.current?.showModal();
             }}>Provision school</button></>}
+        </section>}
+        {detail.provisioning && activation && <section aria-label="Activation history">
+          <h3>Activation history</h3>
+          {!activation.delivery_configured && <p>Trusted delivery is unavailable.</p>}
+          {activation.history.length ? <ol>{activation.history.map(item => <li key={item.sequence}>
+            <strong>{item.operation} · {activationLabels[item.state] ?? item.state}</strong>
+            <p>{item.created_at} · {item.actor_id}{item.expires_at && <> · Expires {item.expires_at}</>}</p>
+          </li>)}</ol> : <p>No activation actions yet.</p>}
+          <div className="onboard-actions">{actions.map(action => <button key={action}
+            disabled={busy || (action !== 'revoke' && !activation.delivery_configured)} onClick={() => {
+              setError(''); setCommand({ state: action, command_id: crypto.randomUUID() }); dialog.current?.showModal();
+            }}>{action === 'issue' ? 'Issue proof' : action === 'reissue' ? 'Reissue proof' : 'Revoke proof'}</button>)}</div>
         </section>}
         <h3>Review history</h3>
         {detail.history.length ? <ol>{detail.history.map(entry => <li key={entry.id}><strong>{entry.from_state} → {entry.to_state}</strong>
@@ -170,8 +195,8 @@ export default function ReviewQueue() {
       </section>}
       <dialog ref={dialog} aria-labelledby="decision-heading" onCancel={event => { if (busy) event.preventDefault(); }}>
         <h2 id="decision-heading">Confirm decision</h2>
-        <p hidden={command?.state === 'provision'}>Change {detail?.registration.organization_name} to <strong>{command?.state}</strong>?</p>
-        <p>{command?.state === 'provision' ? 'Create a suspended school and inactive School Admin. Activation and entitlements remain pending.' : 'This records an application decision. Provisioning and access activation are separate.'}</p>
+        <p hidden={!command || !('note' in command)}>Change {detail?.registration.organization_name} to <strong>{command?.state}</strong>?</p>
+        <p>{command?.state === 'provision' ? 'Create a suspended school and inactive School Admin. Activation and entitlements remain pending.' : command && !('note' in command) ? `Confirm ${command.state} for the initial School Admin proof. School access remains suspended.` : 'This records an application decision. Provisioning and access activation are separate.'}</p>
         {error && <p role="alert" className="onboard-error">{error}</p>}
         <div className="onboard-actions"><button className="onboard-secondary" disabled={busy} onClick={() => dialog.current?.close()}>Cancel</button>
           <button disabled={busy} onClick={() => void commit()}>{busy ? 'Saving…' : 'Confirm decision'}</button></div>
