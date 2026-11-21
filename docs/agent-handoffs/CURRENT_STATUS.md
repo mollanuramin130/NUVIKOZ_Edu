@@ -1,3 +1,9 @@
+# Phase 01 storage security acceptance
+
+2026-11-22 (Asia/Kolkata). WORK-P01-008, `feature/m3-phase01-security-acceptance` directly from `5a46a87027dc9cfe448f2626d7a39557056c23ec`. Conversion replay now binds the original preview digest in the immutable audit receipt. Added disposable MariaDB race coverage for concurrent conversion and regression cases for changed payloads and failed quarantine cleanup. No new routes or migrations. See the [storage, scanner, parser, capacity, purge, applicant verification and delivery acceptance contracts](../api/F008_F010_ENTITLEMENTS_V1.md).
+
+Parent PR #23 passed Repository Integrity and M1 Foundation (216 PHPUnit tests, 1,962 assertions, 38 HTTPS browser tests; web and Flutter jobs passed). No production integrations were configured. Next safe task is to publish the exact branch and verify hosted CI before considering any separately approved integration.
+
 # Phase 01 local PDF parser and recovery hardening
 
 2026-11-22 (Asia/Kolkata). WORK-P01-007 on `feature/m3-pdf-storage-hardening`, directly based on `fae1ce851e8cacf88e158bcf08afede1caa16612`. Limits Poppler resources and adds a fail-closed scanner interface, bounded verified reads and recovery/physical-capacity regression tests. No new migrations or routes. See the [implemented API contract](../api/F008_F010_ENTITLEMENTS_V1.md). The parent PR #22 passed both workflows and all 38 HTTPS tests. This branch's local browser harness could not start because sudo was unavailable. Next safe task: publish and verify the exact commit in CI. No deployment is authorized.

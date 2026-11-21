@@ -32,6 +32,7 @@ class LocalPdfStorageTest extends TestCase
             $this->assertFalse($first['replayed']);
             $this->assertSame(strlen($bytes), $first['bytes']);
             $this->assertTrue($write($bytes)['replayed']);
+            $this->reject(fn () => $write($bytes.'changed'), 409);
             $this->assertDatabaseCount('school_pdf_admissions', 1);
             $read = $storage->open($school->id, $owner->id, $first['object_id']);
             $this->assertSame($bytes, stream_get_contents($read));
@@ -66,6 +67,13 @@ class LocalPdfStorageTest extends TestCase
             config(['pdf-storage.capacity_bytes' => 20]);
             $this->reject(fn () => $storage->ingest($school->id, (string) Str::ulid(), (string) Str::uuid(), $owner->id, $this->stream('other'), 'test'), 503);
             $this->travel(15)->minutes();
+            unlink($path);
+            mkdir($path, 0700);
+            $this->reject(fn () => $storage->reconcile(), 503);
+            $this->assertDatabaseHas('school_pdf_reservations', ['command_id' => $command, 'state' => 'pending']);
+            $this->assertDatabaseHas('local_pdf_objects', ['id' => $row->id, 'state' => 'quarantined']);
+            rmdir($path);
+            file_put_contents($path, 'simulated interrupted write');
             $this->assertSame(2, $storage->reconcile());
             $this->assertFileDoesNotExist($path);
             $this->assertSame(0, $storage->reconcile());
