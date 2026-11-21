@@ -1,3 +1,27 @@
+# Phase 01 Mobile Academic Contract Compatibility & Regression Hardening (AG-P01-003)
+
+2026-11-22 (Asia/Kolkata). Feature branch `feature/m2-academic-compatibility-hardening` branched from verified `feature/m2-academic-client-hardening@c898a1affc5014562ce5bd5022ed647ae84192b3` (Draft PR #19). Client-only compatibility and regression hardening aligning with the latest backend entitlement and access error contracts while preserving PR #19 untouched.
+
+Changed files:
+- `apps/edu-mobile/lib/academic/controllers/academic_controller.dart`: Expanded error code mapping to handle all backend access denial codes (`ACCESS_SUSPENDED`, `SCHOOL_SUSPENDED`, `TENANT_SUSPENDED`, `DEMO_EXPIRED`, `DEMO_LIMIT_EXCEEDED`, `ROLE_UNAUTHORIZED`, `UNAUTHORIZED`, `TOKEN_SCHOOL_MISMATCH`, `TENANT_CONTEXT_REQUIRED`, `TOKEN_EXPIRED`, `SESSION_CHANGED`).
+- `apps/edu-mobile/lib/auth/screens/mfa_challenge_screen.dart`: Clear plaintext password and code controllers in `dispose()` prior to disposal to ensure zero residual credentials in memory.
+- `apps/edu-mobile/lib/academic/screens/academic_workspace_screen.dart`: Pull-to-refresh (`RefreshIndicator` with `AlwaysScrollableScrollPhysics`) across all 6 resource list views for both populated and empty states; strict UI double-submission boolean guard (`_isSubmitting`) preventing duplicate API calls on rapid double-tap.
+- `apps/edu-mobile/test/academic_controller_test.dart`: Added test cases verifying error mapping for suspension, demo expiry, token/school mismatch, and session expiry.
+- `apps/edu-mobile/android/gradle.properties`: Migrator compatibility flags.
+
+Migrations: None (Mobile Flutter client hardening).
+Commands and results:
+- `flutter analyze`: 0 issues found (2.1s).
+- `flutter test`: 42/42 tests passed.
+- `./gradlew testDebugUnitTest`: 34 tasks passed, BUILD SUCCESSFUL.
+- `./gradlew connectedDebugAndroidTest`: 8 tests executed (0 failures) on physical OPPO F25 Pro (`CPH2603 - 16`, ADB serial `EM9D5L998XB6599H`).
+- `flutter build apk --debug`: Built `build/app/outputs/flutter-apk/app-debug.apk`.
+- `adb install -r` & launch: Successfully installed and visually verified on physical OPPO F25 Pro. Captured live screenshot `oppo_academic_p01_003.png`.
+
+Blockers: None.
+Risks: None. Scope strictly bounded to existing six Academic resources (`sessions`, `classes`, `class-offerings`, `sections`, `subjects`, `subject-offerings`).
+NEXT SAFE TASK: Cross-agent synchronization of `feature/m2-academic-compatibility-hardening` with ChatGPT Work Mode / Draft PR publication for review.
+
 # Phase 01 Android Academic Client Hardening & Premium UX Development (AG-P01-001)
 
 2026-11-22 (Asia/Kolkata). Feature branch `feature/m2-academic-client-hardening` based on authoritative integration commit `integration/edu-mobile-academic@2fc9ab327aa1cf29f1ec5e75fcf41c36cd7dab9d` (Draft PR #15). Client-only hardening implementing authoritative API contract `docs/api/M2_MOBILE_ACADEMIC_V1_HANDOFF.md`.

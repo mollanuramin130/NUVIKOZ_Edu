@@ -264,6 +264,62 @@ void main() {
         expect(controller.isMfaRequired, isFalse);
         expect(controller.errorMessage, contains('Cross-tenant access violation'));
       });
+
+      test('403 ACCESS_SUSPENDED sets suspension message', () async {
+        repo.errorToThrow = const ApiFailure(403, 'ACCESS_SUSPENDED');
+
+        final success = await controller.createSession(
+          name: '2027–2028',
+          startsOn: '2027-04-01',
+          endsOn: '2028-03-31',
+        );
+
+        expect(success, isFalse);
+        expect(controller.isMfaRequired, isFalse);
+        expect(controller.errorMessage, contains('Institution access is currently suspended'));
+      });
+
+      test('403 DEMO_EXPIRED sets evaluation expired message', () async {
+        repo.errorToThrow = const ApiFailure(403, 'DEMO_EXPIRED');
+
+        final success = await controller.createSession(
+          name: '2027–2028',
+          startsOn: '2027-04-01',
+          endsOn: '2028-03-31',
+        );
+
+        expect(success, isFalse);
+        expect(controller.isMfaRequired, isFalse);
+        expect(controller.errorMessage, contains('Evaluation period has expired'));
+      });
+
+      test('403 TOKEN_SCHOOL_MISMATCH sets cross-tenant message', () async {
+        repo.errorToThrow = const ApiFailure(403, 'TOKEN_SCHOOL_MISMATCH');
+
+        final success = await controller.createSession(
+          name: '2027–2028',
+          startsOn: '2027-04-01',
+          endsOn: '2028-03-31',
+        );
+
+        expect(success, isFalse);
+        expect(controller.isMfaRequired, isFalse);
+        expect(controller.errorMessage, contains('Cross-tenant access violation'));
+      });
+
+      test('401 TOKEN_EXPIRED sets session expired message', () async {
+        repo.errorToThrow = const ApiFailure(401, 'TOKEN_EXPIRED');
+
+        final success = await controller.createSession(
+          name: '2027–2028',
+          startsOn: '2027-04-01',
+          endsOn: '2028-03-31',
+        );
+
+        expect(success, isFalse);
+        expect(controller.isMfaRequired, isFalse);
+        expect(controller.errorMessage, contains('Session has expired or changed'));
+      });
     });
 
     test('reset clears all catalog state and restores default tab', () {

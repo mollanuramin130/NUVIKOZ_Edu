@@ -43,6 +43,8 @@ class _MfaChallengeSheetState extends State<MfaChallengeSheet> {
 
   @override
   void dispose() {
+    _passwordController.clear();
+    _codeController.clear();
     _passwordController.dispose();
     _codeController.dispose();
     super.dispose();
