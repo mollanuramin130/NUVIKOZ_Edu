@@ -73,6 +73,7 @@ class PlatformBrowserTest extends TestCase
         $this->assertNotSame($bootstrap, $pending);
         $this->assertDatabaseMissing('sessions', ['id' => $bootstrap]);
         $this->browser('GET', 'platform/identity')->assertForbidden();
+        $this->browser('GET', 'platform/registrations')->assertForbidden();
         $setup = $this->browser('POST', 'platform/mfa/enrollment', ['password' => 'Synthetic-Platform-Password'])->assertOk();
         $code = app(Totp::class)->code($setup->json('data.secret'), now()->timestamp);
         $this->browser('POST', 'platform/mfa/confirm', ['password' => 'Synthetic-Platform-Password', 'code' => $code])
@@ -82,6 +83,51 @@ class PlatformBrowserTest extends TestCase
         $this->assertDatabaseHas('session_revocations', ['session_hash' => hash('sha256', $pending)]);
 
         return $u;
+    }
+
+    public function test_registration_review_requires_platform_mfa_and_only_changes_the_application(): void
+    {
+        config(['platform.synthetic_auth' => true, 'browser.origins' => ['https://web.edu.test']]);
+        $this->browser('GET', 'platform/registrations')->assertUnauthorized();
+        $reviewer = $this->authenticate();
+        config([
+            'registration.enabled' => true,
+            'registration.notice_version' => 'test-v1',
+            'registration.notice_text' => 'Synthetic test privacy notice.',
+        ]);
+        $this->browser('GET', 'registration/notice')->assertOk()->assertJsonPath('data.notice_version', 'test-v1');
+        $input = [
+            'organization_name' => 'Synthetic Horizon', 'category' => 'school',
+            'contact_name' => 'Synthetic Applicant', 'contact' => 'test@example.test',
+            'notice_version' => 'test-v1',
+        ];
+        $this->browser('POST', 'registration/submit', $input)->assertUnprocessable();
+        $input['notice_acknowledged'] = true;
+        $application = $this->browser('POST', 'registration/submit', $input)->assertCreated();
+        $id = $application->json('data.id');
+        $token = $application->json('data.tracking_token');
+        $this->browser('POST', 'registration/submit', $input)->assertConflict();
+        $this->browser('GET', 'platform/registrations?search=Horizon&state=submitted')
+            ->assertOk()->assertJsonPath('data.items.0.id', $id)->assertJsonMissingPath('data.items.0.contact');
+        $this->browser('GET', 'platform/registrations?search=%25%25')->assertOk()->assertJsonCount(0, 'data.items');
+        $detail = "platform/registrations/{$id}";
+        $this->browser('GET', $detail)->assertOk()->assertJsonPath('data.registration.contact', 'test@example.test');
+        $command = ['state' => 'approved', 'note' => 'Reviewed', 'command_id' => (string) Str::uuid()];
+        $this->browser('POST', $detail.'/review', $command)->assertConflict();
+        $start = ['state' => 'reviewing', 'note' => 'Start review', 'command_id' => (string) Str::uuid()];
+        $this->browser('POST', $detail.'/review', $start)->assertOk()->assertJsonPath('data.replayed', false);
+        $this->browser('POST', $detail.'/review', $start)->assertOk()->assertJsonPath('data.replayed', true);
+        $this->browser('POST', $detail.'/review', $command)->assertOk()->assertJsonPath('data.state', 'approved');
+        $this->browser('POST', $detail.'/review', array_replace($command, ['note' => 'Tampered replay']))->assertConflict();
+        $this->browser('GET', $detail)->assertOk()->assertJsonCount(2, 'data.history')
+            ->assertJsonPath('data.history.1.actor_user_id', $reviewer->id);
+        $this->browser('POST', 'registration/status', ['tracking_token' => $token])
+            ->assertOk()->assertJsonPath('data.state', 'approved')
+            ->assertJsonMissingPath('data.contact')->assertJsonMissingPath('data.tracking_token');
+        $this->assertDatabaseCount('schools', 0);
+        $this->assertDatabaseCount('memberships', 0);
+        $this->browser('POST', 'platform/logout')->assertOk();
+        $this->browser('GET', $detail)->assertUnauthorized();
     }
 
     public function test_real_cookie_csrf_platform_enrollment_and_protected_identity(): void
