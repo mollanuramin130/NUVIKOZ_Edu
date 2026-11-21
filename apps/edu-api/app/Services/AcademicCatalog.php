@@ -6,10 +6,13 @@ use App\Models\AuditEvent;
 use App\Models\Membership;
 use App\Models\School;
 use App\Models\User;
+use App\Support\Api;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class AcademicCatalog
 {
@@ -187,6 +190,79 @@ class AcademicCatalog
 
             return $result + ['replayed' => false];
         }, 3);
+    }
+
+    public function editSession(Membership $actor, string $id, array $data, ?string $key, string $requestId): array
+    {
+        $rules = $this->rules('sessions');
+        abort_unless(is_int($data['version'] ?? null) && $data['version'] > 0
+            && $data['version'] <= 4294967295
+            && array_diff_key($data, $rules + ['version' => true]) === []
+            && is_string($key) && preg_match('/\A[A-Za-z0-9_-]{16,160}\z/', $key), 422);
+        if (is_string($data['name'] ?? null)) {
+            $data['name'] = trim($data['name']);
+        }
+        $values = Validator::make($data, $rules)->validate();
+        $version = $data['version'];
+        $hash = hash('sha256', json_encode([$id, $values, $version], JSON_THROW_ON_ERROR));
+
+        return DB::transaction(function () use ($actor, $id, $key, $requestId, $values, $version, $hash): array {
+            $school = School::whereKey($actor->school_id)->lockForUpdate()->firstOrFail();
+            User::whereKey($actor->user_id)->lockForUpdate()->firstOrFail();
+            Membership::whereKey($actor->id)->lockForUpdate()->firstOrFail();
+            $actor = $this->current($actor, false, true);
+            abort_unless(app(SchoolAccess::class)->canWrite($actor), 403);
+            $zone = $school->settings['timezone'] ?? null;
+            abort_unless(is_string($zone) && in_array($zone, timezone_identifiers_list(), true), 403);
+
+            $query = DB::table('academic_sessions')->where(['school_id' => $school->id, 'id' => $id]);
+            $session = (clone $query)->lockForUpdate()->firstOrFail();
+            $scope = ['school_id' => $school->id, 'membership_id' => $actor->id, 'operation' => 'sessions.edit', 'key' => $key];
+            $receipt = DB::table('academic_command_receipts')->where($scope)->lockForUpdate()->first();
+            $result = $values + ['id' => $id, 'state' => 'future', 'version' => $version + 1];
+            if ($receipt) {
+                if (! hash_equals($receipt->body_hash, $hash)) {
+                    $this->editConflict('SESSION_EDIT_KEY_CONFLICT', 'This key was used for a different edit.');
+                }
+
+                return $result + ['replayed' => true];
+            }
+
+            if ($session->state !== 'future') {
+                $this->editConflict('SESSION_NOT_FUTURE', 'Only future sessions can be edited.');
+            }
+            if ($session->version !== $version || $version === 4294967295) {
+                $this->editConflict('SESSION_EDIT_STALE', 'The session version cannot be updated. Refresh sessions.');
+            }
+            $today = CarbonImmutable::now($zone)->toDateString();
+            if ($session->starts_on <= $today || $values['starts_on'] <= $today) {
+                $this->editConflict('SESSION_EDIT_WINDOW', 'Both start dates must be after today in the school timezone.');
+            }
+            $before = ['name' => $session->name, 'starts_on' => $session->starts_on, 'ends_on' => $session->ends_on];
+            if ($before === $values) {
+                throw ValidationException::withMessages(['session' => 'Change at least one field before saving.']);
+            }
+            if (DB::table('academic_sessions')->where('school_id', $school->id)->where('name', $values['name'])->where('id', '!=', $id)->lockForUpdate()->first()) {
+                $this->editConflict('SESSION_EDIT_DUPLICATE_NAME', 'A session with this name already exists in the school.');
+            }
+            if (app(AcademicSessionChanges::class)->hasOverlap($school->id, $values['starts_on'], $values['ends_on'], $id)) {
+                $this->editConflict('SESSION_EDIT_OVERLAP', 'These dates overlap another future or active session.');
+            }
+
+            $query->update($values + ['version' => $result['version']]);
+            AuditEvent::create(['school_id' => $school->id, 'actor_user_id' => $actor->user_id, 'action' => 'academic.sessions.edited',
+                'resource_id' => $id, 'request_id' => $requestId, 'details' => ['before' => $before, 'after' => $values,
+                    'version' => $result['version'], 'school_date' => $today, 'timezone' => $zone]]);
+            DB::table('academic_command_receipts')->insert($scope + ['id' => (string) Str::ulid(), 'body_hash' => $hash,
+                'resource_id' => $id, 'created_at' => now(), 'updated_at' => now()]);
+
+            return $result + ['replayed' => false];
+        }, 3);
+    }
+
+    private function editConflict(string $code, string $message): never
+    {
+        throw new HttpResponseException(Api::error($code, $message, 409));
     }
 
     private function projection(object $row, string $kind): array

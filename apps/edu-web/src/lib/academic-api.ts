@@ -25,3 +25,7 @@ export function createAcademic<K extends Kind>(kind: K, body: Inputs[K], key: st
   return browserRequest<{resource: Resources[K]; replayed: boolean}>(`academic/${kind}`, body, {idempotencyKey: key, signal});
 }
 export function newAcademicIntent() { return crypto.randomUUID(); }
+
+export function editAcademicSession(id: string, body: Inputs['sessions'] & {version: number}, key: string, signal?: AbortSignal) {
+  return browserRequest<AcademicSession & {replayed: boolean}>(`academic/sessions/${id}/edit`, body, {idempotencyKey: key, signal});
+}

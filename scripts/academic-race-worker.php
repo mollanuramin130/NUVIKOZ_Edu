@@ -5,6 +5,7 @@ use App\Services\AcademicCatalog;
 use App\Services\PrivilegedMfa;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -43,11 +44,18 @@ while (! is_file($in['gate'])) {
 }
 try {
     $catalog = app(AcademicCatalog::class);
-    $result = isset($in['session'])
-        ? $catalog->transitionSession($m, $in['session'], $in['data'], $in['key'], 'synthetic-academic-race')
-        : $catalog->create($m, $in['kind'], $in['data'], $in['key'], 'synthetic-academic-race');
+    $result = match ($in['kind']) {
+        'edits', 'overlapping-edits' => $catalog->editSession($m, $in['session'], $in['data'], $in['key'], 'synthetic-academic-race'),
+        'transitions' => $catalog->transitionSession($m, $in['session'], $in['data'], $in['key'], 'synthetic-academic-race'),
+        default => $catalog->create($m, $in['kind'], $in['data'], $in['key'], 'synthetic-academic-race'),
+    };
     echo $result['replayed'] ? 'replayed' : 'created';
 } catch (AuthorizationException) {
+    echo 'denied';
+} catch (HttpResponseException $e) {
+    if ($e->getResponse()->getStatusCode() !== 409) {
+        throw $e;
+    }
     echo 'denied';
 } catch (HttpException $e) {
     if (! in_array($e->getStatusCode(), [403, 409], true)) {

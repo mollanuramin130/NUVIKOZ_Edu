@@ -11,6 +11,7 @@ use App\Services\AcademicSessionChanges;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\RecordNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -43,6 +44,8 @@ class AcademicCatalogTest extends TestCase
             $this->assertSame(403, $code);
         } catch (ValidationException) {
             $this->assertSame(422, $code);
+        } catch (HttpResponseException $e) {
+            $this->assertSame($code, $e->getResponse()->getStatusCode());
         } catch (HttpException $e) {
             $this->assertSame($code, $e->getStatusCode());
         }
@@ -72,6 +75,68 @@ class AcademicCatalogTest extends TestCase
         $this->assertDatabaseCount('session_change_requests', 1);
         $this->assertDatabaseHas('academic_sessions', ['id' => $id, 'ends_on' => '2027-06-30']);
         $service->submit($other, $id, $change, $key, 'test');
+    }
+
+    public function test_future_edit_replays_original_result_and_preserves_references(): void
+    {
+        $this->travelTo(now('UTC')->setDate(2035, 3, 1)->setTime(18, 29));
+        $actor = $this->member();
+        $this->mfaFixture($actor);
+        $session = $this->create($actor, data: ['name' => 'Original', 'starts_on' => '2035-03-02', 'ends_on' => '2035-03-10'])['resource'];
+        $class = $this->create($actor, 'classes', ['name' => 'Class', 'sort_order' => 1])['resource'];
+        $offering = $this->create($actor, 'class-offerings', ['class_id' => $class['id'], 'session_id' => $session['id']])['resource'];
+        $this->create($actor, data: ['name' => 'Other', 'starts_on' => '2035-03-20', 'ends_on' => '2035-03-30']);
+        $catalog = app(AcademicCatalog::class);
+        $key = (string) Str::ulid();
+        $data = ['name' => ' Revised ', 'starts_on' => '2035-03-02', 'ends_on' => '2035-03-11', 'version' => 1];
+        $edit = fn (array $input, ?string $intent = null) => $catalog->editSession($actor, $session['id'], $input, $intent ?? $key, 'test');
+        $this->denied(fn () => $edit(array_replace($data, ['ends_on' => '2035-03-20'])), 409);
+        $this->denied(fn () => $edit(array_replace($data, ['name' => 'Other'])), 409);
+        $this->denied(fn () => $edit($data + ['state' => 'active']), 422);
+        $this->denied(fn () => $edit(array_replace($data, ['name' => 'Original', 'ends_on' => '2035-03-10'])), 422);
+        $before = DB::table('academic_sessions')->where('id', $session['id'])->first();
+        $saved = $edit($data);
+        $this->assertSame('Revised', $saved['name']);
+        $this->assertSame(2, $saved['version']);
+        $this->assertFalse($saved['replayed']);
+        $this->denied(fn () => $edit($data, (string) Str::ulid()), 409);
+        $this->denied(fn () => $edit(array_replace($data, ['name' => 'Different'])), 409);
+
+        $this->travel(2)->minutes();
+        $this->denied(fn () => $edit(array_replace($data, ['version' => 2, 'starts_on' => '2035-03-03']), (string) Str::ulid()), 409);
+        $catalog->transitionSession($actor, $session['id'], ['action' => 'activate', 'version' => 2], (string) Str::ulid(), 'test');
+        $this->assertSame(array_replace($saved, ['replayed' => true]), $edit($data));
+        $this->denied(fn () => $edit(array_replace($data, ['version' => 3]), (string) Str::ulid()), 409);
+        $this->assertDatabaseHas('class_offerings', ['id' => $offering['id'], 'session_id' => $session['id'], 'version' => 1]);
+        $this->assertDatabaseHas('academic_sessions', ['id' => $session['id'], 'state' => 'active', 'version' => 3, 'created_at' => $before->created_at]);
+        $this->assertSame(1, DB::table('audit_events')->where('action', 'academic.sessions.edited')->count());
+        $this->assertSame(1, DB::table('academic_command_receipts')->where('operation', 'sessions.edit')->count());
+        $actor->school->update(['entitlement_ends_at' => now()->subMinute()]);
+        $this->denied(fn () => $edit($data), 403);
+        $other = $this->member('OTHER');
+        $this->mfaFixture($other);
+        $this->expectException(RecordNotFoundException::class);
+        $catalog->editSession($other, $session['id'], $data, $key, 'test');
+    }
+
+    public function test_future_edit_rolls_back_version_fields_and_receipt_on_audit_failure(): void
+    {
+        $actor = $this->member();
+        $this->mfaFixture($actor);
+        $session = $this->create($actor)['resource'];
+        $before = (array) DB::table('academic_sessions')->where('id', $session['id'])->first();
+        AuditEvent::creating(fn () => throw new \RuntimeException('Synthetic edit audit failure'));
+        try {
+            app(AcademicCatalog::class)->editSession($actor, $session['id'], [
+                'name' => 'Revised', 'starts_on' => $session['starts_on'], 'ends_on' => $session['ends_on'], 'version' => 1,
+            ], (string) Str::ulid(), 'test');
+            $this->fail('Audit failure was ignored.');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('Synthetic edit audit failure', $e->getMessage());
+        }
+        $this->assertSame($before, (array) DB::table('academic_sessions')->where('id', $session['id'])->first());
+        $this->assertDatabaseMissing('academic_command_receipts', ['operation' => 'sessions.edit']);
+        $this->assertDatabaseMissing('audit_events', ['action' => 'academic.sessions.edited']);
     }
 
     public function test_manual_session_transitions_use_local_day_and_audit_once(): void
@@ -328,5 +393,10 @@ class AcademicCatalogTest extends TestCase
         $m = $this->member();
         $token = $m->user->createToken('Synthetic', ['school:'.$m->school_id], now()->addDay())->plainTextToken;
         $this->getJson('https://localhost/api/v1/browser/academic/sessions', ['Origin' => 'https://web.edu.test', 'Authorization' => 'Bearer '.$token])->assertForbidden();
+        $edit = 'https://localhost/api/v1/browser/academic/sessions/'.Str::ulid().'/edit';
+        $this->postJson($edit, [], ['Origin' => 'https://web.edu.test'])->assertStatus(419);
+        $this->postJson($edit, [], ['Origin' => 'https://hostile.invalid'])->assertForbidden()->assertJsonPath('error.code', 'ORIGIN_DENIED');
+        $this->postJson($edit, [], ['Origin' => 'https://web.edu.test', 'Authorization' => 'Bearer '.$token])
+            ->assertForbidden()->assertJsonPath('error.code', 'BROWSER_SESSION_REQUIRED');
     }
 }

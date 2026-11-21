@@ -15,11 +15,15 @@ class AcademicSessionChanges
 {
     public function requireNoOverlap(string $school, string $start, string $end, ?string $except = null): void
     {
-        $overlap = DB::table('academic_sessions')->where('school_id', $school)->whereIn('state', ['future', 'active'])
+        abort_if($this->hasOverlap($school, $start, $end, $except), 409, 'The proposed dates overlap another session.');
+    }
+
+    public function hasOverlap(string $school, string $start, string $end, ?string $except = null): bool
+    {
+        return DB::table('academic_sessions')->where('school_id', $school)->whereIn('state', ['future', 'active'])
             ->where('starts_on', '<=', $end)->where('ends_on', '>=', $start)
             ->when($except, fn ($query) => $query->where('id', '!=', $except))
-            ->lockForUpdate()->first();
-        abort_if($overlap, 409, 'The proposed dates overlap another session.');
+            ->lockForUpdate()->first() !== null;
     }
 
     private function session(string $school, string $id): object

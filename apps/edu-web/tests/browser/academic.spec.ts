@@ -138,3 +138,41 @@ test('School Admin confirms manual activation and closure over HTTPS', async ({p
   await page.getByRole('dialog').getByRole('button', {name: 'Confirm close'}).click();
   await expect(row.getByText('closed', {exact: true})).toBeVisible();
 });
+
+test('future session edit retains a stale draft and requires review of the refreshed version', async ({page, context}) => {
+ await apiAdmin(context);
+ const current = await context.request.get(`${api}/csrf`, {headers: {Origin: origin}});
+ expect(current.status()).toBe(200);
+ const headers = {Origin: origin, 'X-CSRF-TOKEN': (await current.json()).data.csrf_token as string};
+ const create = await context.request.post(`${api}/academic/sessions`, {
+  headers: {...headers, 'Idempotency-Key': 'synthetic-edit-create'},
+  data: {name: 'Edit journey original', starts_on: '2090-04-01', ends_on: '2091-03-31'},
+ });
+ expect(create.status()).toBe(200);
+ const session = (await create.json()).data.resource;
+ await page.setViewportSize({width: 390, height: 844});
+ await page.goto('/academic/sessions');
+ await page.getByRole('row', {name: /Edit journey original/}).getByRole('button', {name: 'Edit session'}).click();
+ const editor = page.getByRole('dialog', {name: 'Edit future session'});
+ await editor.getByLabel('Session name').fill('Edit journey from browser');
+ await editor.getByLabel('End date').fill('2091-04-30');
+ const competingEdit = await context.request.post(`${api}/academic/sessions/${session.id}/edit`, {
+  headers: {...headers, 'Idempotency-Key': 'synthetic-competing-edit'},
+  data: {name: 'Edit journey from second command', starts_on: session.starts_on, ends_on: session.ends_on, version: session.version},
+ });
+ expect(competingEdit.status()).toBe(200);
+ await editor.getByRole('button', {name: 'Review changes'}).click();
+ await expect(editor.getByText('Date changes apply to the calendar of any linked class offerings.', {exact: false})).toBeVisible();
+ await editor.getByRole('button', {name: 'Confirm edit'}).click();
+ await expect(editor.getByRole('alert')).toContainText('Refresh sessions');
+ await expect(editor.getByLabel('Session name')).toHaveValue('Edit journey from browser');
+ await editor.getByRole('button', {name: 'Refresh sessions'}).click();
+ await expect(editor.getByText(/Current session: Edit journey from second command/)).toBeVisible();
+ await editor.getByRole('button', {name: 'Use current version with my draft'}).click();
+ await editor.getByRole('button', {name: 'Review changes'}).click();
+ await editor.getByRole('button', {name: 'Confirm edit'}).click();
+ await expect(editor).toHaveCount(0);
+ await expect(page.getByRole('row', {name: /Edit journey from browser/})).toBeVisible();
+ const rows = await context.request.get(`${api}/academic/sessions`, {headers: {Origin: origin}});
+ expect((await rows.json()).data.items).toContainEqual({...session, name: 'Edit journey from browser', ends_on: '2091-04-30', version: 3});
+});
