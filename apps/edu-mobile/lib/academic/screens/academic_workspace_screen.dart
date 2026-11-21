@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../auth/auth_controller.dart';
 import '../../auth/screens/mfa_challenge_screen.dart';
@@ -138,7 +139,7 @@ class _AcademicWorkspaceScreenState extends State<AcademicWorkspaceScreen>
                         message: c.errorMessage!,
                         onDismiss: c.clearMessages,
                       ),
-                      if (widget.authController != null && (c.errorMessage!.contains('MFA') || c.errorMessage!.contains('Privileged'))) ...[
+                      if (widget.authController != null && c.isMfaRequired) ...[
                         const SizedBox(height: 6),
                         FilledButton.tonalIcon(
                           icon: const Icon(Icons.shield_outlined, size: 18),
@@ -246,67 +247,106 @@ class _AcademicWorkspaceScreenState extends State<AcademicWorkspaceScreen>
         color: AppColors.whiteSurface,
         border: Border(bottom: BorderSide(color: AppColors.border)),
       ),
-      child: Row(
-        children: [
-          // Session Picker
-          Expanded(
-            child: DropdownButtonFormField<AcademicSession>(
-              value: c.selectedSession,
-              isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Session Context',
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              ),
-              items: c.sessions.map((s) {
-                return DropdownMenuItem(
-                  value: s,
-                  child: Text(
-                    s.name,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 13),
-                  ),
-                );
-              }).toList(),
-              onChanged: c.selectSession,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isNarrow = constraints.maxWidth < 400;
+          final sessionPicker = DropdownButtonFormField<AcademicSession>(
+            value: c.selectedSession,
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: 'Session Context',
+              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             ),
-          ),
-          const SizedBox(width: 12),
-
-          // Class Offering Picker if applicable
-          if (c.activeTab == AcademicTab.sections || c.activeTab == AcademicTab.subjectOfferings) ...[
-            Expanded(
-              child: DropdownButtonFormField<ClassOffering>(
-                value: c.selectedClassOffering,
-                isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Offering Context',
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            items: c.sessions.map((s) {
+              return DropdownMenuItem(
+                value: s,
+                child: Text(
+                  s.name,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 13),
                 ),
-                items: c.classOfferings.map((o) {
-                  final cls = c.classes.firstWhere(
-                    (cls) => cls.id == o.classId,
-                    orElse: () => SchoolClass(id: o.classId, name: 'Class ${o.classId.substring(0, 6)}', sortOrder: 0, version: 1),
-                  );
-                  return DropdownMenuItem(
-                    value: o,
-                    child: Text(
-                      cls.name,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 13),
-                    ),
-                  );
-                }).toList(),
-                onChanged: c.selectClassOffering,
-              ),
-            ),
-          ],
-        ],
+              );
+            }).toList(),
+            onChanged: c.selectSession,
+          );
+
+          final showOffering = c.activeTab == AcademicTab.sections || c.activeTab == AcademicTab.subjectOfferings;
+          final offeringPicker = showOffering
+              ? DropdownButtonFormField<ClassOffering>(
+                  value: c.selectedClassOffering,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Offering Context',
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  items: c.classOfferings.map((o) {
+                    final cls = c.classes.firstWhere(
+                      (cls) => cls.id == o.classId,
+                      orElse: () => SchoolClass(id: o.classId, name: 'Class ${o.classId.substring(0, 6)}', sortOrder: 0, version: 1),
+                    );
+                    return DropdownMenuItem(
+                      value: o,
+                      child: Text(
+                        cls.name,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: c.selectClassOffering,
+                )
+              : null;
+
+          if (isNarrow && offeringPicker != null) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                sessionPicker,
+                const SizedBox(height: 8),
+                offeringPicker,
+              ],
+            );
+          }
+
+          return Row(
+            children: [
+              Expanded(child: sessionPicker),
+              if (offeringPicker != null) ...[
+                const SizedBox(width: 12),
+                Expanded(child: offeringPicker),
+              ],
+            ],
+          );
+        },
       ),
     );
   }
 }
 
 // ----------------- List Views for Each Tab -----------------
+
+class _EndOfListIndicator extends StatelessWidget {
+  const _EndOfListIndicator({required this.count, required this.label});
+  final int count;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Center(
+        child: Text(
+          'All $count $label loaded',
+          style: const TextStyle(
+            fontSize: 12,
+            color: AppColors.secondaryText,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _SessionsListView extends StatelessWidget {
   const _SessionsListView({required this.controller});
@@ -324,9 +364,12 @@ class _SessionsListView extends StatelessWidget {
 
     return ListView.separated(
       padding: const EdgeInsets.all(16),
-      itemCount: controller.sessions.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemCount: controller.sessions.length + 1,
+      separatorBuilder: (_, index) => index < controller.sessions.length - 1 ? const SizedBox(height: 12) : const SizedBox.shrink(),
       itemBuilder: (context, index) {
+        if (index == controller.sessions.length) {
+          return _EndOfListIndicator(count: controller.sessions.length, label: 'sessions');
+        }
         final s = controller.sessions[index];
         final isSelected = controller.selectedSession?.id == s.id;
 
@@ -395,9 +438,12 @@ class _ClassesListView extends StatelessWidget {
 
     return ListView.separated(
       padding: const EdgeInsets.all(16),
-      itemCount: controller.classes.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemCount: controller.classes.length + 1,
+      separatorBuilder: (_, index) => index < controller.classes.length - 1 ? const SizedBox(height: 12) : const SizedBox.shrink(),
       itemBuilder: (context, index) {
+        if (index == controller.classes.length) {
+          return _EndOfListIndicator(count: controller.classes.length, label: 'classes');
+        }
         final cls = controller.classes[index];
 
         return AppCard(
@@ -470,9 +516,12 @@ class _ClassOfferingsListView extends StatelessWidget {
 
     return ListView.separated(
       padding: const EdgeInsets.all(16),
-      itemCount: controller.classOfferings.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemCount: controller.classOfferings.length + 1,
+      separatorBuilder: (_, index) => index < controller.classOfferings.length - 1 ? const SizedBox(height: 12) : const SizedBox.shrink(),
       itemBuilder: (context, index) {
+        if (index == controller.classOfferings.length) {
+          return _EndOfListIndicator(count: controller.classOfferings.length, label: 'class offerings');
+        }
         final o = controller.classOfferings[index];
         final cls = controller.classes.firstWhere(
           (c) => c.id == o.classId,
@@ -525,6 +574,14 @@ class _SectionsListView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (controller.selectedClassOffering == null) {
+      return const EmptyStateView(
+        icon: Icons.filter_alt_outlined,
+        title: 'No Class Offering Selected',
+        description: 'Select an offering from the context bar above or create one in the Offerings tab.',
+      );
+    }
+
     if (controller.sections.isEmpty) {
       return const EmptyStateView(
         icon: Icons.group_work_outlined,
@@ -535,9 +592,12 @@ class _SectionsListView extends StatelessWidget {
 
     return ListView.separated(
       padding: const EdgeInsets.all(16),
-      itemCount: controller.sections.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemCount: controller.sections.length + 1,
+      separatorBuilder: (_, index) => index < controller.sections.length - 1 ? const SizedBox(height: 12) : const SizedBox.shrink(),
       itemBuilder: (context, index) {
+        if (index == controller.sections.length) {
+          return _EndOfListIndicator(count: controller.sections.length, label: 'sections');
+        }
         final sec = controller.sections[index];
 
         return AppCard(
@@ -600,9 +660,12 @@ class _SubjectsListView extends StatelessWidget {
 
     return ListView.separated(
       padding: const EdgeInsets.all(16),
-      itemCount: controller.subjects.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemCount: controller.subjects.length + 1,
+      separatorBuilder: (_, index) => index < controller.subjects.length - 1 ? const SizedBox(height: 12) : const SizedBox.shrink(),
       itemBuilder: (context, index) {
+        if (index == controller.subjects.length) {
+          return _EndOfListIndicator(count: controller.subjects.length, label: 'subjects');
+        }
         final sub = controller.subjects[index];
 
         return AppCard(
@@ -652,6 +715,14 @@ class _SubjectOfferingsListView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (controller.selectedClassOffering == null) {
+      return const EmptyStateView(
+        icon: Icons.filter_alt_outlined,
+        title: 'No Class Offering Selected',
+        description: 'Select an offering from the context bar above to view and link subjects.',
+      );
+    }
+
     if (controller.subjectOfferings.isEmpty) {
       return const EmptyStateView(
         icon: Icons.assignment_outlined,
@@ -662,9 +733,12 @@ class _SubjectOfferingsListView extends StatelessWidget {
 
     return ListView.separated(
       padding: const EdgeInsets.all(16),
-      itemCount: controller.subjectOfferings.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemCount: controller.subjectOfferings.length + 1,
+      separatorBuilder: (_, index) => index < controller.subjectOfferings.length - 1 ? const SizedBox(height: 12) : const SizedBox.shrink(),
       itemBuilder: (context, index) {
+        if (index == controller.subjectOfferings.length) {
+          return _EndOfListIndicator(count: controller.subjectOfferings.length, label: 'subject offerings');
+        }
         final so = controller.subjectOfferings[index];
         final sub = controller.subjects.firstWhere(
           (s) => s.id == so.subjectId,
@@ -742,6 +816,25 @@ class _CreateResourceSheetState extends State<_CreateResourceSheet> {
   String? _selectedSubjectId;
   bool _compulsory = true;
 
+  String? _activeSubmissionIdempotencyKey;
+
+  String _getOrCreateIdempotencyKey() {
+    if (_activeSubmissionIdempotencyKey != null) {
+      return _activeSubmissionIdempotencyKey!;
+    }
+    final random = Random.secure();
+    final values = List<int>.generate(24, (_) => random.nextInt(256));
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-';
+    _activeSubmissionIdempotencyKey = List.generate(32, (i) => chars[values[i % values.length] % chars.length]).join();
+    return _activeSubmissionIdempotencyKey!;
+  }
+
+  void _onFieldChanged([String? _]) {
+    if (_activeSubmissionIdempotencyKey != null) {
+      _activeSubmissionIdempotencyKey = null;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -774,6 +867,8 @@ class _CreateResourceSheetState extends State<_CreateResourceSheet> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    FocusScope.of(context).unfocus();
+    final idempotencyKey = _getOrCreateIdempotencyKey();
     bool success = false;
     final c = widget.controller;
 
@@ -783,6 +878,7 @@ class _CreateResourceSheetState extends State<_CreateResourceSheet> {
           name: _nameController.text.trim(),
           startsOn: _startsOnController.text.trim(),
           endsOn: _endsOnController.text.trim(),
+          idempotencyKey: idempotencyKey,
         );
         break;
       case AcademicTab.classes:
@@ -790,6 +886,7 @@ class _CreateResourceSheetState extends State<_CreateResourceSheet> {
           name: _nameController.text.trim(),
           gradeLabel: _gradeLabelController.text.trim().isEmpty ? null : _gradeLabelController.text.trim(),
           sortOrder: int.tryParse(_sortOrderController.text.trim()) ?? 1,
+          idempotencyKey: idempotencyKey,
         );
         break;
       case AcademicTab.classOfferings:
@@ -797,6 +894,7 @@ class _CreateResourceSheetState extends State<_CreateResourceSheet> {
         success = await c.createClassOffering(
           sessionId: _selectedSessionId!,
           classId: _selectedClassId!,
+          idempotencyKey: idempotencyKey,
         );
         break;
       case AcademicTab.sections:
@@ -804,12 +902,14 @@ class _CreateResourceSheetState extends State<_CreateResourceSheet> {
         success = await c.createSection(
           classOfferingId: _selectedOfferingId!,
           name: _nameController.text.trim(),
+          idempotencyKey: idempotencyKey,
         );
         break;
       case AcademicTab.subjects:
         success = await c.createSubject(
           code: _codeController.text.trim().toUpperCase(),
           name: _nameController.text.trim(),
+          idempotencyKey: idempotencyKey,
         );
         break;
       case AcademicTab.subjectOfferings:
@@ -818,20 +918,23 @@ class _CreateResourceSheetState extends State<_CreateResourceSheet> {
           classOfferingId: _selectedOfferingId!,
           subjectId: _selectedSubjectId!,
           compulsory: _compulsory,
+          idempotencyKey: idempotencyKey,
         );
         break;
     }
 
     if (mounted && success) {
+      _activeSubmissionIdempotencyKey = null;
       Navigator.of(context).pop();
       return;
     }
 
-    if (!success && c.errorMessage != null && (c.errorMessage!.contains('MFA') || c.errorMessage!.contains('Privileged'))) {
+    if (!success && c.isMfaRequired) {
       if (widget.authController != null && mounted) {
         final verified = await MfaChallengeSheet.show(context, authController: widget.authController!);
         if (verified == true && mounted) {
           c.clearMessages();
+          // Safe retry using the exact same active idempotency key
           return _submit();
         }
       }
@@ -916,6 +1019,8 @@ class _CreateResourceSheetState extends State<_CreateResourceSheet> {
         return [
           TextFormField(
             controller: _nameController,
+            textInputAction: TextInputAction.next,
+            onChanged: _onFieldChanged,
             decoration: const InputDecoration(
               labelText: 'Session Name',
               hintText: 'e.g. 2027–2028',
@@ -925,6 +1030,9 @@ class _CreateResourceSheetState extends State<_CreateResourceSheet> {
           const SizedBox(height: 12),
           TextFormField(
             controller: _startsOnController,
+            textInputAction: TextInputAction.next,
+            keyboardType: TextInputType.datetime,
+            onChanged: _onFieldChanged,
             decoration: const InputDecoration(
               labelText: 'Starts On (YYYY-MM-DD)',
               hintText: '2027-04-01',
@@ -940,6 +1048,9 @@ class _CreateResourceSheetState extends State<_CreateResourceSheet> {
           const SizedBox(height: 12),
           TextFormField(
             controller: _endsOnController,
+            textInputAction: TextInputAction.done,
+            keyboardType: TextInputType.datetime,
+            onChanged: _onFieldChanged,
             decoration: const InputDecoration(
               labelText: 'Ends On (YYYY-MM-DD)',
               hintText: '2028-03-31',
@@ -957,6 +1068,8 @@ class _CreateResourceSheetState extends State<_CreateResourceSheet> {
         return [
           TextFormField(
             controller: _nameController,
+            textInputAction: TextInputAction.next,
+            onChanged: _onFieldChanged,
             decoration: const InputDecoration(
               labelText: 'Class Name',
               hintText: 'e.g. Grade 10 or Class X',
@@ -966,6 +1079,8 @@ class _CreateResourceSheetState extends State<_CreateResourceSheet> {
           const SizedBox(height: 12),
           TextFormField(
             controller: _gradeLabelController,
+            textInputAction: TextInputAction.next,
+            onChanged: _onFieldChanged,
             decoration: const InputDecoration(
               labelText: 'Grade Label (Optional)',
               hintText: 'e.g. 10',
@@ -974,7 +1089,9 @@ class _CreateResourceSheetState extends State<_CreateResourceSheet> {
           const SizedBox(height: 12),
           TextFormField(
             controller: _sortOrderController,
+            textInputAction: TextInputAction.done,
             keyboardType: TextInputType.number,
+            onChanged: _onFieldChanged,
             decoration: const InputDecoration(
               labelText: 'Sort Order',
               hintText: '1',
@@ -991,7 +1108,10 @@ class _CreateResourceSheetState extends State<_CreateResourceSheet> {
             items: widget.controller.sessions.map((s) {
               return DropdownMenuItem(value: s.id, child: Text(s.name));
             }).toList(),
-            onChanged: (v) => setState(() => _selectedSessionId = v),
+            onChanged: (v) {
+              _onFieldChanged();
+              setState(() => _selectedSessionId = v);
+            },
             validator: (v) => v == null ? 'Session is required' : null,
           ),
           const SizedBox(height: 12),
@@ -1001,7 +1121,10 @@ class _CreateResourceSheetState extends State<_CreateResourceSheet> {
             items: widget.controller.classes.map((c) {
               return DropdownMenuItem(value: c.id, child: Text(c.name));
             }).toList(),
-            onChanged: (v) => setState(() => _selectedClassId = v),
+            onChanged: (v) {
+              _onFieldChanged();
+              setState(() => _selectedClassId = v);
+            },
             validator: (v) => v == null ? 'Class is required' : null,
           ),
         ];
@@ -1018,12 +1141,17 @@ class _CreateResourceSheetState extends State<_CreateResourceSheet> {
               );
               return DropdownMenuItem(value: o.id, child: Text(cls.name));
             }).toList(),
-            onChanged: (v) => setState(() => _selectedOfferingId = v),
+            onChanged: (v) {
+              _onFieldChanged();
+              setState(() => _selectedOfferingId = v);
+            },
             validator: (v) => v == null ? 'Class Offering is required' : null,
           ),
           const SizedBox(height: 12),
           TextFormField(
             controller: _nameController,
+            textInputAction: TextInputAction.done,
+            onChanged: _onFieldChanged,
             decoration: const InputDecoration(
               labelText: 'Section Name',
               hintText: 'e.g. Section A or Rose',
@@ -1036,7 +1164,9 @@ class _CreateResourceSheetState extends State<_CreateResourceSheet> {
         return [
           TextFormField(
             controller: _codeController,
+            textInputAction: TextInputAction.next,
             textCapitalization: TextCapitalization.characters,
+            onChanged: _onFieldChanged,
             decoration: const InputDecoration(
               labelText: 'Subject Code',
               hintText: 'e.g. MATH, ENG, PHY',
@@ -1046,6 +1176,8 @@ class _CreateResourceSheetState extends State<_CreateResourceSheet> {
           const SizedBox(height: 12),
           TextFormField(
             controller: _nameController,
+            textInputAction: TextInputAction.done,
+            onChanged: _onFieldChanged,
             decoration: const InputDecoration(
               labelText: 'Subject Name',
               hintText: 'e.g. Mathematics',
@@ -1066,7 +1198,10 @@ class _CreateResourceSheetState extends State<_CreateResourceSheet> {
               );
               return DropdownMenuItem(value: o.id, child: Text(cls.name));
             }).toList(),
-            onChanged: (v) => setState(() => _selectedOfferingId = v),
+            onChanged: (v) {
+              _onFieldChanged();
+              setState(() => _selectedOfferingId = v);
+            },
             validator: (v) => v == null ? 'Offering is required' : null,
           ),
           const SizedBox(height: 12),
@@ -1076,7 +1211,10 @@ class _CreateResourceSheetState extends State<_CreateResourceSheet> {
             items: widget.controller.subjects.map((s) {
               return DropdownMenuItem(value: s.id, child: Text('${s.name} (${s.code})'));
             }).toList(),
-            onChanged: (v) => setState(() => _selectedSubjectId = v),
+            onChanged: (v) {
+              _onFieldChanged();
+              setState(() => _selectedSubjectId = v);
+            },
             validator: (v) => v == null ? 'Subject is required' : null,
           ),
           const SizedBox(height: 12),
@@ -1085,7 +1223,10 @@ class _CreateResourceSheetState extends State<_CreateResourceSheet> {
             subtitle: const Text('All enrolled students take this subject', style: TextStyle(fontSize: 12)),
             value: _compulsory,
             activeColor: AppColors.primaryBlue,
-            onChanged: (val) => setState(() => _compulsory = val),
+            onChanged: (val) {
+              _onFieldChanged();
+              setState(() => _compulsory = val);
+            },
           ),
         ];
     }

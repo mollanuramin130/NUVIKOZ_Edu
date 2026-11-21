@@ -1,3 +1,28 @@
+# Phase 01 Android Academic Client Hardening & Premium UX Development (AG-P01-001)
+
+2026-11-22 (Asia/Kolkata). Feature branch `feature/m2-academic-client-hardening` based on authoritative integration commit `integration/edu-mobile-academic@2fc9ab327aa1cf29f1ec5e75fcf41c36cd7dab9d` (Draft PR #15). Client-only hardening implementing authoritative API contract `docs/api/M2_MOBILE_ACADEMIC_V1_HANDOFF.md`.
+
+Changed files:
+- `apps/edu-mobile/lib/academic/repository/academic_repository.dart`: Added caller-supplied `idempotencyKey` support, post-mutation session drift detection (`SESSION_CHANGED`), and cross-cursor page record deduplication (`seenIds`).
+- `apps/edu-mobile/lib/academic/controllers/academic_controller.dart`: Added strict error code handling (`isMfaRequired`, distinguishing 403 MFA step-up from 403 role denial, entitlement expiry, demo caps, and tenant mismatch), `reset()` and `dispose()` lifecycle safety.
+- `apps/edu-mobile/lib/academic/screens/academic_workspace_screen.dart`: Responsive context bar (<400dp vertical stacking), `_EndOfListIndicator` across all 6 catalog lists, contextual empty states for unselected offerings, focus unfocus on submit, `TextInputAction` navigation, and transparent idempotency key reuse across post-MFA challenge retries.
+- `apps/edu-mobile/lib/auth/screens/mfa_challenge_screen.dart`: Frictionless TOTP retry preserving master password on code expiry/mismatch, user-friendly `ApiFailure` error messages, and keyboard unfocus.
+- `apps/edu-mobile/test/academic_controller_test.dart`: Added unit tests for error distinction contract (403 MFA vs Role vs Entitlement vs Demo vs Tenant), idempotency key propagation, reset and dispose.
+- `apps/edu-mobile/test/academic_repository_test.dart`: Added tests for cursor deduplication, custom idempotency keys, and session drift.
+
+Migrations: None (Mobile Flutter client hardening).
+Commands and results:
+- `flutter analyze`: 0 issues found (1.2s).
+- `flutter test`: 38/38 tests passed.
+- `./gradlew testDebugUnitTest`: 34 tasks passed.
+- `./gradlew connectedDebugAndroidTest`: 7 tests passed (0 failures) on physical OPPO F25 Pro (`CPH2603 - 16`, ADB `EM9D5L998XB6599H`).
+- `flutter build apk --debug`: Built `build/app/outputs/flutter-apk/app-debug.apk`.
+- `adb install -r` & launch: Successfully installed and visually verified on physical OPPO F25 Pro.
+
+Blockers: None.
+Risks: None. Scope strictly bounded to existing six Academic resources (`sessions`, `classes`, `class-offerings`, `sections`, `subjects`, `subject-offerings`).
+NEXT SAFE TASK: Publish feature branch `feature/m2-academic-client-hardening` / export git bundle for cross-agent synchronization with ChatGPT Work Mode.
+
 # Phase 00 development baseline
 
 2026-11-21 (Asia/Kolkata). Documentation branch `docs/phase-00-development-baseline` from `main@c9ae3cd`. The owner froze hosted code, schema and configuration until final release approval. The [baseline report](../milestones/DEVELOPMENT_BASELINE_REPORT.md), [roadmap](../milestones/DEVELOPMENT_MASTER_ROADMAP.md), [dependency matrix](../milestones/MODULE_DEPENDENCY_MATRIX.md), [definition of done](../milestones/DEFINITION_OF_DONE.md), [43-feature tracker](../requirements/IMPLEMENTATION_PROGRESS.csv), and [Phase 01 plan](../milestones/PHASE_01_IMPLEMENTATION_PLAN.md) record the audit, branch-specific tests and remaining gates. No migrations or application code changed. NEXT SAFE TASK: obtain owner approval for isolated branch consolidation, verify it, then start the approved Phase 01 scope. Earlier handoff entries below remain historical.

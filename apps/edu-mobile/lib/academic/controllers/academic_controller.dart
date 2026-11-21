@@ -15,11 +15,16 @@ class AcademicController extends ChangeNotifier {
 
   final AcademicRepository repository;
 
+  bool _disposed = false;
+
   AcademicTab activeTab = AcademicTab.sessions;
   bool isLoading = false;
   bool isCreating = false;
   String? errorMessage;
   String? successMessage;
+  String? lastErrorCode;
+
+  bool get isMfaRequired => lastErrorCode == 'MFA_REQUIRED' || lastErrorCode == 'MFA_CHALLENGE_REQUIRED';
 
   List<AcademicSession> sessions = [];
   List<SchoolClass> classes = [];
@@ -32,10 +37,43 @@ class AcademicController extends ChangeNotifier {
   SchoolClass? selectedClass;
   ClassOffering? selectedClassOffering;
 
+  @override
+  void notifyListeners() {
+    if (!_disposed) {
+      super.notifyListeners();
+    }
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
+  void reset() {
+    activeTab = AcademicTab.sessions;
+    isLoading = false;
+    isCreating = false;
+    errorMessage = null;
+    successMessage = null;
+    lastErrorCode = null;
+    sessions = [];
+    classes = [];
+    classOfferings = [];
+    sections = [];
+    subjects = [];
+    subjectOfferings = [];
+    selectedSession = null;
+    selectedClass = null;
+    selectedClassOffering = null;
+    notifyListeners();
+  }
+
   void setActiveTab(AcademicTab tab) {
     activeTab = tab;
     errorMessage = null;
     successMessage = null;
+    lastErrorCode = null;
     notifyListeners();
     loadActiveTabData();
   }
@@ -240,16 +278,19 @@ class AcademicController extends ChangeNotifier {
     required String name,
     required String startsOn,
     required String endsOn,
+    String? idempotencyKey,
   }) async {
     isCreating = true;
     errorMessage = null;
     successMessage = null;
+    lastErrorCode = null;
     notifyListeners();
     try {
       final created = await repository.createSession(
         name: name,
         startsOn: startsOn,
         endsOn: endsOn,
+        idempotencyKey: idempotencyKey,
       );
       sessions.insert(0, created);
       selectedSession = created;
@@ -268,16 +309,19 @@ class AcademicController extends ChangeNotifier {
     required String name,
     String? gradeLabel,
     required int sortOrder,
+    String? idempotencyKey,
   }) async {
     isCreating = true;
     errorMessage = null;
     successMessage = null;
+    lastErrorCode = null;
     notifyListeners();
     try {
       final created = await repository.createClass(
         name: name,
         gradeLabel: gradeLabel,
         sortOrder: sortOrder,
+        idempotencyKey: idempotencyKey,
       );
       classes.add(created);
       classes.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
@@ -295,15 +339,18 @@ class AcademicController extends ChangeNotifier {
   Future<bool> createClassOffering({
     required String sessionId,
     required String classId,
+    String? idempotencyKey,
   }) async {
     isCreating = true;
     errorMessage = null;
     successMessage = null;
+    lastErrorCode = null;
     notifyListeners();
     try {
       final created = await repository.createClassOffering(
         sessionId: sessionId,
         classId: classId,
+        idempotencyKey: idempotencyKey,
       );
       classOfferings.insert(0, created);
       selectedClassOffering = created;
@@ -321,15 +368,18 @@ class AcademicController extends ChangeNotifier {
   Future<bool> createSection({
     required String classOfferingId,
     required String name,
+    String? idempotencyKey,
   }) async {
     isCreating = true;
     errorMessage = null;
     successMessage = null;
+    lastErrorCode = null;
     notifyListeners();
     try {
       final created = await repository.createSection(
         classOfferingId: classOfferingId,
         name: name,
+        idempotencyKey: idempotencyKey,
       );
       sections.add(created);
       successMessage = 'Section "$name" created successfully.';
@@ -346,15 +396,18 @@ class AcademicController extends ChangeNotifier {
   Future<bool> createSubject({
     required String code,
     required String name,
+    String? idempotencyKey,
   }) async {
     isCreating = true;
     errorMessage = null;
     successMessage = null;
+    lastErrorCode = null;
     notifyListeners();
     try {
       final created = await repository.createSubject(
         code: code,
         name: name,
+        idempotencyKey: idempotencyKey,
       );
       subjects.add(created);
       successMessage = 'Subject "$name" ($code) created successfully.';
@@ -372,16 +425,19 @@ class AcademicController extends ChangeNotifier {
     required String classOfferingId,
     required String subjectId,
     required bool compulsory,
+    String? idempotencyKey,
   }) async {
     isCreating = true;
     errorMessage = null;
     successMessage = null;
+    lastErrorCode = null;
     notifyListeners();
     try {
       final created = await repository.createSubjectOffering(
         classOfferingId: classOfferingId,
         subjectId: subjectId,
         compulsory: compulsory,
+        idempotencyKey: idempotencyKey,
       );
       subjectOfferings.add(created);
       successMessage = 'Subject offering added successfully.';
@@ -397,16 +453,36 @@ class AcademicController extends ChangeNotifier {
 
   void _handleError(Object error) {
     if (error is ApiFailure) {
-      if (error.status == 403) {
-        errorMessage = 'Academic access denied. Verify your school context, entitlement and device MFA before retrying.';
+      lastErrorCode = error.code;
+      if (error.status == 401) {
+        errorMessage = 'Authentication expired or invalid. Please sign in again.';
+      } else if (error.status == 403) {
+        if (isMfaRequired) {
+          errorMessage = 'Privileged MFA verification required to modify Academic resources.';
+        } else if (error.code == 'ROLE_UNAUTHORIZED' || error.code == 'FORBIDDEN') {
+          errorMessage = 'Academic management requires School Admin role.';
+        } else if (error.code == 'ENTITLEMENT_REQUIRED' || error.code == 'ENTITLEMENT_EXPIRED') {
+          errorMessage = 'School write entitlement has expired. Academic catalog is in read-only mode.';
+        } else if (error.code == 'DEMO_LIMIT_EXCEEDED') {
+          errorMessage = 'Evaluation limit reached for this demo institution.';
+        } else if (error.code == 'CROSS_TENANT_DENIED' || error.code == 'TENANT_MISMATCH') {
+          errorMessage = 'Cross-tenant access violation: selected resource belongs to another institution.';
+        } else {
+          errorMessage = 'Academic operation not permitted. Please verify your permissions.';
+        }
+      } else if (error.status == 404) {
+        errorMessage = 'The requested academic record or parent relationship was not found.';
       } else if (error.status == 409) {
         errorMessage = 'Conflict: a record with these details already exists or session conflict.';
       } else if (error.status == 422) {
         errorMessage = 'Validation error: please verify dates, names and required relationships.';
+      } else if (error.status == 429) {
+        errorMessage = 'Too many requests. Please wait a moment before trying again.';
       } else {
         errorMessage = error.toString();
       }
     } else {
+      lastErrorCode = null;
       errorMessage = error.toString();
     }
   }
@@ -414,6 +490,7 @@ class AcademicController extends ChangeNotifier {
   void clearMessages() {
     errorMessage = null;
     successMessage = null;
+    lastErrorCode = null;
     notifyListeners();
   }
 }

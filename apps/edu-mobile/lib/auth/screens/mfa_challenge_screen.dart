@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../api_client.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/app_modal_header.dart';
 import '../../widgets/error_banner.dart';
@@ -49,6 +50,7 @@ class _MfaChallengeSheetState extends State<MfaChallengeSheet> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    FocusScope.of(context).unfocus();
     setState(() {
       _isSubmitting = true;
       _errorMessage = null;
@@ -91,7 +93,23 @@ class _MfaChallengeSheetState extends State<MfaChallengeSheet> {
       if (mounted) {
         setState(() {
           _isSubmitting = false;
-          _errorMessage = e.toString();
+          if (e is ApiFailure) {
+            _errorMessage = switch (e.code) {
+              'INVALID_MFA_CODE' => 'Invalid authenticator code. Please enter the active 6-digit code.',
+              'MFA_EXPIRED' => 'Authenticator code expired. Please use the newest 6-digit code.',
+              'INVALID_CREDENTIALS' => 'Incorrect password. Please enter your account password.',
+              'NETWORK_TIMEOUT' => 'Verification timed out. Please check your connection and retry.',
+              'NETWORK_UNAVAILABLE' => 'Cannot connect to server. Please check your internet connection.',
+              _ => e.toString(),
+            };
+            if (e.code == 'INVALID_MFA_CODE' || e.code == 'MFA_EXPIRED') {
+              _codeController.clear();
+            } else if (e.code == 'INVALID_CREDENTIALS') {
+              _passwordController.clear();
+            }
+          } else {
+            _errorMessage = e.toString();
+          }
         });
       }
     }
