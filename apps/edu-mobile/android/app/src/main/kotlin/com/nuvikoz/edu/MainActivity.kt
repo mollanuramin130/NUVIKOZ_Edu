@@ -9,7 +9,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class MainActivity : FlutterActivity() {
+open class MainActivity : FlutterActivity() {
     private val channelName = "nuvikoz.edu/secure-token-store"
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private lateinit var vault: SecureTokenVault

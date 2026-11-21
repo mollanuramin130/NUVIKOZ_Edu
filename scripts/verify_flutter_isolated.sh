@@ -59,4 +59,35 @@ sudo setpriv --no-new-privs --bounding-set=-all --inh-caps=-all --ambient-caps=-
     cd android
     ./gradlew --no-daemon testDebugUnitTest assembleDebugAndroidTest
     echo "=== NATIVE TEST APK COMPILED; DEVICE INSTRUMENTATION NOT RUN ==="
+    # A distinct offline application/UID; never replaces the normal application.
+    cd ..
+    mkdir -p build/sec01-standard
+    cp build/app/outputs/flutter-apk/app-debug.apk build/sec01-standard/app-debug.apk
+    cp build/app/outputs/flutter-apk/app-debug.apk.sha256 build/sec01-standard/app-debug.apk.sha256
+    cp build/app/outputs/apk/androidTest/debug/app-debug-androidTest.apk build/sec01-standard/app-debug-androidTest.apk
+    export ORG_GRADLE_PROJECT_sec01RuntimeHarness=true
+    flutter build apk --debug --no-pub --target test_driver/secure_store_runtime.dart
+    mkdir -p build/sec01-channel-runtime
+    cp build/app/outputs/flutter-apk/app-debug.apk build/sec01-channel-runtime/sec01-channel-app.apk
+    cd android
+    ./gradlew --no-daemon -Psec01RuntimeHarness=true -Ptarget=test_driver/secure_store_runtime.dart assembleDebugAndroidTest
+    cd ..
+    cp build/app/outputs/apk/androidTest/debug/app-debug-androidTest.apk build/sec01-channel-runtime/sec01-channel-tests.apk
+    aapt_tool=$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)
+    test -n "$aapt_tool"
+    "$aapt_tool" dump badging build/sec01-channel-runtime/sec01-channel-app.apk > build/sec01-channel-runtime/app-manifest.txt
+    grep -q "package: name=.com.nuvikoz.edu.sec01test." build/sec01-channel-runtime/app-manifest.txt
+    "$aapt_tool" dump permissions build/sec01-channel-runtime/sec01-channel-app.apk > build/sec01-channel-runtime/app-permissions.txt
+    if grep -q android.permission.INTERNET build/sec01-channel-runtime/app-permissions.txt; then
+      echo "Refusing network-capable runtime harness" >&2; exit 1
+    fi
+    "$aapt_tool" dump badging build/sec01-channel-runtime/sec01-channel-tests.apk > build/sec01-channel-runtime/test-manifest.txt
+    grep -q "package: name=.com.nuvikoz.edu.sec01test.test." build/sec01-channel-runtime/test-manifest.txt
+    (cd build/sec01-channel-runtime && sha256sum sec01-channel-app.apk sec01-channel-tests.apk | tee SHA256SUMS)
+    git -C "$1" rev-parse HEAD > build/sec01-channel-runtime/SOURCE_COMMIT
+    # Keep the existing ordinary APK artifact paired with its original checksum/test APK.
+    cp build/sec01-standard/app-debug.apk build/app/outputs/flutter-apk/app-debug.apk
+    cp build/sec01-standard/app-debug.apk.sha256 build/app/outputs/flutter-apk/app-debug.apk.sha256
+    cp build/sec01-standard/app-debug-androidTest.apk build/app/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+    echo "=== CHANNEL HARNESS APKs COMPILED; DEVICE RUNTIME NOT RUN ==="
   ' isolated-flutter "$GITHUB_WORKSPACE"
