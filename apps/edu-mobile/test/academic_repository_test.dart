@@ -58,7 +58,7 @@ void main() {
       );
     });
 
-    test('getSessions requests /api/v1/browser/academic/sessions with bearer token', () async {
+    test('getSessions requests /api/v1/academic/sessions with bearer token', () async {
       mockApi.responseData = {
         'data': {
           'items': [
@@ -78,7 +78,7 @@ void main() {
       expect(items.length, 1);
       expect(items.first.name, '2027–2028');
       expect(mockApi.lastMethod, 'GET');
-      expect(mockApi.lastPath, '/api/v1/browser/academic/sessions');
+      expect(mockApi.lastPath, '/api/v1/academic/sessions');
       expect(mockApi.lastToken, session.token);
       expect(mockApi.lastSchool, session.school);
     });
@@ -105,7 +105,7 @@ void main() {
 
       expect(created.name, '2028–2029');
       expect(mockApi.lastMethod, 'POST');
-      expect(mockApi.lastPath, '/api/v1/browser/academic/sessions');
+      expect(mockApi.lastPath, '/api/v1/academic/sessions');
       expect(mockApi.lastHeaders?['Idempotency-Key'], isNotNull);
       expect(mockApi.lastHeaders!['Idempotency-Key']!.length, 32);
       expect(mockApi.lastBody?['name'], '2028–2029');

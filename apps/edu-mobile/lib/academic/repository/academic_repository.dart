@@ -54,7 +54,7 @@ class HttpAcademicRepository implements AcademicRepository {
   HttpAcademicRepository({
     required this.api,
     required this.sessionProvider,
-    this.endpointPrefix = '/api/v1/browser/academic',
+    this.endpointPrefix = '/api/v1/academic',
   });
 
   final AcademicApiTransport api;
