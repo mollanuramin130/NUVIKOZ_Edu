@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../dashboard/screens/dashboard_screen.dart';
+import '../../preview/preview_controller_factory.dart';
+import '../../preview/preview_guard.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/error_banner.dart';
@@ -22,6 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _identifierController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _loadingPreview = false;
 
   @override
   void dispose() {
@@ -29,6 +33,30 @@ class _LoginScreenState extends State<LoginScreen> {
     _identifierController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _enterPreview() async {
+    PreviewGuard.assertNotRelease();
+    setState(() => _loadingPreview = true);
+    try {
+      final harness = await PreviewHarness.create();
+      if (!mounted) return;
+      setState(() => _loadingPreview = false);
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => DashboardScreen(
+            authController: harness.authController,
+            academicRepository: harness.academicRepository,
+            isPreviewMode: true,
+          ),
+        ),
+      );
+      harness.authController.dispose();
+    } catch (_) {
+      if (mounted) {
+        setState(() => _loadingPreview = false);
+      }
+    }
   }
 
   Future<void> _submit() async {
@@ -254,6 +282,72 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ],
                       ),
+
+                      // Development-only Preview Entry
+                      if (PreviewGuard.isPreviewSupported) ...[
+                        const SizedBox(height: 24),
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFFCBD5E1)),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x08000000),
+                                blurRadius: 12,
+                                offset: Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: const [
+                                  Icon(Icons.developer_mode_rounded, size: 18, color: AppColors.primaryBlue),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Development Preview Build',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.primaryBlue,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              const Text(
+                                'Experience interactive Dashboard, Academic Catalog and Security screens offline with synthetic data.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(fontSize: 11, color: AppColors.secondaryText, height: 1.3),
+                              ),
+                              const SizedBox(height: 12),
+                              OutlinedButton.icon(
+                                key: const Key('preview_app_button'),
+                                onPressed: _loadingPreview ? null : _enterPreview,
+                                icon: _loadingPreview
+                                    ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      )
+                                    : const Icon(Icons.play_circle_fill_rounded, size: 18, color: AppColors.primaryBlue),
+                                label: const Text(
+                                  'Preview App — Development Only',
+                                  style: TextStyle(fontWeight: FontWeight.w700),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  side: const BorderSide(color: AppColors.primaryBlue, width: 1.5),
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

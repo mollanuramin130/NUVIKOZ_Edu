@@ -12,9 +12,11 @@ class SecurityScreen extends StatefulWidget {
   const SecurityScreen({
     super.key,
     required this.authController,
+    this.isPreviewMode = false,
   });
 
   final AuthController authController;
+  final bool isPreviewMode;
 
   @override
   State<SecurityScreen> createState() => _SecurityScreenState();
@@ -57,6 +59,33 @@ class _SecurityScreenState extends State<SecurityScreen> {
   Future<void> _loadDevices() async {
     final s = widget.authController.session;
     if (s == null) return;
+    if (widget.isPreviewMode) {
+      setState(() {
+        _loading = false;
+        _error = null;
+        _devices = [
+          {
+            'id': '01JPREVIEWDEV000000000001',
+            'name': 'OPPO F25 Pro (CPH2603)',
+            'model': 'CPH2603',
+            'last_seen': 'Just now (Active)',
+            'is_current': true,
+            'platform': 'Android 16',
+            'keystore_hardware': true,
+          },
+          {
+            'id': '01JPREVIEWDEV000000000002',
+            'name': 'Android Admin Tablet (Simulated)',
+            'model': 'Tablet-10',
+            'last_seen': 'Yesterday 18:42',
+            'is_current': false,
+            'platform': 'Android 15',
+            'keystore_hardware': true,
+          },
+        ];
+      });
+      return;
+    }
     if (s.role == 'school_admin') {
       setState(() {
         _loading = false;
@@ -172,9 +201,35 @@ class _SecurityScreenState extends State<SecurityScreen> {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
+      body: Column(
         children: [
+          if (widget.isPreviewMode)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+              color: const Color(0xFFFEF3C7),
+              child: Row(
+                children: const [
+                  Icon(Icons.warning_amber_rounded, size: 18, color: Color(0xFFB45309)),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'DEMO DATA — NO REAL BACKEND (PREVIEW MODE)',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF92400E),
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(20),
+              children: [
           // Keystore Hardware Security Card
           AppCard(
             child: Row(
@@ -387,6 +442,9 @@ class _SecurityScreenState extends State<SecurityScreen> {
             }),
         ],
       ),
+    ),
+  ],
+),
     );
   }
 }

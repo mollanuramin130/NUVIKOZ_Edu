@@ -1,3 +1,33 @@
+# Phase 01 Physical Android App Preview & Interactive Module Testing (AG-P01-005)
+
+2026-11-22 (Asia/Kolkata). Feature branch `feature/m2-owner-interactive-preview` branched from verified `feature/m2-academic-compatibility-hardening@799c4480876d97c97c7a95535813505931b25a9a` (Draft PR #24). Isolated development-only interactive preview mode enabling owner visual navigation and hardware verification on physical OPPO F25 Pro without live backend or production credential requirements.
+
+Changed files:
+- `apps/edu-mobile/lib/preview/preview_guard.dart`: Hard compile-time and runtime release build exclusion (`kReleaseMode` check and `assertNotRelease()` assertions).
+- `apps/edu-mobile/lib/preview/preview_data.dart`: Rich, fully validated synthetic dataset matching official Academic and Tenant schema (3 sessions, 4 classes, 3 offerings, 3 sections, 5 subjects, 4 subject offerings).
+- `apps/edu-mobile/lib/preview/preview_academic_repository.dart`: In-memory `AcademicRepository` implementation with deterministic in-memory mutations, idempotency key tracking, simulation fault toggles (MFA step-up, access suspension, demo limits), and reset/clear controls.
+- `apps/edu-mobile/lib/preview/preview_api_transport.dart`: Isolated zero-network `ApiTransport` / `AcademicApiTransport` satisfying auth endpoints (`/auth/login`, `/auth/refresh`, `/auth/mfa/status`, `/auth/mfa/challenge`, `/auth/mfa/verify`, `/auth/logout`, `/me/devices`, `/schools/active`), intercepting all calls and blocking external HTTP traffic.
+- `apps/edu-mobile/lib/preview/preview_session.dart`: Synthetic session generator with valid 26-character Crockford Base32 ULIDs and realistic session metadata.
+- `apps/edu-mobile/lib/preview/preview_controller_factory.dart`: `PreviewMemoryStore` and `PreviewHarness` factory establishing an authenticated offline session without network side effects.
+- `apps/edu-mobile/lib/auth/screens/login_screen.dart`: Added "Preview App — Development Only" entry card guarded by `PreviewGuard.isPreviewSupported`, entering preview mode and safely disposing harness upon exit.
+- `apps/edu-mobile/lib/dashboard/screens/dashboard_screen.dart`: Added `isPreviewMode` support, prominent `DEMO DATA — NO REAL BACKEND (PREVIEW MODE)` banner, in-memory repository injection to `AcademicWorkspaceScreen`, responsive layout protection, and exit preview handling.
+- `apps/edu-mobile/lib/auth/screens/security_screen.dart`: Added `isPreviewMode` support, banner, and simulated OPPO F25 Pro hardware-backed keystore session.
+- `apps/edu-mobile/lib/academic/screens/academic_workspace_screen.dart`: Added `isPreviewMode` banner, `_showSimulationControls` modal bottom sheet with interactive switches for fault injection (MFA, suspension, demo limit, clear all, reset).
+- `apps/edu-mobile/test/preview_mode_test.dart`: 6 exhaustive unit and widget tests verifying `PreviewGuard`, synthetic data, deterministic mutations, fault simulation, zero-network harness, and widget entry/exit.
+
+Migrations: None (Mobile Flutter client preview harness).
+Commands and results:
+- `flutter analyze`: 0 issues found (2.0s).
+- `flutter test`: 48/48 tests passed (2.1s).
+- `./gradlew testDebugUnitTest`: 34 tasks passed, BUILD SUCCESSFUL.
+- `./gradlew connectedDebugAndroidTest`: 8 tests executed (0 failures) on physical OPPO F25 Pro (`CPH2603 - 16`, ADB `EM9D5L998XB6599H`).
+- `flutter build apk --debug`: Built `nuvikoz-edu-preview-debug.apk` (SHA-256: `05f3ebd5083fbfd3e89fe303c17f715af537c824d412e026aca21d209570c9f7`).
+- `adb install -r` & launch: Successfully installed and visually verified on physical OPPO F25 Pro. Captured 15 high-resolution physical PNG screenshots in artifact directory.
+
+Blockers: None.
+Risks: None. Hard build-time exclusion prevents preview code from ever running or compiling into release builds (`kReleaseMode`). PR #24 remains untouched.
+NEXT SAFE TASK: Owner interactive evaluation on physical OPPO device; optional git bundle export for team sharing.
+
 # Phase 01 Mobile Academic Contract Compatibility & Regression Hardening (AG-P01-003)
 
 2026-11-22 (Asia/Kolkata). Feature branch `feature/m2-academic-compatibility-hardening` branched from verified `feature/m2-academic-client-hardening@c898a1affc5014562ce5bd5022ed647ae84192b3` (Draft PR #19). Client-only compatibility and regression hardening aligning with the latest backend entitlement and access error contracts while preserving PR #19 untouched.

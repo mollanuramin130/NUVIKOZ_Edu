@@ -5,6 +5,7 @@ import '../../academic/repository/academic_repository.dart';
 import '../../academic/screens/academic_workspace_screen.dart';
 import '../../auth/auth_controller.dart';
 import '../../auth/screens/security_screen.dart';
+import '../../preview/preview_academic_repository.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/app_section_header.dart';
@@ -14,9 +15,13 @@ class DashboardScreen extends StatefulWidget {
   const DashboardScreen({
     super.key,
     required this.authController,
+    this.academicRepository,
+    this.isPreviewMode = false,
   });
 
   final AuthController authController;
+  final AcademicRepository? academicRepository;
+  final bool isPreviewMode;
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -62,14 +67,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final session = widget.authController.session;
     if (session == null) return;
 
-    final api = widget.authController.api;
-    final AcademicApiTransport academicApi = (api is AcademicApiTransport)
-        ? (api as AcademicApiTransport)
-        : _AcademicTransportAdapter(api);
-    final repo = HttpAcademicRepository(
-      api: academicApi,
-      sessionProvider: () => widget.authController.session,
-    );
+    final repo = widget.academicRepository ??
+        HttpAcademicRepository(
+          api: (widget.authController.api is AcademicApiTransport)
+              ? (widget.authController.api as AcademicApiTransport)
+              : _AcademicTransportAdapter(widget.authController.api),
+          sessionProvider: () => widget.authController.session,
+        );
     final academicController = AcademicController(repo);
 
     Navigator.of(context).push(
@@ -78,6 +82,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           controller: academicController,
           schoolName: _schoolDetails?['name'] as String? ?? 'School ${session.school.substring(0, 6)}',
           authController: widget.authController,
+          isPreviewMode: widget.isPreviewMode,
+          previewRepository: widget.academicRepository is PreviewAcademicRepository
+              ? (widget.academicRepository as PreviewAcademicRepository)
+              : null,
         ),
       ),
     );
@@ -86,9 +94,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _openSecurityScreen() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => SecurityScreen(authController: widget.authController),
+        builder: (_) => SecurityScreen(
+          authController: widget.authController,
+          isPreviewMode: widget.isPreviewMode,
+        ),
       ),
     );
+  }
+
+  Future<void> _logout() async {
+    await widget.authController.logout();
+    if (widget.isPreviewMode && mounted && Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
   }
 
   @override
@@ -140,14 +158,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               IconButton(
                 icon: const Icon(Icons.logout_rounded),
-                tooltip: 'Sign Out',
-                onPressed: widget.authController.logout,
+                tooltip: widget.isPreviewMode ? 'Exit Preview' : 'Sign Out',
+                onPressed: _logout,
               ),
             ],
           ),
-          body: RefreshIndicator(
-            onRefresh: _fetchSchoolDetails,
-            child: ListView(
+          body: Column(
+            children: [
+              if (widget.isPreviewMode)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                  color: const Color(0xFFFEF3C7),
+                  child: Row(
+                    children: const [
+                      Icon(Icons.warning_amber_rounded, size: 18, color: Color(0xFFB45309)),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'DEMO DATA — NO REAL BACKEND (PREVIEW MODE)',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF92400E),
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: _fetchSchoolDetails,
+                  child: ListView(
               padding: const EdgeInsets.all(20),
               children: [
                 // Identity Card
@@ -157,39 +201,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 24,
-                                backgroundColor: AppColors.primaryBlue.withValues(alpha: 0.1),
-                                child: const Icon(Icons.person, color: AppColors.primaryBlue, size: 28),
-                              ),
-                              const SizedBox(width: 14),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Signed-in identity',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.primaryText,
-                                    ),
+                          Expanded(
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 24,
+                                  backgroundColor: AppColors.primaryBlue.withValues(alpha: 0.1),
+                                  child: const Icon(Icons.person, color: AppColors.primaryBlue, size: 28),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Signed-in identity',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.primaryText,
+                                        ),
+                                      ),
+                                      Text(
+                                        'Role: ${session.role}',
+                                        style: const TextStyle(fontSize: 12, color: AppColors.secondaryText),
+                                      ),
+                                      Text(
+                                        'School context: ${session.school}',
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(fontSize: 11, color: AppColors.secondaryText),
+                                      ),
+                                    ],
                                   ),
-                                  Text(
-                                    'Role: ${session.role}',
-                                    style: const TextStyle(fontSize: 12, color: AppColors.secondaryText),
-                                  ),
-                                  Text(
-                                    'School context: ${session.school}',
-                                    style: const TextStyle(fontSize: 11, color: AppColors.secondaryText),
-                                  ),
-                                ],
-                              ),
-                            ],
+                                ),
+                              ],
+                            ),
                           ),
+                          const SizedBox(width: 8),
                           StatusBadge.role(session.role),
                         ],
                       ),
@@ -344,8 +394,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                 // Quick Actions
                 OutlinedButton(
-                  onPressed: widget.authController.logout,
-                  child: const Text('Sign out'),
+                  onPressed: _logout,
+                  child: Text(widget.isPreviewMode ? 'Exit Preview' : 'Sign out'),
                 ),
                 const SizedBox(height: 10),
                 OutlinedButton.icon(
@@ -355,14 +405,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 const SizedBox(height: 10),
                 TextButton.icon(
-                  onPressed: widget.authController.logout,
+                  onPressed: _logout,
                   icon: const Icon(Icons.swap_horiz_rounded, size: 18),
-                  label: const Text('Sign out to switch school'),
+                  label: Text(widget.isPreviewMode ? 'Exit Preview' : 'Sign out to switch school'),
                 ),
               ],
             ),
           ),
-        );
+        ),
+      ],
+    ),
+  );
       },
     );
   }

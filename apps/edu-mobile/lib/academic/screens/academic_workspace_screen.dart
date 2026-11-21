@@ -14,6 +14,7 @@ import '../models/academic_session.dart';
 import '../models/school_class.dart';
 import '../models/class_offering.dart';
 import '../models/subject.dart';
+import '../../preview/preview_academic_repository.dart';
 
 class AcademicWorkspaceScreen extends StatefulWidget {
   const AcademicWorkspaceScreen({
@@ -21,11 +22,15 @@ class AcademicWorkspaceScreen extends StatefulWidget {
     required this.controller,
     required this.schoolName,
     this.authController,
+    this.isPreviewMode = false,
+    this.previewRepository,
   });
 
   final AcademicController controller;
   final String schoolName;
   final AuthController? authController;
+  final bool isPreviewMode;
+  final PreviewAcademicRepository? previewRepository;
 
   @override
   State<AcademicWorkspaceScreen> createState() => _AcademicWorkspaceScreenState();
@@ -53,6 +58,102 @@ class _AcademicWorkspaceScreenState extends State<AcademicWorkspaceScreen>
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  void _showSimulationControls(BuildContext context) {
+    final repo = widget.previewRepository;
+    if (repo == null) return;
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) {
+          return Padding(
+            padding: const EdgeInsets.all(20),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: const [
+                      Icon(Icons.tune_rounded, color: AppColors.primaryBlue),
+                      SizedBox(width: 10),
+                      Text(
+                        'Simulation & Fault Controls',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Trigger simulated backend states to verify client resilience on this physical device.',
+                    style: TextStyle(fontSize: 12, color: AppColors.secondaryText),
+                  ),
+                  const Divider(height: 24),
+                  SwitchListTile(
+                    title: const Text('Simulate 403 MFA Step-Up', style: TextStyle(fontSize: 14)),
+                    subtitle: const Text('Next creation triggers TOTP Challenge modal', style: TextStyle(fontSize: 11)),
+                    value: repo.simulateMfaRequired,
+                    onChanged: (val) {
+                      setSheetState(() => repo.simulateMfaRequired = val);
+                      setState(() {});
+                    },
+                  ),
+                  SwitchListTile(
+                    title: const Text('Simulate 403 Access Suspended', style: TextStyle(fontSize: 14)),
+                    subtitle: const Text('Triggers institution suspension error banner', style: TextStyle(fontSize: 11)),
+                    value: repo.simulateSuspended,
+                    onChanged: (val) {
+                      setSheetState(() => repo.simulateSuspended = val);
+                      setState(() {});
+                    },
+                  ),
+                  SwitchListTile(
+                    title: const Text('Simulate 403 Demo Limit Exceeded', style: TextStyle(fontSize: 14)),
+                    subtitle: const Text('Triggers evaluation cap error banner', style: TextStyle(fontSize: 11)),
+                    value: repo.simulateDemoLimit,
+                    onChanged: (val) {
+                      setSheetState(() => repo.simulateDemoLimit = val);
+                      setState(() {});
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            repo.clearAll();
+                            widget.controller.loadAll();
+                            Navigator.of(ctx).pop();
+                          },
+                          child: const Text('Clear All (Empty States)'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: () {
+                            repo.resetToDefaults();
+                            widget.controller.loadAll();
+                            Navigator.of(ctx).pop();
+                          },
+                          child: const Text('Reset Demo Data'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   void _showCreateBottomSheet(BuildContext context) {
@@ -93,6 +194,12 @@ class _AcademicWorkspaceScreenState extends State<AcademicWorkspaceScreen>
               ],
             ),
             actions: [
+              if (widget.isPreviewMode && widget.previewRepository != null)
+                IconButton(
+                  icon: const Icon(Icons.tune_rounded),
+                  tooltip: 'Simulation Controls',
+                  onPressed: () => _showSimulationControls(context),
+                ),
               IconButton(
                 icon: const Icon(Icons.refresh_rounded),
                 tooltip: 'Refresh',
@@ -125,6 +232,46 @@ class _AcademicWorkspaceScreenState extends State<AcademicWorkspaceScreen>
           ),
           body: Column(
             children: [
+              if (widget.isPreviewMode)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+                  color: const Color(0xFFFEF3C7),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.warning_amber_rounded, size: 16, color: Color(0xFFB45309)),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'DEMO DATA — NO REAL BACKEND (PREVIEW MODE)',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF92400E),
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ),
+                      if (widget.previewRepository != null)
+                        InkWell(
+                          onTap: () => _showSimulationControls(context),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                            child: Text(
+                              'SIMULATE',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFFB45309),
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+
               // Context Selector Bar (Session & Class Filter)
               _buildContextBar(c),
 
