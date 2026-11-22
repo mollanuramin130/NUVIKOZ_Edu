@@ -127,7 +127,7 @@ class IsolatedE2ESeederTest extends TestCase
 
     public function test_seeder_executes_successfully_and_populates_expected_cardinality(): void
     {
-        $seeder = new IsolatedE2ESeeder();
+        $seeder = new IsolatedE2ESeeder;
         $seeder->run();
 
         // 1. Two Schools
@@ -184,7 +184,7 @@ class IsolatedE2ESeederTest extends TestCase
 
     public function test_seeder_is_idempotent_on_repeated_runs(): void
     {
-        $seeder = new IsolatedE2ESeeder();
+        $seeder = new IsolatedE2ESeeder;
 
         // First run
         $seeder->run();
@@ -214,7 +214,8 @@ class IsolatedE2ESeederTest extends TestCase
 
     public function test_sections_cursor_pagination_traversal(): void
     {
-        (new IsolatedE2ESeeder())->run();
+        $seeder = new IsolatedE2ESeeder;
+        $seeder->run();
 
         $school1 = School::where('code', 'DEVTEST01')->firstOrFail();
         $admin1 = Membership::where('school_id', $school1->id)->where('login_identifier', 'dev_admin')->firstOrFail();
@@ -239,7 +240,8 @@ class IsolatedE2ESeederTest extends TestCase
 
     public function test_two_school_tenant_isolation(): void
     {
-        (new IsolatedE2ESeeder())->run();
+        $seeder = new IsolatedE2ESeeder;
+        $seeder->run();
 
         $school1 = School::where('code', 'DEVTEST01')->firstOrFail();
         $school2 = School::where('code', 'DEVTEST02')->firstOrFail();
@@ -268,7 +270,8 @@ class IsolatedE2ESeederTest extends TestCase
 
     public function test_mfa_credentials_are_properly_encrypted_and_enrolled(): void
     {
-        (new IsolatedE2ESeeder())->run();
+        $seeder = new IsolatedE2ESeeder;
+        $seeder->run();
 
         $school1 = School::where('code', 'DEVTEST01')->firstOrFail();
         $adminUser = User::where('name', 'Dev Admin')->firstOrFail();
@@ -289,7 +292,8 @@ class IsolatedE2ESeederTest extends TestCase
 
     public function test_no_student_data_is_seeded(): void
     {
-        (new IsolatedE2ESeeder())->run();
+        $seeder = new IsolatedE2ESeeder;
+        $seeder->run();
 
         // Enforce project policy: Zero student records or memberships
         $studentMemberships = Membership::whereIn('role', [Role::Student, Role::Parent])->count();
@@ -302,7 +306,8 @@ class IsolatedE2ESeederTest extends TestCase
 
     public function test_credentials_are_hashed_and_not_stored_plaintext(): void
     {
-        (new IsolatedE2ESeeder())->run();
+        $seeder = new IsolatedE2ESeeder;
+        $seeder->run();
 
         $adminUser = User::where('name', 'Dev Admin')->firstOrFail();
         $teacherUser = User::where('name', 'Dev Teacher')->firstOrFail();
