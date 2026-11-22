@@ -134,22 +134,79 @@ test('Platform confirms a refreshed session preview and clears protected data wh
   await page.getByRole('button', {name: 'Preview Browser review term'}).click();
   await expect(page.getByText('<strong>Synthetic applicant reason</strong>', {exact: true})).toBeVisible();
   await page.getByLabel('Reviewer reason').fill('Verified synthetic calendar');
+  const main = page.getByRole('main');
+  const review = `${api}/platform/sessions/change-requests/${change}/review`;
+  let submissions = 0;
+  page.on('request', request => {
+    if (request.url() === review && request.method() === 'POST') submissions++;
+  });
   const route = '**/platform/sessions/change-requests/*/review';
   await page.route(route, intercepted => intercepted.continue({postData: {
     ...intercepted.request().postDataJSON(), preview_token: 'stale-synthetic-proof',
   }}), {times: 1});
   await page.getByRole('button', {name: 'Approve', exact: true}).click();
   await page.getByRole('button', {name: 'Confirm approval'}).click();
-  await expect(page.getByRole('alert')).toContainText('Refresh it and confirm again');
+  await expect(main.getByRole('alert')).toContainText('Refresh it and confirm again');
   await page.getByRole('button', {name: 'Refresh preview'}).click();
   await expect(page.getByLabel('Reviewer reason')).toHaveValue('Verified synthetic calendar');
+  await expect(page.getByRole('button', {name: 'Approve', exact: true})).toBeEnabled();
+  expect(submissions).toBe(1);
   await page.getByRole('button', {name: 'Approve', exact: true}).click();
+  expect(submissions).toBe(1);
   await page.getByRole('button', {name: 'Confirm approval'}).click();
   await expect(page.getByText('Request approved.')).toBeVisible();
+  expect(submissions).toBe(2);
   expect(await page.evaluate(() => Object.keys(localStorage))).toEqual([]);
+  await page.getByLabel('Search', {exact: true}).fill(command('session-review'));
+  await page.getByRole('button', {name: 'Apply filters'}).click();
+  await main.getByRole('button', {name: 'Preview Browser review term'}).click();
+  await expect(main.getByLabel('Reviewer reason')).toBeVisible();
   command('expire-assurance');
   await page.getByRole('button', {name: 'Refresh queue'}).click();
-  await expect(page.getByRole('alert')).toContainText('Platform authorization expired');
-  await expect(page.getByRole('table')).toHaveCount(0);
+  await expect(main.getByRole('alert')).toContainText('Platform authorization expired');
+  await expect(main.getByRole('table')).toHaveCount(0);
+  await expect(main.getByLabel('Reviewer reason')).toHaveCount(0);
   expect((await context.request.get(`${api}/platform/sessions/change-requests`, {headers: {Origin: origin}})).status()).toBe(403);
+});
+
+test('Platform rejects a pending session review without changing the session dates or version', async ({page, context}) => {
+  const change = command('session-review');
+  await login(page, id);
+  await enroll(page);
+  await page.getByRole('link', {name: 'Review session date changes'}).click();
+  const main = page.getByRole('main');
+  await main.getByLabel('Search', {exact: true}).fill(change);
+  await main.getByRole('button', {name: 'Apply filters'}).click();
+  const open = main.getByRole('button', {name: 'Preview Browser review term'});
+  const url = `${api}/platform/sessions/change-requests/${change}/preview`;
+  const preview = page.waitForResponse(response => response.url() === url && response.request().method() === 'GET');
+  await open.click();
+  const before = (await (await preview).json()).data;
+  expect(before.state).toBe('pending');
+
+  const reason = main.getByLabel('Reviewer reason');
+  const reject = main.getByRole('button', {name: 'Reject', exact: true});
+  const confirmation = main.getByRole('dialog');
+  await reject.click();
+  await expect(reason).toBeFocused();
+  expect(await reason.evaluate((field: HTMLTextAreaElement) => field.validity.valueMissing)).toBe(true);
+  await expect(confirmation).toBeHidden();
+
+  await reason.fill('Synthetic rejection after reviewing the calendar');
+  await reject.click();
+  await expect(confirmation).toBeVisible();
+  await expect(confirmation).toContainText('Confirm rejection');
+  await confirmation.getByRole('button', {name: 'Confirm rejection', exact: true}).click();
+  await expect(main.getByText('Request rejected.', {exact: true})).toBeVisible();
+  await main.getByRole('button', {name: 'Refresh queue'}).click();
+  await expect(main.getByRole('table')).toContainText('Pending requests');
+  await expect(main.getByText('No pending requests on this page.')).toBeVisible();
+  await expect(open).toHaveCount(0);
+
+  const resolved = await context.request.get(url, {headers: {Origin: origin}});
+  expect(resolved.ok()).toBe(true);
+  const after = (await resolved.json()).data;
+  expect(after.state).toBe('rejected');
+  expect(after.session.dates).toEqual(before.session.dates);
+  expect(after.session.version).toBe(before.session.version);
 });
