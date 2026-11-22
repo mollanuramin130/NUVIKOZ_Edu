@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../auth/auth_controller.dart';
 import '../../auth/screens/mfa_challenge_screen.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/app_spacing.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/app_loading_view.dart';
 import '../../widgets/app_modal_header.dart';
@@ -512,6 +513,66 @@ class _SessionsListView extends StatelessWidget {
   const _SessionsListView({required this.controller});
   final AcademicController controller;
 
+  void _showSessionGovernanceDialog(BuildContext context, AcademicSession session) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusLg)),
+        title: Row(
+          children: [
+            const Icon(Icons.shield_outlined, color: AppColors.primaryNavy),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text('Session Governance', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              session.name,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.primaryText),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'State: ${session.state.toUpperCase()} (v${session.version})',
+              style: const TextStyle(fontSize: 12, color: AppColors.secondaryText),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.amberLight,
+                borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+              ),
+              child: const Text(
+                'MANAGED VIA SCHOOL ADMIN WEB PORTAL',
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.amberDark),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Under enterprise audit policy:\n'
+              '• Future session date editing\n'
+              '• Manual activation or closure\n'
+              '• Protected active session date change requests\n\n'
+              'must be executed through the verified School Admin Web Portal. No browser-only APIs are called from this mobile device.',
+              style: TextStyle(fontSize: 12, color: AppColors.secondaryText, height: 1.4),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Understood'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (controller.sessions.isEmpty) {
@@ -537,13 +598,46 @@ class _SessionsListView extends StatelessWidget {
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
-        itemCount: controller.sessions.length + 1,
-        separatorBuilder: (_, index) => index < controller.sessions.length - 1 ? const SizedBox(height: 12) : const SizedBox.shrink(),
+        itemCount: controller.sessions.length + 2,
+        separatorBuilder: (_, index) => const SizedBox(height: 12),
         itemBuilder: (context, index) {
-          if (index == controller.sessions.length) {
+          if (index == 0) {
+            return Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: AppColors.tealLight.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                border: Border.all(color: AppColors.premiumTeal.withValues(alpha: 0.25)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.info_outline_rounded, color: AppColors.premiumTeal, size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        Text(
+                          'Session Governance Policy',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primaryNavy),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Future session editing, manual activation/closure, and active date changes are audited governance actions managed via the School Admin Web Portal.',
+                          style: TextStyle(fontSize: 11, color: AppColors.secondaryText, height: 1.35),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+          if (index == controller.sessions.length + 1) {
             return _EndOfListIndicator(count: controller.sessions.length, label: 'sessions');
           }
-          final s = controller.sessions[index];
+          final s = controller.sessions[index - 1];
           final isSelected = controller.selectedSession?.id == s.id;
 
           return AppCard(
@@ -588,6 +682,41 @@ class _SessionsListView extends StatelessWidget {
                     Text(
                       'v${s.version}',
                       style: const TextStyle(fontSize: 11, color: AppColors.secondaryText),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                const Divider(height: 1, color: AppColors.border),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Managed via Web Portal',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.secondaryText),
+                    ),
+                    InkWell(
+                      onTap: () => _showSessionGovernanceDialog(context, s),
+                      borderRadius: BorderRadius.circular(4),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        child: Row(
+                          children: const [
+                            Icon(Icons.shield_outlined, size: 13, color: AppColors.premiumTeal),
+                            SizedBox(width: 4),
+                            Text(
+                              'Governance',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.premiumTeal,
+                              ),
+                            ),
+                            SizedBox(width: 2),
+                            Icon(Icons.chevron_right_rounded, size: 13, color: AppColors.premiumTeal),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),
