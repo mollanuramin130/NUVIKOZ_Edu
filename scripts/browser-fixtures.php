@@ -22,6 +22,15 @@ if (($argv[1] ?? '') === 'expire') {
 $command = $argv[1] ?? '';
 $schoolA = School::where('code', 'A')->first();
 $memberA = $schoolA ? Membership::where('school_id', $schoolA->id)->where('login_identifier', 'TEACHER')->first() : null;
+if ($schoolA && $command === 'staff-profile-target') {
+    $id = (string) \Illuminate\Support\Str::ulid();
+    $name = 'Synthetic staff '.$id;
+    $user = User::create(['name' => $name, 'password' => 'Synthetic-Browser-Only-Password']);
+    $membership = Membership::create(['school_id' => $schoolA->id, 'user_id' => $user->id,
+        'role' => 'teacher', 'login_identifier' => $id, 'status' => 'active']);
+    echo json_encode(['membership_id' => $membership->id, 'name' => $name], JSON_THROW_ON_ERROR);
+    exit;
+}
 if ($schoolA && $command === 'academic-ui-transition') {
     $today = now('Asia/Kolkata')->toDateString();
     DB::table('academic_sessions')->insert(['id' => (string) \Illuminate\Support\Str::ulid(), 'school_id' => $schoolA->id,
