@@ -123,3 +123,33 @@ test('public school application can be privately tracked after an MFA-bound plat
     await applicant.close();
   }
 });
+
+test('Platform confirms a refreshed session preview and clears protected data when assurance expires', async ({page, context}) => {
+  const change = command('session-review');
+  await login(page, id);
+  await enroll(page);
+  await page.getByRole('link', {name: 'Review session date changes'}).click();
+  await page.getByLabel('Search', {exact: true}).fill(change);
+  await page.getByRole('button', {name: 'Apply filters'}).click();
+  await page.getByRole('button', {name: 'Preview Browser review term'}).click();
+  await expect(page.getByText('<strong>Synthetic applicant reason</strong>', {exact: true})).toBeVisible();
+  await page.getByLabel('Reviewer reason').fill('Verified synthetic calendar');
+  const route = '**/platform/sessions/change-requests/*/review';
+  await page.route(route, intercepted => intercepted.continue({postData: {
+    ...intercepted.request().postDataJSON(), preview_token: 'stale-synthetic-proof',
+  }}), {times: 1});
+  await page.getByRole('button', {name: 'Approve', exact: true}).click();
+  await page.getByRole('button', {name: 'Confirm approval'}).click();
+  await expect(page.getByRole('alert')).toContainText('Refresh it and confirm again');
+  await page.getByRole('button', {name: 'Refresh preview'}).click();
+  await expect(page.getByLabel('Reviewer reason')).toHaveValue('Verified synthetic calendar');
+  await page.getByRole('button', {name: 'Approve', exact: true}).click();
+  await page.getByRole('button', {name: 'Confirm approval'}).click();
+  await expect(page.getByText('Request approved.')).toBeVisible();
+  expect(await page.evaluate(() => Object.keys(localStorage))).toEqual([]);
+  command('expire-assurance');
+  await page.getByRole('button', {name: 'Refresh queue'}).click();
+  await expect(page.getByRole('alert')).toContainText('Platform authorization expired');
+  await expect(page.getByRole('table')).toHaveCount(0);
+  expect((await context.request.get(`${api}/platform/sessions/change-requests`, {headers: {Origin: origin}})).status()).toBe(403);
+});

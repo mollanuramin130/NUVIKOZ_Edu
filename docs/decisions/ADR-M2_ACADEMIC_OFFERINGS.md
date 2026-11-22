@@ -13,3 +13,7 @@ Demo caps are bounded per-school engineering defaults; quota and uniqueness race
 ## F015 future-calendar amendment
 
 WORK-P02-008 authorizes changing the name and dates of a future session before both its current and proposed start dates in school-local time. The school lock also covers this edit, so offering creation and calendar eligibility are serialized. Session IDs, existing offering rows, and historical references are preserved. Edit receipts and before/after audit are atomic with the new calendar and version. Active boundary review and manual lifecycle commands retain their separate rules.
+
+## F015 Platform session review discovery
+
+WORK-P02-010 authorizes current Platform browser reviewers to discover pending requests across schools through a bounded, minimal projection and a redacted access audit. The live preview reads under the same school lock as approval and uses an expiring, reviewer/session-bound proof. Approval retains authoritative revalidation and atomic decision audit. Existing finalized exact retries remain valid under current assurance. The queue adds no authority to the testing-only Platform issuer.

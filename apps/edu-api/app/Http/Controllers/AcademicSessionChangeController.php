@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\AcademicSessionChanges;
+use App\Services\PlatformSessionReview;
 use App\Support\Api;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -41,10 +42,33 @@ class AcademicSessionChangeController extends Controller
         return Api::ok($changes->submit($request->attributes->get('membership'), $id, $data, $this->key($request), $request->attributes->get('request_id')));
     }
 
+    public function queue(Request $request, PlatformSessionReview $review): JsonResponse
+    {
+        $input = $request->query();
+        $rules = ['cursor' => ['sometimes', 'required', 'string', 'max:2048'],
+            'limit' => ['sometimes', 'required', 'integer', 'min:1', 'max:50'],
+            'school_id' => ['sometimes', 'required', 'ulid'],
+            'q' => ['sometimes', 'required', 'string', 'min:2', 'max:80']];
+        abort_unless(array_diff_key($input, $rules) === [], 422);
+        if (is_string($input['q'] ?? null)) {
+            $input['q'] = trim($input['q']);
+        }
+
+        return Api::ok($review->queue($request, Validator::make($input, $rules)->validate()));
+    }
+
+    public function preview(Request $request, string $id, PlatformSessionReview $review): JsonResponse
+    {
+        abort_unless($request->query() === [], 422);
+
+        return Api::ok($review->preview($request, $id));
+    }
+
     public function review(Request $request, string $id, AcademicSessionChanges $changes): JsonResponse
     {
         $data = $this->input($request, [
             'decision' => ['required', 'in:approve,reject'],
+            'preview_token' => ['sometimes', 'required', 'string', 'max:2048', 'prohibited_if:decision,reject'],
             'reason' => ['required', 'string', 'min:3', 'max:2000'],
             'version' => ['required', 'integer', 'min:1'],
         ]);

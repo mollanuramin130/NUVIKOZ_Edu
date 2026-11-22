@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\School;
 use App\Models\User;
 use App\Services\SecurityRevocation;
 use App\Services\Totp;
@@ -25,6 +26,25 @@ if ($command === 'expire-assurance') {
             DB::table('sessions')->where('id', $row->id)->update(['payload' => base64_encode(Crypt::encrypt(json_encode($data, JSON_THROW_ON_ERROR)))]);
         }
     }
+    exit;
+}
+if ($command === 'session-review') {
+    $school = School::firstOrCreate(['code' => 'UI_REVIEW'], ['name' => 'Synthetic review school', 'data_stage' => 'live',
+        'access_state' => 'live_enabled', 'entitlement_ends_at' => now()->addDay(), 'settings' => ['timezone' => 'Asia/Kolkata']]);
+    $session = (string) Str::ulid();
+    $id = (string) Str::ulid();
+    $start = now('Asia/Kolkata')->subDay()->toDateString();
+    $end = now('Asia/Kolkata')->addDays(2)->toDateString();
+    $proposed = now('Asia/Kolkata')->addDays(5)->toDateString();
+    DB::table('academic_sessions')->insert(['id' => $session, 'school_id' => $school->id, 'name' => 'Browser review term',
+        'starts_on' => $start, 'ends_on' => $end, 'state' => 'active', 'version' => 1]);
+    DB::table('session_change_requests')->insert(['id' => $id, 'school_id' => $school->id, 'session_id' => $session,
+        'requester_id' => $user->id, 'proposed_start' => $start, 'proposed_end' => $proposed, 'session_version' => 1,
+        'state' => 'pending', 'reason' => '<strong>Synthetic applicant reason</strong>', 'submit_key' => (string) Str::ulid(),
+        'submit_hash' => str_repeat('a', 64), 'created_at' => now(),
+        'impact' => json_encode(['before' => ['starts_on' => $start, 'ends_on' => $end],
+            'proposed' => ['starts_on' => $start, 'ends_on' => $proposed], 'class_offerings' => 0], JSON_THROW_ON_ERROR)]);
+    echo $id;
     exit;
 }
 if ($command === 'seed') {

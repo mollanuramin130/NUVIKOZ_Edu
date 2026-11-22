@@ -30,11 +30,14 @@ export async function browserRequest<T>(path: string, body?: unknown, options: B
   const kind = path.startsWith('academic/') ? path.slice(9) : '';
   if (options.query) {
     const reviewQueue = path === 'platform/registrations';
-    if (body !== undefined || (!reviewQueue && !academicFilters[kind])) throw new Error('Query parameters are not available for this request.');
+    const sessionQueue = path === 'platform/sessions/change-requests';
+    if (body !== undefined || (!reviewQueue && !sessionQueue && !academicFilters[kind])) throw new Error('Query parameters are not available for this request.');
     for (const [key, value] of Object.entries(options.query)) {
-      if (!(reviewQueue ? ['cursor', 'state', 'search'] : academicFilters[kind]).includes(key)) throw new Error('Unsupported academic filter.');
+      if (!(reviewQueue ? ['cursor', 'state', 'search'] : sessionQueue ? ['cursor', 'school_id', 'q'] : academicFilters[kind]).includes(key)) throw new Error('Unsupported academic filter.');
       if (value !== undefined) {
-        const valid = reviewQueue && key === 'search' ? value.length >= 2 && value.length <= 80
+        const valid = sessionQueue && key === 'cursor' ? /^[A-Za-z0-9+/=]{1,2048}$/.test(value)
+          : sessionQueue && key === 'q' ? value.length >= 2 && value.length <= 80
+          : reviewQueue && key === 'search' ? value.length >= 2 && value.length <= 80
           : reviewQueue && key === 'state' ? ['submitted', 'reviewing', 'approved', 'rejected'].includes(value)
           : /^[0-9A-HJKMNP-TV-Z]{26}$/i.test(value);
         if (!valid) throw new Error('Invalid filter.');
@@ -42,7 +45,7 @@ export async function browserRequest<T>(path: string, body?: unknown, options: B
       }
     }
   }
-  if (options.idempotencyKey && (body === undefined || (path !== 'accounts' && !academicFilters[kind] && !/^academic\/sessions\/[0-9A-HJKMNP-TV-Z]{26}\/(?:transitions|edit)$/.test(path) && !/^sessions\/[0-9A-HJKMNP-TV-Z]{26}\/change-requests$/.test(path)) || !/^[A-Za-z0-9_-]{16,160}$/.test(options.idempotencyKey))) throw new Error('Invalid command key.');
+  if (options.idempotencyKey && (body === undefined || (path !== 'accounts' && !/^platform\/sessions\/change-requests\/[0-9A-HJKMNP-TV-Z]{26}\/review$/.test(path) && !academicFilters[kind] && !/^academic\/sessions\/[0-9A-HJKMNP-TV-Z]{26}\/(?:transitions|edit)$/.test(path) && !/^sessions\/[0-9A-HJKMNP-TV-Z]{26}\/change-requests$/.test(path)) || !/^[A-Za-z0-9_-]{16,160}$/.test(options.idempotencyKey))) throw new Error('Invalid command key.');
   const loopback = (host: string) => ['localhost', '127.0.0.1'].includes(host);
   const localHttp = process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_EDU_ALLOW_LOCAL_HTTP === 'true'
     && loopback(target.hostname) && loopback(window.location.hostname);
