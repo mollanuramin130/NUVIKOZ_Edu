@@ -24,6 +24,7 @@ class DashboardScreen extends StatefulWidget {
     super.key,
     required this.authController,
     this.academicRepository,
+    this.academicController,
     this.isPreviewMode = false,
     this.onOpenDrawer,
     this.onNavigateToAcademic,
@@ -33,6 +34,7 @@ class DashboardScreen extends StatefulWidget {
 
   final AuthController authController;
   final AcademicRepository? academicRepository;
+  final AcademicController? academicController;
   final bool isPreviewMode;
   final VoidCallback? onOpenDrawer;
   final void Function(int tabIndex)? onNavigateToAcademic;
@@ -48,10 +50,96 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _loadingSchool = false;
   String? _schoolError;
 
+  bool _loadingMetrics = false;
+  String? _metricsError;
+  int? _sessionCount;
+  String? _activeSessionName;
+  int? _classCount;
+  int? _sectionCount;
+  int? _subjectCount;
+
+  AcademicRepository get _repo =>
+      widget.academicRepository ??
+      widget.academicController?.repository ??
+      HttpAcademicRepository(
+        api: (widget.authController.api is AcademicApiTransport)
+            ? (widget.authController.api as AcademicApiTransport)
+            : _AcademicTransportAdapter(widget.authController.api),
+        sessionProvider: () => widget.authController.session,
+      );
+
   @override
   void initState() {
     super.initState();
     _fetchSchoolDetails();
+    _loadCatalogMetrics();
+    widget.academicController?.addListener(_onAcademicControllerChanged);
+  }
+
+  void _onAcademicControllerChanged() {
+    if (widget.academicController != null &&
+        !widget.academicController!.isLoading &&
+        !widget.academicController!.isCreating) {
+      _loadCatalogMetrics();
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.academicController?.removeListener(_onAcademicControllerChanged);
+    super.dispose();
+  }
+
+  Future<void> _loadCatalogMetrics() async {
+    final session = widget.authController.session;
+    if (session == null) return;
+    final token = session.token;
+    final school = session.school;
+
+    setState(() {
+      _loadingMetrics = true;
+      _metricsError = null;
+    });
+
+    try {
+      final repo = _repo;
+      final results = await Future.wait([
+        repo.getSessions(),
+        repo.getClasses(),
+        repo.getSections(),
+        repo.getSubjects(),
+      ]);
+
+      if (!mounted) return;
+      final current = widget.authController.session;
+      if (current?.token != token || current?.school != school) return;
+
+      final sessions = results[0] as List<dynamic>;
+      final classes = results[1] as List<dynamic>;
+      final sections = results[2] as List<dynamic>;
+      final subjects = results[3] as List<dynamic>;
+
+      final active = sessions.where((s) => (s as dynamic).state == 'active').toList();
+      final activeName = active.isNotEmpty ? (active.first as dynamic).name as String? : null;
+
+      setState(() {
+        _sessionCount = sessions.length;
+        _activeSessionName = activeName;
+        _classCount = classes.length;
+        _sectionCount = sections.length;
+        _subjectCount = subjects.length;
+        _loadingMetrics = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      final current = widget.authController.session;
+      if (current?.token != token || current?.school != school) return;
+
+      setState(() {
+        _loadingMetrics = false;
+        _metricsError = e is ApiFailure ? e.toString() : 'Could not load summary metrics';
+      });
+    }
   }
 
   Future<void> _fetchSchoolDetails() async {
@@ -187,16 +275,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
           body: Column(
             children: [
               if (widget.isPreviewMode) const PreviewBanner(),
-              if (_loadingSchool)
+              if (_loadingSchool || _loadingMetrics)
                 const LinearProgressIndicator(
                   minHeight: 2,
                   backgroundColor: Colors.transparent,
                   valueColor: AlwaysStoppedAnimation<Color>(AppColors.premiumTeal),
                 ),
               Expanded(
-                child: ListView(
-                  padding: AppSpacing.screenPadding,
-                  children: [
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    await Future.wait([
+                      _fetchSchoolDetails(),
+                      _loadCatalogMetrics(),
+                    ]);
+                  },
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: AppSpacing.screenPadding,
+                    children: [
                     if (_schoolError != null) ...[
                       ErrorBanner(message: _schoolError!),
                       const SizedBox(height: 12),
@@ -327,10 +423,46 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     // C. Academic Summary Metric Cards
                     AppSectionHeader(
                       title: 'Academic Summary',
-                      subtitle: 'Configured catalog records for this school',
+                      subtitle: _loadingMetrics
+                          ? 'Refreshing live catalog metrics...'
+                          : (_metricsError != null
+                              ? 'Catalog summary unavailable'
+                              : 'Configured catalog records for this school'),
                       actionLabel: 'View All',
                       onAction: () => _openAcademicWorkspace(0),
                     ),
+                    if (_metricsError != null) ...[
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.amberLight,
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                          border: Border.all(color: AppColors.academicAmber.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.info_outline, color: AppColors.academicAmber, size: 16),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Live summary unavailable: $_metricsError',
+                                style: const TextStyle(fontSize: 11, color: AppColors.secondaryText),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: _loadCatalogMetrics,
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              child: const Text('Retry', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     GridView.count(
                       crossAxisCount: 2,
                       crossAxisSpacing: 12,
@@ -341,39 +473,73 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       children: [
                         AppMetricCard(
                           title: 'Sessions',
-                          value: '3 Terms',
-                          subtitle: '2026-2027 Active',
+                          value: _loadingMetrics
+                              ? '...'
+                              : (_sessionCount != null
+                                  ? '$_sessionCount ${_sessionCount == 1 ? "Term" : "Terms"}'
+                                  : (_metricsError != null ? 'Unavailable' : '3 Terms')),
+                          subtitle: _loadingMetrics
+                              ? 'Updating...'
+                              : (_sessionCount != null
+                                  ? (_activeSessionName != null
+                                      ? 'Active: $_activeSessionName'
+                                      : (_sessionCount == 0 ? 'No active term' : 'Catalog terms'))
+                                  : (_metricsError != null ? 'Tap to retry' : '2026-2027 Active')),
                           icon: Icons.calendar_today_rounded,
                           accentColor: AppColors.primaryNavy,
-                          badgeText: 'CATALOG',
-                          onTap: () => _openAcademicWorkspace(0),
+                          badgeText: _loadingMetrics ? 'UPDATING' : 'CATALOG',
+                          onTap: _metricsError != null ? _loadCatalogMetrics : () => _openAcademicWorkspace(0),
                         ),
                         AppMetricCard(
                           title: 'Classes',
-                          value: '4 Grades',
-                          subtitle: 'Grade 9 — 12',
+                          value: _loadingMetrics
+                              ? '...'
+                              : (_classCount != null
+                                  ? '$_classCount ${_classCount == 1 ? "Grade" : "Grades"}'
+                                  : (_metricsError != null ? 'Unavailable' : '4 Grades')),
+                          subtitle: _loadingMetrics
+                              ? 'Updating...'
+                              : (_classCount != null
+                                  ? (_classCount == 0 ? 'No classes' : 'Grade Levels')
+                                  : (_metricsError != null ? 'Tap to retry' : 'Grade 9 — 12')),
                           icon: Icons.meeting_room_rounded,
                           accentColor: AppColors.premiumTeal,
                           badgeText: 'LEVELS',
-                          onTap: () => _openAcademicWorkspace(1),
+                          onTap: _metricsError != null ? _loadCatalogMetrics : () => _openAcademicWorkspace(1),
                         ),
                         AppMetricCard(
                           title: 'Sections',
-                          value: '3 Groups',
-                          subtitle: 'Sec A, B, Rose',
+                          value: _loadingMetrics
+                              ? '...'
+                              : (_sectionCount != null
+                                  ? '$_sectionCount ${_sectionCount == 1 ? "Group" : "Groups"}'
+                                  : (_metricsError != null ? 'Unavailable' : '3 Groups')),
+                          subtitle: _loadingMetrics
+                              ? 'Updating...'
+                              : (_sectionCount != null
+                                  ? (_sectionCount == 0 ? 'No sections' : 'Active Groups')
+                                  : (_metricsError != null ? 'Tap to retry' : 'Sec A, B, Rose')),
                           icon: Icons.groups_rounded,
                           accentColor: AppColors.accentViolet,
                           badgeText: 'CAPACITY',
-                          onTap: () => _openAcademicWorkspace(3),
+                          onTap: _metricsError != null ? _loadCatalogMetrics : () => _openAcademicWorkspace(3),
                         ),
                         AppMetricCard(
                           title: 'Subjects',
-                          value: '5 Courses',
-                          subtitle: 'STEM & Humanities',
+                          value: _loadingMetrics
+                              ? '...'
+                              : (_subjectCount != null
+                                  ? '$_subjectCount ${_subjectCount == 1 ? "Course" : "Courses"}'
+                                  : (_metricsError != null ? 'Unavailable' : '5 Courses')),
+                          subtitle: _loadingMetrics
+                              ? 'Updating...'
+                              : (_subjectCount != null
+                                  ? (_subjectCount == 0 ? 'No subjects' : 'STEM & Humanities')
+                                  : (_metricsError != null ? 'Tap to retry' : 'STEM & Humanities')),
                           icon: Icons.menu_book_rounded,
                           accentColor: AppColors.academicAmber,
                           badgeText: 'ASSIGNED',
-                          onTap: () => _openAcademicWorkspace(4),
+                          onTap: _metricsError != null ? _loadCatalogMetrics : () => _openAcademicWorkspace(4),
                         ),
                       ],
                     ),
@@ -448,10 +614,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ],
                 ),
               ),
-            ],
-          ),
-        );
-      },
+            ),
+          ],
+        ),
+      );
+    },
     );
   }
 
@@ -529,6 +696,17 @@ class _AcademicTransportAdapter implements AcademicApiTransport {
     Map<String, String>? queryParams,
     Map<String, String>? headers,
   }) {
+    if (api is AcademicApiTransport) {
+      return (api as AcademicApiTransport).send(
+        method,
+        path,
+        body: body,
+        token: token,
+        school: school,
+        queryParams: queryParams,
+        headers: headers,
+      );
+    }
     return api.send(method, path, body: body, token: token, school: school);
   }
 }

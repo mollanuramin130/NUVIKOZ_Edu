@@ -33,7 +33,7 @@ class AcademicAnalyticsScreen extends StatelessWidget {
               border: Border.all(color: Colors.white24),
             ),
             child: const Text(
-              'PROTOTYPE',
+              'PROTOTYPE — NOT LIVE SCHOOL DATA',
               style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white),
             ),
           ),
@@ -46,7 +46,7 @@ class AcademicAnalyticsScreen extends StatelessWidget {
             child: ListView(
               padding: AppSpacing.screenPadding,
               children: [
-                // Prototype Notice Banner
+                // Prototype Notice Banner (AG-UI-005 Requirement 4)
                 Container(
                   padding: const EdgeInsets.all(AppSpacing.md),
                   decoration: BoxDecoration(
@@ -55,18 +55,43 @@ class AcademicAnalyticsScreen extends StatelessWidget {
                     border: Border.all(color: AppColors.accentViolet.withValues(alpha: 0.3)),
                   ),
                   child: Row(
-                    children: const [
-                      Icon(Icons.info_outline_rounded, color: AppColors.accentViolet, size: 20),
-                      SizedBox(width: 10),
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.info_outline_rounded, color: AppColors.accentViolet, size: 20),
+                      const SizedBox(width: 10),
                       Expanded(
-                        child: Text(
-                          'SYNTHETIC PREVIEW PROTOTYPE: Demonstrating proposed attendance and marks visualization components.',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.accentViolet,
-                            height: 1.35,
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            Text(
+                              'PROTOTYPE — NOT LIVE SCHOOL DATA',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.accentViolet,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'SYNTHETIC PREVIEW PROTOTYPE: Demonstrating proposed attendance and marks visualization components.',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.secondaryText,
+                                height: 1.35,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Attendance tracking and official gradebook calculations are scheduled for Phase 02 backend integration. These metrics do not reflect live school records.',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: AppColors.mutedText,
+                                height: 1.3,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],

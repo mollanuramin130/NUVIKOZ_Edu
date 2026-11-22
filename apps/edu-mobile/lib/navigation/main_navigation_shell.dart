@@ -151,6 +151,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
             DashboardScreen(
               authController: widget.authController,
               academicRepository: _repo,
+              academicController: _academicController,
               isPreviewMode: widget.isPreviewMode,
               onOpenDrawer: () => _scaffoldKey.currentState?.openDrawer(),
               onNavigateToAcademic: _navigateToAcademicTab,
@@ -509,6 +510,17 @@ class _AcademicTransportAdapter implements AcademicApiTransport {
     Map<String, String>? queryParams,
     Map<String, String>? headers,
   }) {
+    if (api is AcademicApiTransport) {
+      return (api as AcademicApiTransport).send(
+        method,
+        path,
+        body: body,
+        token: token,
+        school: school,
+        queryParams: queryParams,
+        headers: headers,
+      );
+    }
     return api.send(method, path, body: body, token: token, school: school);
   }
 }
