@@ -178,7 +178,7 @@ class IsolatedE2ESeederTest extends TestCase
             app()['env'] = 'staging';
 
             config(["database.connections.{$originalConn}.driver" => 'mysql']);
-            config(["database.connections.{$originalConn}.database" => 'shared_enterprise_schools']);
+            config(["database.connections.{$originalConn}.database" => 'enterprise_schools_catalog']);
             config(["database.connections.{$originalConn}.host" => '127.0.0.1']);
 
             $this->expectException(\RuntimeException::class);
@@ -341,16 +341,40 @@ class IsolatedE2ESeederTest extends TestCase
 
     public function test_seeder_refuses_takeover_of_user_with_platform_admin(): void
     {
-        User::create([
-            'name' => 'Dev Admin',
-            'password' => 'SecurePass#2026!Platform',
-            'is_platform_admin' => true,
-        ]);
+        $user = new User;
+        $user->name = 'Dev Admin';
+        $user->password = 'SecurePass#2026!Platform';
+        $user->is_platform_admin = true;
+        $user->status = 'active';
+        $user->save();
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage("Existing user 'Dev Admin' is a platform admin; refusing takeover");
-        $seeder = new IsolatedE2ESeeder;
-        $seeder->run();
+        $user->refresh();
+        $this->assertTrue((bool) $user->is_platform_admin);
+        $initialPasswordHash = $user->password;
+
+        $exceptionThrown = false;
+        try {
+            $seeder = new IsolatedE2ESeeder;
+            $seeder->run();
+        } catch (\RuntimeException $e) {
+            $exceptionThrown = true;
+            $this->assertStringContainsString("Existing user 'Dev Admin' is a platform admin; refusing takeover", $e->getMessage());
+        }
+
+        $this->assertTrue($exceptionThrown, 'Seeder must throw RuntimeException when platform admin takeover is attempted.');
+
+        // Existing platform-admin user remains unchanged
+        $user->refresh();
+        $this->assertTrue((bool) $user->is_platform_admin);
+        $this->assertSame('Dev Admin', $user->name);
+        $this->assertSame($initialPasswordHash, $user->password);
+
+        // No synthetic membership is attached to that user
+        $this->assertSame(0, Membership::where('user_id', $user->id)->count());
+
+        // No partial fixture writes survive
+        $this->assertSame(0, School::count());
+        $this->assertSame(0, DB::table('academic_sessions')->count());
     }
 
     public function test_seeder_refuses_takeover_of_user_with_other_school_memberships(): void
