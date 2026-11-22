@@ -91,6 +91,10 @@ Route::prefix('api/v1/browser/platform')->middleware(PlatformBrowser::class)->gr
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::get('/status', [PlatformBrowserController::class, 'status']);
         Route::get('/identity', [PlatformBrowserController::class, 'identity']);
+        Route::get('/sessions/change-requests', [AcademicSessionChangeController::class, 'queue'])
+            ->middleware('throttle:60,1,session-review-queue:');
+        Route::get('/sessions/change-requests/{id}/preview', [AcademicSessionChangeController::class, 'preview'])
+            ->whereUlid('id')->middleware('throttle:60,1,session-review-preview:');
         Route::post('/sessions/change-requests/{id}/review', [AcademicSessionChangeController::class, 'review'])
             ->whereUlid('id')->middleware('throttle:20,1,session-change-review:');
         Route::get('/registrations', [PlatformRegistrationController::class, 'index'])->middleware('throttle:60,1,platform-registration-list:');

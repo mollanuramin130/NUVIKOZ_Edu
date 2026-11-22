@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AuditEvent;
 use App\Models\Membership;
 use App\Models\School;
 use App\Models\User;
@@ -295,14 +296,79 @@ class PlatformBrowserTest extends TestCase
             'reason' => 'Synthetic revision', 'submit_key' => (string) Str::ulid(), 'submit_hash' => str_repeat('a', 64),
             'impact' => json_encode(['before' => ['starts_on' => '2027-04-01', 'ends_on' => '2027-06-30'],
                 'proposed' => ['starts_on' => '2027-04-01', 'ends_on' => '2027-07-31'], 'class_offerings' => 0])]);
+        $base = 'platform/sessions/change-requests';
+        $queue = $this->browser('GET', $base.'?q=Synthetic%20School&limit=1')->assertOk()
+            ->assertJsonPath('data.items.0.id', $id)->assertJsonMissingPath('data.items.0.reason');
+        $this->assertStringContainsString('no-store', (string) $queue->headers->get('Cache-Control'));
+        $otherSchool = School::create(['code' => 'SECOND', 'name' => 'Second school', 'data_stage' => 'live', 'access_state' => 'suspended']);
+        $secondSession = (string) Str::ulid();
+        DB::table('academic_sessions')->insert(['id' => $secondSession, 'school_id' => $otherSchool->id, 'name' => 'Second term',
+            'starts_on' => '2027-04-01', 'ends_on' => '2027-06-30', 'state' => 'active', 'version' => 1]);
+        $second = (string) Str::ulid();
+        $original = (array) DB::table('session_change_requests')->where('id', $id)->first();
+        DB::table('session_change_requests')->insert(array_replace($original, [
+            'id' => $second, 'school_id' => $otherSchool->id, 'session_id' => $secondSession, 'created_at' => now(),
+        ]));
+        DB::table('session_change_requests')->where('id', $id)->update(['created_at' => now()]);
+        $first = $this->browser('GET', $base.'?limit=1')->assertOk()->json('data');
+        $cursor = rawurlencode($first['next_cursor']);
+        $rest = $this->browser('GET', $base.'?limit=1&cursor='.$cursor)->assertOk()->json('data');
+        $this->assertSame(max($id, $second), $first['items'][0]['id']);
+        $this->assertSame(min($id, $second), $rest['items'][0]['id']);
+        $this->browser('GET', $base.'?limit=1&cursor='.$cursor.'&school_id='.$school->id)->assertUnprocessable();
+        $this->browser('GET', $base.'?q=Sy%25')->assertOk()->assertJsonCount(0, 'data.items');
+        $this->browser('GET', $base.'?school_id='.$otherSchool->id)->assertOk()
+            ->assertJsonCount(1, 'data.items')->assertJsonPath('data.items.0.id', $second);
+        $this->browser('GET', $base.'/'.$second.'/preview')->assertOk()
+            ->assertJsonPath('data.preview_token', null);
+        $this->assertContains('SCHOOL_WRITE_DISABLED', $this->browser('GET', $base.'/'.$second.'/preview')->json('data.blockers'));
+        $this->assertStringNotContainsString('Synthetic revision', DB::table('platform_security_audits')->where('action', 'platform.sessions.preview_read')->value('details'));
+        $path = $base.'/'.$id.'/review';
         $body = ['decision' => 'approve', 'reason' => 'Reviewed preview', 'version' => 1];
-        $path = "platform/sessions/change-requests/{$id}/review";
         $this->withHeader('Idempotency-Key', (string) Str::ulid());
+        $this->browser('POST', $path, $body)->assertUnprocessable();
+        $preview = $this->browser('GET', $base.'/'.$id.'/preview')->assertOk()
+            ->assertJsonPath('data.can_approve', true)->assertJsonPath('data.session.class_offerings', 0);
+        $token = $preview->json('data.preview_token');
+        $this->browser('POST', $path, $body + ['preview_token' => $token.'tampered'])->assertConflict();
+        $this->travel(5)->minutes();
+        $this->browser('POST', $path, $body + ['preview_token' => $token])->assertConflict();
+        $body['preview_token'] = $this->browser('GET', $base.'/'.$id.'/preview')->assertOk()->json('data.preview_token');
+        $school->update(['entitlement_ends_at' => now()->addMonths(6)]);
+        $this->browser('POST', $path, $body)->assertConflict();
+        DB::table('academic_sessions')->where('id', $session)->update(['version' => 2]);
+        $this->browser('GET', $base.'/'.$id.'/preview')->assertOk()->assertJsonPath('data.blockers.0', 'SESSION_VERSION_CHANGED');
+        DB::table('academic_sessions')->where('id', $session)->update(['version' => 1]);
+        $classId = (string) Str::ulid();
+        DB::table('classes')->insert(['id' => $classId, 'school_id' => $school->id, 'name' => 'Linked class', 'sort_order' => 1]);
+        $offeringId = (string) Str::ulid();
+        DB::table('class_offerings')->insert(['id' => $offeringId, 'school_id' => $school->id, 'session_id' => $session, 'class_id' => $classId]);
+        $this->browser('GET', $base.'/'.$id.'/preview')->assertOk()->assertJsonPath('data.blockers.0', 'IMPACT_CHANGED')
+            ->assertJsonPath('data.session.class_offerings', 1)->assertJsonPath('data.preview_token', null);
+        DB::table('class_offerings')->where('id', $offeringId)->delete();
+        $body['preview_token'] = $this->browser('GET', $base.'/'.$id.'/preview')->assertOk()->json('data.preview_token');
+        $failAudit = true;
+        AuditEvent::creating(function ($audit) use (&$failAudit): void {
+            if ($failAudit && $audit->action === 'academic.session_change.approved') {
+                throw new \RuntimeException('Synthetic decision audit failure');
+            }
+        });
+        $this->browser('POST', $path, $body)->assertInternalServerError();
+        $this->assertDatabaseHas('academic_sessions', ['id' => $session, 'version' => 1, 'ends_on' => '2027-06-30']);
+        $this->assertDatabaseHas('session_change_requests', ['id' => $id, 'version' => 1, 'state' => 'pending', 'review_hash' => null]);
+        $failAudit = false;
         $this->browser('POST', $path, $body)->assertOk()->assertJsonPath('data.state', 'approved');
+        $this->travel(5)->minutes();
         $this->browser('POST', $path, $body)->assertOk()->assertJsonPath('data.replayed', true);
-        $this->browser('POST', $path, array_replace($body, ['decision' => 'reject']))->assertConflict();
+        $this->browser('POST', $path, array_replace($body, ['reason' => 'Changed review']))->assertConflict();
         $this->assertDatabaseHas('academic_sessions', ['id' => $session, 'state' => 'active', 'version' => 2, 'ends_on' => '2027-07-31']);
         $this->assertSame(1, DB::table('audit_events')->where('action', 'academic.session_change.approved')->count());
+        $this->browser('GET', $base.'/'.$id.'/preview')->assertOk()
+            ->assertJsonPath('data.preview_token', null)->assertJsonPath('data.blockers.0', 'REQUEST_RESOLVED');
+        $this->browser('POST', $base.'/'.$second.'/review', ['decision' => 'reject', 'reason' => 'School is suspended', 'version' => 1])
+            ->assertOk()->assertJsonPath('data.state', 'rejected');
+        $this->assertDatabaseHas('academic_sessions', ['id' => $secondSession, 'ends_on' => '2027-06-30', 'version' => 1]);
+        $this->browser('GET', $base)->assertOk()->assertJsonCount(0, 'data.items');
         $this->browser('POST', 'platform/logout')->assertOk();
         $this->browser('POST', $path, $body)->assertUnauthorized();
     }

@@ -39,7 +39,7 @@ class AcademicSessionChanges
         abort_unless($start <= $today && $today <= $end, 409, 'The change would move this active session outside the current date.');
     }
 
-    private function impact(string $school, object $session, string $start, string $end): array
+    public function impact(string $school, object $session, string $start, string $end): array
     {
         return [
             'before' => ['starts_on' => $session->starts_on, 'ends_on' => $session->ends_on],
@@ -118,10 +118,7 @@ class AcademicSessionChanges
                 abort_unless(app(SchoolAccess::class)->schoolCanWrite($school), 403);
                 $session = $this->session($schoolId, $row->session_id);
                 abort_unless($session->state === 'active' && $session->version === $row->session_version, 409, 'The session changed after submission.');
-                $this->requireCurrentRange($school, $row->proposed_start, $row->proposed_end);
-                $this->requireNoOverlap($schoolId, $row->proposed_start, $row->proposed_end, $session->id);
-                abort_unless($this->impact($schoolId, $session, $row->proposed_start, $row->proposed_end)
-                    === json_decode($row->impact, true, flags: JSON_THROW_ON_ERROR), 409, 'The impact changed after submission.');
+                app(PlatformSessionReview::class)->requirePreview($request, $school, $row, $session, $data['preview_token'] ?? null);
                 DB::table('academic_sessions')->where(['school_id' => $schoolId, 'id' => $session->id])->update([
                     'starts_on' => $row->proposed_start, 'ends_on' => $row->proposed_end, 'version' => $session->version + 1, 'updated_at' => now(),
                 ]);
