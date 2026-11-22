@@ -1,3 +1,46 @@
+# Premium Android Live Academic Integration (AG-UI-005)
+
+2026-11-22 (Asia/Kolkata). Feature branch `feature/m2-premium-live-academic-integration` branched from verified `feature/m2-premium-ui-preview-v1@9a19a4da8f358cd90467e7e4933abf5514b35040` (Draft PR #29). Implemented Option A architectural recommendations approved by owner in AG-UI-004:
+1. Live Academic Summary Metrics: Wired asynchronous catalog queries for Sessions, Classes, Sections, and Subjects across approved `/api/v1/academic/{kind}` endpoints with updating ('...'), loaded, empty ('0'), and retryable error states. Added pull-to-refresh (`RefreshIndicator`) on Dashboard and reactive listener to `AcademicController`. Protected async state against token/school context switches.
+2. Transport Forwarding: Updated `_AcademicTransportAdapter` in `DashboardScreen` and `MainNavigationShell` to safely forward `queryParams` (cursor pagination) and `headers` (`Idempotency-Key`) when wrapping `AcademicApiTransport`.
+3. Web Governance Guidance: Preserved backend F015 isolation by omitting mobile mutations for future session edits, activation, closure, and platform date change requests. Added `Session Governance Policy` informational banner and per-session `Governance` dialog displaying `MANAGED VIA SCHOOL ADMIN WEB PORTAL` policy guidance without invoking browser-only endpoints or embedding cookies/CSRF workarounds.
+4. Analytics Prototype Protection: Maintained approved visual design while updating labels to explicitly disclose `PROTOTYPE — NOT LIVE SCHOOL DATA` across the AppBar badge and body notice banner.
+5. Physical Hardware Verification: Verified on OPPO F25 Pro 5G (`CPH2603`, Android 16 / API 36, ADB serial `EM9D5L998XB6599H`).
+
+Changed files:
+- `apps/edu-mobile/lib/dashboard/screens/dashboard_screen.dart`: Asynchronous catalog metric aggregation, pull-to-refresh, retry UI, and transport adapter parameter forwarding.
+- `apps/edu-mobile/lib/navigation/main_navigation_shell.dart`: Injected `_academicController` into Dashboard and updated transport adapter.
+- `apps/edu-mobile/lib/academic/screens/academic_workspace_screen.dart`: Added Session Governance policy banner, per-session Governance action, and Web Portal guidance modal dialog.
+- `apps/edu-mobile/lib/academic/screens/academic_analytics_screen.dart`: Added `PROTOTYPE — NOT LIVE SCHOOL DATA` AppBar badge and prominent notice banner.
+- `apps/edu-mobile/test/live_academic_integration_test.dart`: 5 comprehensive unit/widget tests covering adapter parameter forwarding, async metric loading, failure/retry, governance dialog, and prototype labels.
+
+Branch/Commit:
+- Branch: `feature/m2-premium-live-academic-integration`
+- Commit SHA: `f4f010aac6ae09a3201386aec1286a9fcb899ec9`
+- Base: `feature/m2-premium-ui-preview-v1@9a19a4da8f358cd90467e7e4933abf5514b35040` (PR #29)
+- Draft PR #32: https://github.com/mollanuramin130/NUVIKOZ_Edu/pull/32 (All CI checks passing: api, flutter, web, repository)
+- Verified Git bundle: `premium_live_academic_integration.bundle` (SHA-256: `a2529c40d6628b8db982632a0252af499f31422eb29fa31c204e60e4eef06c23`)
+- Built Debug APK: `app-debug.apk` (SHA-256: `5461735a10b43d400fea94fd81afe28dfa1b019dd5a8c23de8428d6c2cacd1cf`)
+
+Migrations: None (Mobile Flutter client integration only).
+Commands and results:
+- `flutter analyze`: 0 issues found (clean in 2.3s).
+- `flutter test`: 58/58 tests passed (53 existing + 5 new integration tests).
+- `./gradlew testDebugUnitTest`: 34 tasks passed, BUILD SUCCESSFUL (22s).
+- `flutter build apk --debug`: Built `app-debug.apk` in 15.1s.
+- `adb install -r`: Installed to physical OPPO F25 Pro (`EM9D5L998XB6599H`).
+- GitHub CI on PR #32: 4/4 passing (api: 3m56s, flutter: 4m43s, repository: 5s, web: 1m18s).
+- Physical Screenshots captured:
+  - `oppo_live_01_login.png`
+  - `oppo_live_02_dashboard.png`
+  - `oppo_live_03_academic_sessions.png`
+  - `oppo_live_04_governance_dialog.png`
+  - `oppo_live_05_analytics_prototype.png`
+
+Blockers: None.
+Risks: None. Zero backend changes, zero browser-only route calls, zero fake tokens.
+NEXT SAFE TASK: Await owner visual inspection of Draft PR #32; await backend F015 deployment to staging prior to end-to-end network testing.
+
 # Premium Academic Mobile UI Design System, Navigation & Interactive Preview (AG-UI-001)
 
 2026-11-22 (Asia/Kolkata). Feature branch `feature/m2-premium-ui-preview-v1` branched from verified `feature/m2-academic-compatibility-hardening@799c4480876d97c97c7a95535813505931b25a9a` (Draft PR #24). Transformed the Android mobile presentation into a modern, academic-focused, visually polished, and responsive mobile client with a unified 4-tab global navigation shell (`MainNavigationShell` with Home, Academic, Analytics, Profile), Material 3 design system, Executive Dashboard, Academic Analytics & Marksheet prototype, side navigation drawer with future modules labeled `COMING LATER`, and an interactive offline preview harness verified on physical OPPO F25 Pro.
