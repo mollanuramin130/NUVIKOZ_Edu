@@ -29,7 +29,7 @@ if ($command === 'expire-assurance') {
     exit;
 }
 if ($command === 'session-review') {
-    $school = School::firstOrCreate(['code' => 'UI_REVIEW'], ['name' => 'Synthetic review school', 'data_stage' => 'live',
+    $school = School::create(['code' => 'UIR_'.Str::ulid(), 'name' => 'Synthetic review school', 'data_stage' => 'live',
         'access_state' => 'live_enabled', 'entitlement_ends_at' => now()->addDay(), 'settings' => ['timezone' => 'Asia/Kolkata']]);
     $session = (string) Str::ulid();
     $id = (string) Str::ulid();
