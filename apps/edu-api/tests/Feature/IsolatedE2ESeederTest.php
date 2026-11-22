@@ -34,11 +34,12 @@ class IsolatedE2ESeederTest extends TestCase
     public function test_seeder_refuses_missing_opt_in_when_not_in_testing(): void
     {
         $originalEnv = app()['env'];
-        $originalOptIn = env('ALLOW_DISPOSABLE_E2E_SEEDING');
+        $originalOptIn = $_ENV['ALLOW_DISPOSABLE_E2E_SEEDING'] ?? null;
         try {
             app()['env'] = 'staging';
             putenv('ALLOW_DISPOSABLE_E2E_SEEDING=false');
             $_ENV['ALLOW_DISPOSABLE_E2E_SEEDING'] = 'false';
+            $_SERVER['ALLOW_DISPOSABLE_E2E_SEEDING'] = 'false';
 
             $this->expectException(\RuntimeException::class);
             $this->expectExceptionMessage('ALLOW_DISPOSABLE_E2E_SEEDING=true is required');
@@ -48,9 +49,10 @@ class IsolatedE2ESeederTest extends TestCase
             if ($originalOptIn !== false && $originalOptIn !== null) {
                 putenv("ALLOW_DISPOSABLE_E2E_SEEDING={$originalOptIn}");
                 $_ENV['ALLOW_DISPOSABLE_E2E_SEEDING'] = $originalOptIn;
+                $_SERVER['ALLOW_DISPOSABLE_E2E_SEEDING'] = $originalOptIn;
             } else {
                 putenv('ALLOW_DISPOSABLE_E2E_SEEDING');
-                unset($_ENV['ALLOW_DISPOSABLE_E2E_SEEDING']);
+                unset($_ENV['ALLOW_DISPOSABLE_E2E_SEEDING'], $_SERVER['ALLOW_DISPOSABLE_E2E_SEEDING']);
             }
         }
     }
@@ -66,6 +68,7 @@ class IsolatedE2ESeederTest extends TestCase
             app()['env'] = 'staging';
             putenv('ALLOW_DISPOSABLE_E2E_SEEDING=true');
             $_ENV['ALLOW_DISPOSABLE_E2E_SEEDING'] = 'true';
+            $_SERVER['ALLOW_DISPOSABLE_E2E_SEEDING'] = 'true';
 
             config(["database.connections.{$originalConn}.driver" => 'mysql']);
             config(["database.connections.{$originalConn}.database" => 'nuvikoz_prod']);
@@ -78,7 +81,7 @@ class IsolatedE2ESeederTest extends TestCase
             config(["database.connections.{$originalConn}.driver" => $originalDriver]);
             config(["database.connections.{$originalConn}.database" => $originalDb]);
             putenv('ALLOW_DISPOSABLE_E2E_SEEDING');
-            unset($_ENV['ALLOW_DISPOSABLE_E2E_SEEDING']);
+            unset($_ENV['ALLOW_DISPOSABLE_E2E_SEEDING'], $_SERVER['ALLOW_DISPOSABLE_E2E_SEEDING']);
         }
     }
 
@@ -93,6 +96,7 @@ class IsolatedE2ESeederTest extends TestCase
             app()['env'] = 'staging';
             putenv('ALLOW_DISPOSABLE_E2E_SEEDING=true');
             $_ENV['ALLOW_DISPOSABLE_E2E_SEEDING'] = 'true';
+            $_SERVER['ALLOW_DISPOSABLE_E2E_SEEDING'] = 'true';
 
             config(["database.connections.{$originalConn}.driver" => 'mysql']);
             config(["database.connections.{$originalConn}.database" => 'shared_enterprise_schools']);
@@ -105,7 +109,7 @@ class IsolatedE2ESeederTest extends TestCase
             config(["database.connections.{$originalConn}.driver" => $originalDriver]);
             config(["database.connections.{$originalConn}.database" => $originalDb]);
             putenv('ALLOW_DISPOSABLE_E2E_SEEDING');
-            unset($_ENV['ALLOW_DISPOSABLE_E2E_SEEDING']);
+            unset($_ENV['ALLOW_DISPOSABLE_E2E_SEEDING'], $_SERVER['ALLOW_DISPOSABLE_E2E_SEEDING']);
         }
     }
 
@@ -113,14 +117,17 @@ class IsolatedE2ESeederTest extends TestCase
     {
         $originalConn = config('database.default');
         $originalDb = config("database.connections.{$originalConn}.database");
+        $originalDriver = config("database.connections.{$originalConn}.driver");
 
         try {
+            config(["database.connections.{$originalConn}.driver" => 'sqlite']);
             config(["database.connections.{$originalConn}.database" => '/var/data/shared_prod.sqlite']);
 
             $this->expectException(\RuntimeException::class);
             $this->expectExceptionMessage('is not an authorized test database');
             IsolatedE2ESeeder::assertEnvironmentSafe();
         } finally {
+            config(["database.connections.{$originalConn}.driver" => $originalDriver]);
             config(["database.connections.{$originalConn}.database" => $originalDb]);
         }
     }

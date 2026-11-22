@@ -28,7 +28,7 @@ class IsolatedE2ESeeder extends Seeder
         }
 
         $isTesting = app()->environment('testing');
-        $optIn = env('ALLOW_DISPOSABLE_E2E_SEEDING');
+        $optIn = $_ENV['ALLOW_DISPOSABLE_E2E_SEEDING'] ?? $_SERVER['ALLOW_DISPOSABLE_E2E_SEEDING'] ?? getenv('ALLOW_DISPOSABLE_E2E_SEEDING') ?: env('ALLOW_DISPOSABLE_E2E_SEEDING');
 
         // 2. Dedicated seeding opt-in (required in local/staging; bypassed only in test suite)
         if (! $isTesting && $optIn !== 'true') {
@@ -54,7 +54,7 @@ class IsolatedE2ESeeder extends Seeder
             throw new \RuntimeException("CRITICAL: Unsafe database name '{$database}' detected.");
         }
 
-        $disposableMarkers = ['_dev_', '_e2e_', '_test_', 'disposable', 'edu_dev_e2e'];
+        $disposableMarkers = ['dev', 'e2e', 'test', 'disposable'];
         $isDisposableName = false;
         foreach ($disposableMarkers as $marker) {
             if (str_contains(strtolower($database), $marker)) {
