@@ -13,6 +13,7 @@ use App\Http\Controllers\PlatformRegistrationController;
 use App\Http\Controllers\RecoveryController;
 use App\Http\Controllers\RegistrationController;
 use App\Http\Controllers\SecurityInventoryController;
+use App\Http\Controllers\StaffProfileController;
 use App\Http\Middleware\BrowserSession;
 use App\Http\Middleware\PlatformBrowser;
 use App\Services\AcademicCatalog;
@@ -120,4 +121,11 @@ Route::prefix('api/v1/browser/security/mfa/replacement')->middleware(['auth:sanc
 Route::prefix('api/v1/browser/platform/mfa/replacement')->middleware([PlatformBrowser::class, 'auth:sanctum'])->group(function (): void {
     Route::post('/start', [MfaReplacementController::class, 'start']);
     Route::post('/confirm', [MfaReplacementController::class, 'confirm']);
+});
+
+Route::prefix('api/v1/browser/staff')->middleware(['auth:sanctum', BrowserSession::class])->group(function (): void {
+    Route::get('/', [StaffProfileController::class, 'index']);
+    Route::get('/eligible-memberships', [StaffProfileController::class, 'candidates']);
+    Route::get('/{id}', [StaffProfileController::class, 'show'])->whereUlid('id');
+    Route::post('/', [StaffProfileController::class, 'store']);
 });
