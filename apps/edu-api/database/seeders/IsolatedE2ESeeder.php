@@ -63,9 +63,9 @@ class IsolatedE2ESeeder extends Seeder
 
         $isTesting = app()->environment('testing');
         $connection = config('database.default');
-        $driver = config("database.connections.{$connection}.driver");
-        $database = (string) config("database.connections.{$connection}.database");
-        $host = (string) config("database.connections.{$connection}.host", '127.0.0.1');
+        $driver = config('database.connections.'.$connection.'.driver');
+        $database = (string) config('database.connections.'.$connection.'.database');
+        $host = (string) config('database.connections.'.$connection.'.host', '127.0.0.1');
 
         // 2. Narrowly scoped SQLite in-memory PHPUnit-only exception
         if ($isTesting && $driver === 'sqlite' && $database === ':memory:') {
@@ -178,7 +178,7 @@ class IsolatedE2ESeeder extends Seeder
         $hasDigit = (bool) preg_match('/[0-9]/', $password);
         $hasSpecial = (bool) preg_match('/[^A-Za-z0-9]/', $password);
 
-        if (! ($hasUpper && $hasLower && $hasDigit && $hasSpecial)) {
+        if (! $hasUpper || ! $hasLower || ! $hasDigit || ! $hasSpecial) {
             throw new \RuntimeException("CRITICAL: {$varName} does not meet complexity requirements (must contain uppercase, lowercase, digit, and special character).");
         }
     }
@@ -400,7 +400,7 @@ class IsolatedE2ESeeder extends Seeder
             ]);
         } else {
             if ($activeSession->starts_on !== '2026-06-01' || $activeSession->ends_on !== '2027-05-31') {
-                throw new \RuntimeException("CRITICAL: Existing active session has conflicting dates; ownership verification failed.");
+                throw new \RuntimeException('CRITICAL: Existing active session has conflicting dates; ownership verification failed.');
             }
             $activeSessionId = $activeSession->id;
         }
@@ -425,7 +425,7 @@ class IsolatedE2ESeeder extends Seeder
             ]);
         } else {
             if ($futureSession->starts_on !== '2027-06-01' || $futureSession->ends_on !== '2028-05-31') {
-                throw new \RuntimeException("CRITICAL: Existing future session has conflicting dates; ownership verification failed.");
+                throw new \RuntimeException('CRITICAL: Existing future session has conflicting dates; ownership verification failed.');
             }
         }
 
@@ -458,7 +458,8 @@ class IsolatedE2ESeeder extends Seeder
                 ]);
             } else {
                 if ($class->grade_label !== $def['grade_label'] || (int) $class->sort_order !== $def['sort_order']) {
-                    throw new \RuntimeException("CRITICAL: Existing class '{$def['name']}' has conflicting attributes; ownership verification failed.");
+                    $className = $def['name'];
+                    throw new \RuntimeException("CRITICAL: Existing class '{$className}' has conflicting attributes; ownership verification failed.");
                 }
                 $classId = $class->id;
             }
@@ -497,7 +498,7 @@ class IsolatedE2ESeeder extends Seeder
 
         for ($i = 0; $i < 26; $i++) {
             $sectionLetter = chr(65 + $i);
-            $sectionName = "Section {$sectionLetter}";
+            $sectionName = 'Section '.$sectionLetter;
 
             $existingSection = DB::table('sections')
                 ->where('school_id', $school->id)
@@ -550,7 +551,8 @@ class IsolatedE2ESeeder extends Seeder
                 ]);
             } else {
                 if ($subject->name !== $sDef['name']) {
-                    throw new \RuntimeException("CRITICAL: Existing subject '{$sDef['code']}' has conflicting name '{$subject->name}'; ownership verification failed.");
+                    $subCode = $sDef['code'];
+                    throw new \RuntimeException("CRITICAL: Existing subject '{$subCode}' has conflicting name '{$subject->name}'; ownership verification failed.");
                 }
                 $subId = $subject->id;
             }
@@ -580,7 +582,7 @@ class IsolatedE2ESeeder extends Seeder
                 ]);
             } else {
                 if ((bool) $subOffering->compulsory !== $compulsory) {
-                    throw new \RuntimeException("CRITICAL: Existing subject offering has conflicting compulsory flag; ownership verification failed.");
+                    throw new \RuntimeException('CRITICAL: Existing subject offering has conflicting compulsory flag; ownership verification failed.');
                 }
             }
         }
