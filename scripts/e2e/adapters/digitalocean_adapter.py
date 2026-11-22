@@ -130,8 +130,8 @@ class DigitalOceanAdapter(ProviderAdapterInterface):
                 resource_id=resource_id,
                 resource_type=resource_type,
                 name="",
-                account_id=self.expected_ownership.expected_account_id,
-                project_id=self.expected_ownership.expected_project_id,
+                account_id="",
+                project_id="",
                 tags=[],
                 status=ResourceStatus.ABSENT,
                 associated_resource_ids=[],
@@ -140,16 +140,23 @@ class DigitalOceanAdapter(ProviderAdapterInterface):
         if status != 200:
             raise RuntimeError(f"Failed to inspect resource {resource_id} (HTTP {status}): {data.get('message', 'Unknown error')}")
 
-        # Parse resource data according to resource type
+        # Parse resource data according to resource type with strict payload shape and ID validation
         if resource_type == ResourceType.DROPLET:
-            item = data.get("droplet", {})
+            item = data.get("droplet")
+            if not isinstance(item, dict):
+                raise TeardownSecurityError(f"Unexpected DigitalOcean API response shape for droplet: {data}")
+            returned_id = str(item.get("id", ""))
+            if not returned_id or returned_id != str(resource_id):
+                raise TeardownSecurityError(
+                    f"Provider returned resource ID '{returned_id}' which does not match requested ID '{resource_id}'."
+                )
             name = str(item.get("name", ""))
             tags = [str(t) for t in item.get("tags", [])]
             volume_ids = [str(v) for v in item.get("volume_ids", [])]
-            account_id = str(item.get("account_id", self.expected_ownership.expected_account_id))
-            project_id = str(item.get("project_id", self.expected_ownership.expected_project_id))
-            raw_status = str(item.get("status", "active"))
-            res_status = ResourceStatus.ACTIVE if raw_status == "active" else ResourceStatus.UNKNOWN
+            account_id = str(item.get("account_id", ""))
+            project_id = str(item.get("project_id", ""))
+            raw_status = str(item.get("status", ""))
+            res_status = ResourceStatus.ACTIVE if raw_status in ("active", "in-use") else ResourceStatus.UNKNOWN
 
             return ResourceIdentity(
                 resource_id=resource_id,
@@ -163,11 +170,75 @@ class DigitalOceanAdapter(ProviderAdapterInterface):
             )
 
         if resource_type == ResourceType.VOLUME:
-            item = data.get("volume", {})
+            item = data.get("volume")
+            if not isinstance(item, dict):
+                raise TeardownSecurityError(f"Unexpected DigitalOcean API response shape for volume: {data}")
+            returned_id = str(item.get("id", ""))
+            if not returned_id or returned_id != str(resource_id):
+                raise TeardownSecurityError(
+                    f"Provider returned resource ID '{returned_id}' which does not match requested ID '{resource_id}'."
+                )
             name = str(item.get("name", ""))
             tags = [str(t) for t in item.get("tags", [])]
-            account_id = str(item.get("account_id", self.expected_ownership.expected_account_id))
-            project_id = str(item.get("project_id", self.expected_ownership.expected_project_id))
+            account_id = str(item.get("account_id", ""))
+            project_id = str(item.get("project_id", ""))
+            raw_status = str(item.get("status", "active"))
+            res_status = ResourceStatus.ACTIVE if raw_status in ("active", "in-use", "available") else ResourceStatus.UNKNOWN
+
+            return ResourceIdentity(
+                resource_id=resource_id,
+                resource_type=resource_type,
+                name=name,
+                account_id=account_id,
+                project_id=project_id,
+                tags=tags,
+                status=res_status,
+                associated_resource_ids=[],
+            )
+
+        if resource_type == ResourceType.FLOATING_IP:
+            item = data.get("floating_ip")
+            if not isinstance(item, dict):
+                raise TeardownSecurityError(f"Unexpected DigitalOcean API response shape for floating_ip: {data}")
+            returned_id = str(item.get("id", item.get("ip", "")))
+            if not returned_id or returned_id != str(resource_id):
+                raise TeardownSecurityError(
+                    f"Provider returned resource ID '{returned_id}' which does not match requested ID '{resource_id}'."
+                )
+            account_id = str(item.get("account_id", ""))
+            project_id = str(item.get("project_id", ""))
+            tags = [str(t) for t in item.get("tags", [])]
+            name = str(item.get("name", f"nuvikoz-e2e-floating-ip-{resource_id}"))
+            # Floating IPs in DO may have a droplet assignment
+            droplet_id = str(item.get("droplet", {}).get("id", "")) if item.get("droplet") else ""
+            associated = [droplet_id] if droplet_id else []
+            raw_status = str(item.get("status", "active"))
+            res_status = ResourceStatus.ACTIVE if raw_status in ("active", "in-use", "reserved") else ResourceStatus.UNKNOWN
+
+            return ResourceIdentity(
+                resource_id=resource_id,
+                resource_type=resource_type,
+                name=name,
+                account_id=account_id,
+                project_id=project_id,
+                tags=tags,
+                status=res_status,
+                associated_resource_ids=associated,
+            )
+
+        if resource_type == ResourceType.DNS_RECORD:
+            item = data.get("domain_record")
+            if not isinstance(item, dict):
+                raise TeardownSecurityError(f"Unexpected DigitalOcean API response shape for domain_record: {data}")
+            returned_id = str(item.get("id", ""))
+            if not returned_id or returned_id != str(resource_id):
+                raise TeardownSecurityError(
+                    f"Provider returned resource ID '{returned_id}' which does not match requested ID '{resource_id}'."
+                )
+            account_id = str(item.get("account_id", ""))
+            project_id = str(item.get("project_id", ""))
+            tags = [str(t) for t in item.get("tags", [])]
+            name = str(item.get("name", f"nuvikoz-e2e-dns-{resource_id}"))
 
             return ResourceIdentity(
                 resource_id=resource_id,
@@ -178,25 +249,6 @@ class DigitalOceanAdapter(ProviderAdapterInterface):
                 tags=tags,
                 status=ResourceStatus.ACTIVE,
                 associated_resource_ids=[],
-            )
-
-        if resource_type == ResourceType.FLOATING_IP:
-            item = data.get("floating_ip", {})
-            account_id = str(item.get("account_id", self.expected_ownership.expected_account_id))
-            project_id = str(item.get("project_id", self.expected_ownership.expected_project_id))
-            # Floating IPs in DO may have a droplet assignment
-            droplet_id = str(item.get("droplet", {}).get("id", "")) if item.get("droplet") else ""
-            associated = [droplet_id] if droplet_id else []
-
-            return ResourceIdentity(
-                resource_id=resource_id,
-                resource_type=resource_type,
-                name=f"floating-ip-{resource_id}",
-                account_id=account_id,
-                project_id=project_id,
-                tags=[self.expected_ownership.required_tag],  # DO floating IPs assign tags via resource
-                status=ResourceStatus.ACTIVE,
-                associated_resource_ids=associated,
             )
 
         raise ValueError(f"Unhandled resource type: {resource_type}")
@@ -238,6 +290,17 @@ class DigitalOceanAdapter(ProviderAdapterInterface):
 
         # Check 3: Re-inspect resource immediately prior to deletion
         identity = self.inspect_resource(resource_id, resource_type)
+
+        # Check 3a: Verify identity consistency between requested and inspected resource
+        if str(identity.resource_id) != str(resource_id) or identity.resource_type != resource_type:
+            return DeletionResult(
+                resource_id=resource_id,
+                resource_type=resource_type,
+                status=TeardownActionStatus.REJECTED_SECURITY_VIOLATION,
+                success=False,
+                message="Resource identity inconsistency detected during preflight inspection.",
+                timestamp=timestamp,
+            )
 
         # If already absent, return idempotent confirmation
         if identity.status == ResourceStatus.ABSENT:
@@ -350,13 +413,13 @@ class DigitalOceanAdapter(ProviderAdapterInterface):
                 v_ident = self.inspect_resource(v_id, ResourceType.VOLUME)
                 associated.append(v_ident)
             except Exception:
-                # If volume cannot be inspected, create unknown placeholder
+                # If volume cannot be inspected or fails validation, fail-closed identity without synthesizing ownership
                 associated.append(ResourceIdentity(
                     resource_id=v_id,
                     resource_type=ResourceType.VOLUME,
                     name=f"unknown-volume-{v_id}",
-                    account_id=self.expected_ownership.expected_account_id,
-                    project_id=self.expected_ownership.expected_project_id,
+                    account_id="",
+                    project_id="",
                     tags=[],
                     status=ResourceStatus.UNKNOWN,
                 ))
