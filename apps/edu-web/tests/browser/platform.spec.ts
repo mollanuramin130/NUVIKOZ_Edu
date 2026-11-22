@@ -124,14 +124,63 @@ test('public school application can be privately tracked after an MFA-bound plat
   }
 });
 
+const sessionQueueUrl = `${api}/platform/sessions/change-requests`;
+
+function createSessionReviewFixture(): string {
+  const requestId = command('session-review');
+  // A malformed fixture response must fail before the UI uses it as a search term.
+  expect(/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/i.test(requestId), 'session-review must return a ULID').toBe(true);
+  return requestId;
+}
+
+async function filterSessionReview(page: Page, requestId: string) {
+  const main = page.getByRole('main');
+  await main.getByLabel('Search', {exact: true}).fill(requestId);
+  const [queue] = await Promise.all([
+    page.waitForResponse(response => {
+      const url = new URL(response.url());
+      return response.request().method() === 'GET'
+        && url.origin + url.pathname === sessionQueueUrl
+        && url.searchParams.get('q') === requestId;
+    }),
+    main.getByRole('button', {name: 'Apply filters', exact: true}).click(),
+  ]);
+  expect(queue.status(), 'filtered queue status').toBe(200);
+  const result = await queue.json();
+  expect(Array.isArray(result?.data?.items), 'queue must return data.items').toBe(true);
+  const items = result.data.items as {id: string; school_code: string}[];
+  const matches = items.filter(item => item?.id === requestId);
+  expect(matches.length, 'queue must contain exactly one pending fixture request').toBe(1);
+  const schoolCode = matches[0].school_code;
+  expect(typeof schoolCode).toBe('string');
+  expect(/^UIR_[0-7][0-9A-HJKMNP-TV-Z]{25}$/i.test(schoolCode)).toBe(true);
+  // The DOM does not expose request IDs. Use the unique school code from the ID-matched response.
+  const row = main.getByRole('row').filter({hasText: schoolCode});
+  await expect(row).toHaveCount(1);
+  await expect(row).toBeVisible();
+  return row;
+}
+
+async function openSessionReview(page: Page, requestId: string) {
+  const row = await filterSessionReview(page, requestId);
+  const url = `${sessionQueueUrl}/${requestId}/preview`;
+  const [preview] = await Promise.all([
+    page.waitForResponse(response => response.url() === url && response.request().method() === 'GET'),
+    row.getByRole('button', {name: 'Preview Browser review term', exact: true}).click(),
+  ]);
+  expect(preview.status(), 'matching preview status').toBe(200);
+  const {data} = await preview.json();
+  expect(data?.id).toBe(requestId);
+  expect(data?.state).toBe('pending');
+  return {row, url, data};
+}
+
 test('Platform confirms a refreshed session preview and clears protected data when assurance expires', async ({page, context}) => {
-  const change = command('session-review');
+  const change = createSessionReviewFixture();
   await login(page, id);
   await enroll(page);
   await page.getByRole('link', {name: 'Review session date changes'}).click();
-  await page.getByLabel('Search', {exact: true}).fill(change);
-  await page.getByRole('button', {name: 'Apply filters'}).click();
-  await page.getByRole('button', {name: 'Preview Browser review term'}).click();
+  await openSessionReview(page, change);
   await expect(page.getByText('<strong>Synthetic applicant reason</strong>', {exact: true})).toBeVisible();
   await page.getByLabel('Reviewer reason').fill('Verified synthetic calendar');
   const main = page.getByRole('main');
@@ -157,9 +206,9 @@ test('Platform confirms a refreshed session preview and clears protected data wh
   await expect(page.getByText('Request approved.')).toBeVisible();
   expect(submissions).toBe(2);
   expect(await page.evaluate(() => Object.keys(localStorage))).toEqual([]);
-  await page.getByLabel('Search', {exact: true}).fill(command('session-review'));
-  await page.getByRole('button', {name: 'Apply filters'}).click();
-  await main.getByRole('button', {name: 'Preview Browser review term'}).click();
+  const pendingAfterApproval = createSessionReviewFixture();
+  expect(pendingAfterApproval).not.toBe(change);
+  await openSessionReview(page, pendingAfterApproval);
   await expect(main.getByLabel('Reviewer reason')).toBeVisible();
   command('expire-assurance');
   await page.getByRole('button', {name: 'Refresh queue'}).click();
@@ -170,19 +219,12 @@ test('Platform confirms a refreshed session preview and clears protected data wh
 });
 
 test('Platform rejects a pending session review without changing the session dates or version', async ({page, context}) => {
-  const change = command('session-review');
+  const change = createSessionReviewFixture();
   await login(page, id);
   await enroll(page);
   await page.getByRole('link', {name: 'Review session date changes'}).click();
   const main = page.getByRole('main');
-  await main.getByLabel('Search', {exact: true}).fill(change);
-  await main.getByRole('button', {name: 'Apply filters'}).click();
-  const open = main.getByRole('button', {name: 'Preview Browser review term'});
-  const url = `${api}/platform/sessions/change-requests/${change}/preview`;
-  const preview = page.waitForResponse(response => response.url() === url && response.request().method() === 'GET');
-  await open.click();
-  const before = (await (await preview).json()).data;
-  expect(before.state).toBe('pending');
+  const {row, url, data: before} = await openSessionReview(page, change);
 
   const reason = main.getByLabel('Reviewer reason');
   const reject = main.getByRole('button', {name: 'Reject', exact: true});
@@ -201,7 +243,7 @@ test('Platform rejects a pending session review without changing the session dat
   await main.getByRole('button', {name: 'Refresh queue'}).click();
   await expect(main.getByRole('table')).toContainText('Pending requests');
   await expect(main.getByText('No pending requests on this page.')).toBeVisible();
-  await expect(open).toHaveCount(0);
+  await expect(row).toHaveCount(0);
 
   const resolved = await context.request.get(url, {headers: {Origin: origin}});
   expect(resolved.ok()).toBe(true);
