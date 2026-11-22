@@ -7,8 +7,10 @@ Policy Enforcement:
 - DEVELOPMENT FIRST, DEPLOYMENT LATER.
 - Strict allowlist matching: A tag alone NEVER authorizes deletion.
 - Exact resource-ID matching is required for every destructive operation.
+- Associated resources (volumes, IPs) are fail-closed: unapproved attached resources
+  immediately halt parent deletion.
 - No broad resource enumeration followed by wildcard deletion.
-- Four-hour maximum execution window based on persisted absolute timestamp.
+- Four-hour maximum execution window based on immutable persisted absolute timestamp.
 - Atomic state writes with fail-closed corruption recovery.
 - Zero secret leakage in logs, state files, or exceptions.
 """
@@ -94,13 +96,13 @@ class ResourceIdentity:
         """Confirm resource strictly satisfies the required ownership contract."""
         if self.status == ResourceStatus.ABSENT:
             return False
+        if not self.account_id or self.account_id != contract.expected_account_id:
+            return False
+        if contract.expected_project_id and self.project_id != contract.expected_project_id:
+            return False
         if contract.required_tag not in self.tags:
             return False
         if not self.name.startswith(contract.expected_name_prefix):
-            return False
-        if self.account_id != contract.expected_account_id:
-            return False
-        if contract.expected_project_id and self.project_id != contract.expected_project_id:
             return False
         return True
 
@@ -140,9 +142,36 @@ class TeardownManifest:
     audit_events: list[dict[str, Any]] = field(default_factory=list)
     manifest_version: str = "1.0"
 
+    MAX_EXECUTION_WINDOW_SECONDS = 14400  # 4 hours
+
+    def validate_state(self, current_time: datetime | None = None) -> None:
+        """Validate integrity of creation timestamp and 4-hour execution deadline."""
+        now = current_time or datetime.now(timezone.utc)
+        try:
+            created_at = datetime.fromisoformat(self.created_at_utc.replace("Z", "+00:00"))
+            deadline_at = datetime.fromisoformat(self.deadline_at_utc.replace("Z", "+00:00"))
+        except Exception as exc:
+            raise TeardownStateCorruptedError(f"Invalid timestamp format in manifest: {exc}") from exc
+
+        # Disallow future-dated creation timestamps (tolerance of 60s for clock skew)
+        if (created_at - now).total_seconds() > 60:
+            raise TeardownStateCorruptedError("Manifest creation timestamp is future-dated.")
+
+        # Deadline must be strictly after creation
+        if deadline_at <= created_at:
+            raise TeardownStateCorruptedError("Manifest deadline must be strictly after creation timestamp.")
+
+        # Window duration must not exceed 4 hours (+ 60s drift tolerance)
+        duration = (deadline_at - created_at).total_seconds()
+        if duration > self.MAX_EXECUTION_WINDOW_SECONDS + 60:
+            raise TeardownSecurityError(
+                f"Manifest deadline window ({duration}s) exceeds maximum allowed 4-hour window ({self.MAX_EXECUTION_WINDOW_SECONDS}s)."
+            )
+
     def is_expired(self, current_time: datetime | None = None) -> bool:
         """Check whether the 4-hour execution window has passed."""
         now = current_time or datetime.now(timezone.utc)
+        self.validate_state(now)
         deadline = datetime.fromisoformat(self.deadline_at_utc.replace("Z", "+00:00"))
         return now >= deadline
 
@@ -151,7 +180,7 @@ class TeardownManifest:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> TeardownManifest:
+    def from_dict(cls, data: dict[str, Any], current_time: datetime | None = None) -> TeardownManifest:
         """Reconstruct manifest from dictionary with strict schema validation."""
         required_keys = {"manifest_id", "created_at_utc", "deadline_at_utc", "ownership", "allowlisted_resources"}
         if not required_keys.issubset(data.keys()):
@@ -178,7 +207,7 @@ class TeardownManifest:
                     reconciled_associated_resources=[str(x) for x in r.get("reconciled_associated_resources", [])],
                 ))
 
-            return cls(
+            manifest = cls(
                 manifest_id=str(data["manifest_id"]),
                 created_at_utc=str(data["created_at_utc"]),
                 deadline_at_utc=str(data["deadline_at_utc"]),
@@ -189,6 +218,10 @@ class TeardownManifest:
                 audit_events=list(data.get("audit_events", [])),
                 manifest_version=str(data.get("manifest_version", "1.0")),
             )
+            manifest.validate_state(current_time)
+            return manifest
+        except (TeardownSecurityError, TeardownStateCorruptedError):
+            raise
         except Exception as exc:
             raise TeardownStateCorruptedError(f"Failed to parse manifest data: {exc}") from exc
 
@@ -198,7 +231,6 @@ class TeardownManifest:
         target_path.parent.mkdir(parents=True, exist_ok=True)
 
         payload = json.dumps(self.to_dict(), indent=2, sort_keys=True)
-        # Write to temp file in same directory to ensure atomic rename
         with tempfile.NamedTemporaryFile("w", dir=target_path.parent, delete=False) as tf:
             tf.write(payload)
             temp_name = tf.name
@@ -206,7 +238,7 @@ class TeardownManifest:
         os.replace(temp_name, target_path)
 
     @classmethod
-    def load(cls, file_path: Path | str) -> TeardownManifest:
+    def load(cls, file_path: Path | str, current_time: datetime | None = None) -> TeardownManifest:
         """Load manifest from disk with fail-closed corrupted-state handling."""
         target_path = Path(file_path).resolve()
         if not target_path.exists():
@@ -215,8 +247,10 @@ class TeardownManifest:
         try:
             content = target_path.read_text(encoding="utf-8")
             data = json.loads(content)
-            return cls.from_dict(data)
-        except (json.JSONDecodeError, TeardownStateCorruptedError) as exc:
+            return cls.from_dict(data, current_time=current_time)
+        except (json.JSONDecodeError, TeardownStateCorruptedError, TeardownSecurityError) as exc:
+            if isinstance(exc, (TeardownStateCorruptedError, TeardownSecurityError)):
+                raise
             raise TeardownStateCorruptedError(f"Manifest at {target_path} is corrupted: {exc}") from exc
 
 
@@ -291,11 +325,11 @@ class ExternalTeardownRunner:
     2. Exact resource-ID allowlist matching.
     3. Mandatory 4-hour execution window check.
     4. 6-point verification before any destructive action.
-    5. Independent reconciliation of associated resources.
+    5. Independent reconciliation and strict fail-closed blocking of unapproved associated resources.
     6. Atomic state transitions with restart recovery.
     """
 
-    # Global safety gate: Live provider execution is disabled by default.
+    # Global safety gate: Live provider execution is globally disabled.
     LIVE_EXECUTION_ENABLED = False
 
     def __init__(
@@ -327,6 +361,7 @@ class ExternalTeardownRunner:
     def execute_teardown(self, auth_context: ExecutionAuthContext) -> CleanupAuditReport:
         """Execute teardown across allowlisted resources and reconcile associated items."""
         now = self._now()
+        self.manifest.validate_state(now)
         is_expired = self.manifest.is_expired(now)
 
         self._record_audit_event("TEARDOWN_STARTED", {
@@ -373,25 +408,70 @@ class ExternalTeardownRunner:
                 results.append(res)
                 continue
 
-            # Check associated resources before deleting parent (e.g. attached volumes)
+            # Security Guard 3 & Critical Correction A:
+            # Inspect associated resources BEFORE attempting parent deletion.
+            # If ANY associated resource is unapproved, mismatched, or fails ownership,
+            # STOP parent deletion immediately. adapter.delete_resource() MUST NOT be called!
             associated_identities = self.adapter.enumerate_associated_resources(resource_id)
             reconciled_ids: list[str] = []
+            has_unapproved_associated = False
 
             for assoc in associated_identities:
-                # Security Guard: Never delete an associated resource automatically.
-                # Must be independently registered in the allowlist!
-                if assoc.resource_id in self.manifest.allowlisted_resources:
-                    reconciled_ids.append(assoc.resource_id)
-                else:
+                # 3a. Must be explicitly registered in the manifest allowlist
+                if assoc.resource_id not in self.manifest.allowlisted_resources:
+                    has_unapproved_associated = True
                     associated_orphans.append(assoc.resource_id)
                     self._record_audit_event("UNAPPROVED_ASSOCIATED_RESOURCE_DETECTED", {
                         "parent_resource_id": resource_id,
                         "associated_resource_id": assoc.resource_id,
-                        "resource_type": assoc.resource_type.value,
-                        "action": "FAIL_CLOSED_MANUAL_INTERVENTION_REQUIRED",
+                        "reason": "Not in manifest allowlist",
+                        "action": "ABORT_PARENT_DELETION",
                     })
+                    continue
 
-            # Execute deletion through adapter (adapter executes the remaining 4 checks)
+                # 3b. Must match the registered resource type
+                registered_type = self.manifest.allowlisted_resources[assoc.resource_id]
+                if registered_type != assoc.resource_type.value:
+                    has_unapproved_associated = True
+                    associated_orphans.append(assoc.resource_id)
+                    self._record_audit_event("UNAPPROVED_ASSOCIATED_RESOURCE_DETECTED", {
+                        "parent_resource_id": resource_id,
+                        "associated_resource_id": assoc.resource_id,
+                        "reason": f"Type mismatch: expected {registered_type}, got {assoc.resource_type.value}",
+                        "action": "ABORT_PARENT_DELETION",
+                    })
+                    continue
+
+                # 3c. Must pass strict ownership verification
+                if not self.adapter.confirm_resource_ownership(assoc, self.manifest.ownership):
+                    has_unapproved_associated = True
+                    associated_orphans.append(assoc.resource_id)
+                    self._record_audit_event("UNAPPROVED_ASSOCIATED_RESOURCE_DETECTED", {
+                        "parent_resource_id": resource_id,
+                        "associated_resource_id": assoc.resource_id,
+                        "reason": "Ownership verification failed (account/project/tag mismatch)",
+                        "action": "ABORT_PARENT_DELETION",
+                    })
+                    continue
+
+                reconciled_ids.append(assoc.resource_id)
+
+            # If unapproved associated resource was discovered: FAIL CLOSED!
+            # Ensure adapter.delete_resource() is NEVER called for this parent.
+            if has_unapproved_associated:
+                res = DeletionResult(
+                    resource_id=resource_id,
+                    resource_type=resource_type,
+                    status=TeardownActionStatus.MANUAL_INTERVENTION_REQUIRED,
+                    success=False,
+                    message="Parent deletion aborted: unapproved or mismatched associated resource detected.",
+                    timestamp=self._now().isoformat(),
+                    reconciled_associated_resources=reconciled_ids,
+                )
+                results.append(res)
+                continue
+
+            # Execute deletion through adapter (adapter executes the remaining checks)
             del_result = self.adapter.delete_resource(resource_id, resource_type, auth_context)
             del_result.reconciled_associated_resources = reconciled_ids
             results.append(del_result)
@@ -401,19 +481,23 @@ class ExternalTeardownRunner:
         # Evaluate final audit report
         total_eval = len(results)
         confirmed_absent = sum(1 for r in results if r.status == TeardownActionStatus.RESOURCE_ABSENCE_CONFIRMED)
-        has_violations = any(r.status == TeardownActionStatus.REJECTED_SECURITY_VIOLATION for r in results)
-        has_failures = any(not r.success for r in results)
+        has_violations = any(r.status in (TeardownActionStatus.REJECTED_SECURITY_VIOLATION, TeardownActionStatus.MANUAL_INTERVENTION_REQUIRED) for r in results)
+        has_incomplete = any(r.status == TeardownActionStatus.CLEANUP_INCOMPLETE or not r.success for r in results)
 
-        manual_intervention = bool(associated_orphans or has_violations or has_failures)
+        manual_intervention = bool(associated_orphans or has_violations)
+
         if manual_intervention:
             overall_status = TeardownActionStatus.MANUAL_INTERVENTION_REQUIRED
             self.manifest.state = "MANUAL_INTERVENTION_REQUIRED"
-        elif confirmed_absent == total_eval:
+        elif confirmed_absent == total_eval and total_eval > 0:
             overall_status = TeardownActionStatus.RESOURCE_ABSENCE_CONFIRMED
             self.manifest.state = "COMPLETED"
+        elif has_incomplete or any(r.status == TeardownActionStatus.DELETION_ACKNOWLEDGED for r in results):
+            overall_status = TeardownActionStatus.CLEANUP_INCOMPLETE
+            self.manifest.state = "INCOMPLETE"
         else:
-            overall_status = TeardownActionStatus.DELETION_ACKNOWLEDGED
-            self.manifest.state = "COMPLETED"
+            overall_status = TeardownActionStatus.CLEANUP_INCOMPLETE
+            self.manifest.state = "INCOMPLETE"
 
         report = CleanupAuditReport(
             manifest_id=self.manifest.manifest_id,
