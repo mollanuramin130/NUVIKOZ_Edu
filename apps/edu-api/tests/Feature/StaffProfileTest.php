@@ -126,6 +126,57 @@ class StaffProfileTest extends TestCase
         $this->browser('GET', 'staff')->assertUnauthorized();
     }
 
+    public function test_target_with_mandatory_password_change_cannot_register(): void
+    {
+        $school = $this->school();
+        $admin = $this->member($school, 'school_admin');
+        $target = $this->member($school, attributes: ['activation_required' => false, 'must_change_password' => true]);
+        $control = $this->member($school, 'principal');
+        $this->login($admin);
+        $this->confirmedMfa();
+
+        $items = $this->browser('GET', 'staff/eligible-memberships')->assertOk()->json('data.items');
+        $this->assertSame([$control->id], array_column($items, 'membership_id'));
+        $this->browser('POST', 'staff', ['membership_id' => $target->id], (string) Str::ulid())
+            ->assertConflict()->assertJsonPath('error.code', 'STAFF_MEMBERSHIP_INELIGIBLE');
+        $this->assertDatabaseCount('staff_profiles', 0);
+        $this->assertDatabaseMissing('idempotency_records', ['operation' => 'staff.profile.register']);
+        $this->assertDatabaseMissing('audit_events', ['action' => 'staff.profile.created']);
+    }
+
+    public function test_archived_school_denies_each_protected_staff_read_and_retains_history(): void
+    {
+        $school = $this->school();
+        $admin = $this->member($school, 'school_admin');
+        $target = $this->member($school, attributes: ['name' => 'Synthetic archived profile']);
+        $candidate = $this->member($school, 'principal', ['name' => 'Synthetic archived candidate']);
+        $this->login($admin);
+        $this->confirmedMfa();
+        $profile = $this->browser('POST', 'staff', ['membership_id' => $target->id], (string) Str::ulid())
+            ->assertCreated()->json('data.resource.id');
+        $this->browser('GET', 'staff')->assertOk()->assertJsonPath('data.items.0.id', $profile);
+        $this->browser('GET', 'staff/'.$profile)->assertOk()->assertJsonPath('data.display_name', $target->user->name);
+        $this->browser('GET', 'staff/eligible-memberships')->assertOk()->assertJsonPath('data.items.0.membership_id', $candidate->id);
+        $sessions = ['staff' => $this->cookie];
+        foreach (['staff/'.$profile, 'staff/eligible-memberships'] as $path) {
+            $this->cookie = '';
+            $this->csrf = '';
+            $this->login($this->member($school, 'school_admin'));
+            $this->confirmedMfa();
+            $this->browser('GET', $path)->assertOk();
+            $sessions[$path] = $this->cookie;
+        }
+
+        $school->update(['access_state' => 'archived']);
+        foreach ($sessions as $path => $cookie) {
+            $this->cookie = $cookie;
+            $this->browser('GET', $path)->assertUnauthorized()->assertJsonPath('error.code', 'SESSION_EXPIRED')
+                ->assertJsonMissingPath('data')->assertDontSee($target->user->name)->assertDontSee($candidate->user->name);
+        }
+        $this->assertDatabaseHas('staff_profiles', ['id' => $profile, 'school_id' => $school->id, 'membership_id' => $target->id]);
+        $this->assertDatabaseHas('audit_events', ['action' => 'staff.profile.created', 'resource_id' => $profile, 'school_id' => $school->id]);
+    }
+
     public function test_lookup_cursor_is_exclusive_and_fixed_size(): void
     {
         $school = $this->school();
