@@ -18,6 +18,59 @@ class IsolatedE2ESeederTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->setTestCredentials();
+    }
+
+    protected function tearDown(): void
+    {
+        $this->clearTestCredentials();
+
+        parent::tearDown();
+    }
+
+    private function setTestCredentials(): void
+    {
+        $_ENV['ALLOW_DISPOSABLE_E2E_SEEDING'] = 'true';
+        $_SERVER['ALLOW_DISPOSABLE_E2E_SEEDING'] = 'true';
+        putenv('ALLOW_DISPOSABLE_E2E_SEEDING=true');
+
+        $_ENV['E2E_ADMIN_PASSWORD'] = 'DevAdmin#2026!Sec';
+        $_SERVER['E2E_ADMIN_PASSWORD'] = 'DevAdmin#2026!Sec';
+        putenv('E2E_ADMIN_PASSWORD=DevAdmin#2026!Sec');
+
+        $_ENV['E2E_TEACHER_PASSWORD'] = 'DevTeach#2026!Sec';
+        $_SERVER['E2E_TEACHER_PASSWORD'] = 'DevTeach#2026!Sec';
+        putenv('E2E_TEACHER_PASSWORD=DevTeach#2026!Sec');
+
+        $_ENV['E2E_ADMIN2_PASSWORD'] = 'DevAdmin2#2026!Sec';
+        $_SERVER['E2E_ADMIN2_PASSWORD'] = 'DevAdmin2#2026!Sec';
+        putenv('E2E_ADMIN2_PASSWORD=DevAdmin2#2026!Sec');
+
+        $_ENV['E2E_MFA_TOTP_SEED'] = 'JBSWY3DPEHPK3PXP';
+        $_SERVER['E2E_MFA_TOTP_SEED'] = 'JBSWY3DPEHPK3PXP';
+        putenv('E2E_MFA_TOTP_SEED=JBSWY3DPEHPK3PXP');
+    }
+
+    private function clearTestCredentials(): void
+    {
+        $vars = [
+            'ALLOW_DISPOSABLE_E2E_SEEDING',
+            'E2E_ADMIN_PASSWORD',
+            'E2E_TEACHER_PASSWORD',
+            'E2E_ADMIN2_PASSWORD',
+            'E2E_MFA_TOTP_SEED',
+        ];
+
+        foreach ($vars as $var) {
+            unset($_ENV[$var], $_SERVER[$var]);
+            putenv($var);
+        }
+    }
+
     public function test_seeder_refuses_production_environment(): void
     {
         $originalEnv = app()['env'];
@@ -34,26 +87,56 @@ class IsolatedE2ESeederTest extends TestCase
     public function test_seeder_refuses_missing_opt_in_when_not_in_testing(): void
     {
         $originalEnv = app()['env'];
-        $originalOptIn = $_ENV['ALLOW_DISPOSABLE_E2E_SEEDING'] ?? null;
+        $originalConn = config('database.default');
+        $originalDriver = config("database.connections.{$originalConn}.driver");
+        $originalDb = config("database.connections.{$originalConn}.database");
+        $originalHost = config("database.connections.{$originalConn}.host");
+
         try {
             app()['env'] = 'staging';
             putenv('ALLOW_DISPOSABLE_E2E_SEEDING=false');
             $_ENV['ALLOW_DISPOSABLE_E2E_SEEDING'] = 'false';
             $_SERVER['ALLOW_DISPOSABLE_E2E_SEEDING'] = 'false';
 
+            config(["database.connections.{$originalConn}.driver" => 'mysql']);
+            config(["database.connections.{$originalConn}.database" => 'edu_dev_e2e']);
+            config(["database.connections.{$originalConn}.host" => '127.0.0.1']);
+
             $this->expectException(\RuntimeException::class);
             $this->expectExceptionMessage('ALLOW_DISPOSABLE_E2E_SEEDING=true is required');
             IsolatedE2ESeeder::assertEnvironmentSafe();
         } finally {
             app()['env'] = $originalEnv;
-            if ($originalOptIn !== false && $originalOptIn !== null) {
-                putenv("ALLOW_DISPOSABLE_E2E_SEEDING={$originalOptIn}");
-                $_ENV['ALLOW_DISPOSABLE_E2E_SEEDING'] = $originalOptIn;
-                $_SERVER['ALLOW_DISPOSABLE_E2E_SEEDING'] = $originalOptIn;
-            } else {
-                putenv('ALLOW_DISPOSABLE_E2E_SEEDING');
-                unset($_ENV['ALLOW_DISPOSABLE_E2E_SEEDING'], $_SERVER['ALLOW_DISPOSABLE_E2E_SEEDING']);
-            }
+            config(["database.connections.{$originalConn}.driver" => $originalDriver]);
+            config(["database.connections.{$originalConn}.database" => $originalDb]);
+            config(["database.connections.{$originalConn}.host" => $originalHost]);
+            $this->setTestCredentials();
+        }
+    }
+
+    public function test_seeder_refuses_unauthorized_environment(): void
+    {
+        $originalEnv = app()['env'];
+        $originalConn = config('database.default');
+        $originalDriver = config("database.connections.{$originalConn}.driver");
+        $originalDb = config("database.connections.{$originalConn}.database");
+        $originalHost = config("database.connections.{$originalConn}.host");
+
+        try {
+            app()['env'] = 'uat';
+
+            config(["database.connections.{$originalConn}.driver" => 'mysql']);
+            config(["database.connections.{$originalConn}.database" => 'edu_dev_e2e']);
+            config(["database.connections.{$originalConn}.host" => '127.0.0.1']);
+
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage("Environment 'uat' is not authorized for disposable seeding.");
+            IsolatedE2ESeeder::assertEnvironmentSafe();
+        } finally {
+            app()['env'] = $originalEnv;
+            config(["database.connections.{$originalConn}.driver" => $originalDriver]);
+            config(["database.connections.{$originalConn}.database" => $originalDb]);
+            config(["database.connections.{$originalConn}.host" => $originalHost]);
         }
     }
 
@@ -63,15 +146,14 @@ class IsolatedE2ESeederTest extends TestCase
         $originalConn = config('database.default');
         $originalDb = config("database.connections.{$originalConn}.database");
         $originalDriver = config("database.connections.{$originalConn}.driver");
+        $originalHost = config("database.connections.{$originalConn}.host");
 
         try {
             app()['env'] = 'staging';
-            putenv('ALLOW_DISPOSABLE_E2E_SEEDING=true');
-            $_ENV['ALLOW_DISPOSABLE_E2E_SEEDING'] = 'true';
-            $_SERVER['ALLOW_DISPOSABLE_E2E_SEEDING'] = 'true';
 
             config(["database.connections.{$originalConn}.driver" => 'mysql']);
             config(["database.connections.{$originalConn}.database" => 'nuvikoz_prod']);
+            config(["database.connections.{$originalConn}.host" => '127.0.0.1']);
 
             $this->expectException(\RuntimeException::class);
             $this->expectExceptionMessage("Unsafe database name 'nuvikoz_prod' detected");
@@ -80,8 +162,7 @@ class IsolatedE2ESeederTest extends TestCase
             app()['env'] = $originalEnv;
             config(["database.connections.{$originalConn}.driver" => $originalDriver]);
             config(["database.connections.{$originalConn}.database" => $originalDb]);
-            putenv('ALLOW_DISPOSABLE_E2E_SEEDING');
-            unset($_ENV['ALLOW_DISPOSABLE_E2E_SEEDING'], $_SERVER['ALLOW_DISPOSABLE_E2E_SEEDING']);
+            config(["database.connections.{$originalConn}.host" => $originalHost]);
         }
     }
 
@@ -91,25 +172,49 @@ class IsolatedE2ESeederTest extends TestCase
         $originalConn = config('database.default');
         $originalDb = config("database.connections.{$originalConn}.database");
         $originalDriver = config("database.connections.{$originalConn}.driver");
+        $originalHost = config("database.connections.{$originalConn}.host");
 
         try {
             app()['env'] = 'staging';
-            putenv('ALLOW_DISPOSABLE_E2E_SEEDING=true');
-            $_ENV['ALLOW_DISPOSABLE_E2E_SEEDING'] = 'true';
-            $_SERVER['ALLOW_DISPOSABLE_E2E_SEEDING'] = 'true';
 
             config(["database.connections.{$originalConn}.driver" => 'mysql']);
             config(["database.connections.{$originalConn}.database" => 'shared_enterprise_schools']);
+            config(["database.connections.{$originalConn}.host" => '127.0.0.1']);
 
             $this->expectException(\RuntimeException::class);
-            $this->expectExceptionMessage('does not contain required disposable markers');
+            $this->expectExceptionMessage('is not an authorized disposable database identity');
             IsolatedE2ESeeder::assertEnvironmentSafe();
         } finally {
             app()['env'] = $originalEnv;
             config(["database.connections.{$originalConn}.driver" => $originalDriver]);
             config(["database.connections.{$originalConn}.database" => $originalDb]);
-            putenv('ALLOW_DISPOSABLE_E2E_SEEDING');
-            unset($_ENV['ALLOW_DISPOSABLE_E2E_SEEDING'], $_SERVER['ALLOW_DISPOSABLE_E2E_SEEDING']);
+            config(["database.connections.{$originalConn}.host" => $originalHost]);
+        }
+    }
+
+    public function test_seeder_refuses_unauthorized_database_host(): void
+    {
+        $originalEnv = app()['env'];
+        $originalConn = config('database.default');
+        $originalDb = config("database.connections.{$originalConn}.database");
+        $originalDriver = config("database.connections.{$originalConn}.driver");
+        $originalHost = config("database.connections.{$originalConn}.host");
+
+        try {
+            app()['env'] = 'staging';
+
+            config(["database.connections.{$originalConn}.driver" => 'mysql']);
+            config(["database.connections.{$originalConn}.database" => 'edu_dev_e2e']);
+            config(["database.connections.{$originalConn}.host" => '192.168.1.100']);
+
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage('is not an authorized local or isolated container host');
+            IsolatedE2ESeeder::assertEnvironmentSafe();
+        } finally {
+            app()['env'] = $originalEnv;
+            config(["database.connections.{$originalConn}.driver" => $originalDriver]);
+            config(["database.connections.{$originalConn}.database" => $originalDb]);
+            config(["database.connections.{$originalConn}.host" => $originalHost]);
         }
     }
 
@@ -124,12 +229,151 @@ class IsolatedE2ESeederTest extends TestCase
             config(["database.connections.{$originalConn}.database" => '/var/data/shared_prod.sqlite']);
 
             $this->expectException(\RuntimeException::class);
-            $this->expectExceptionMessage('is not an authorized test database');
+            $this->expectExceptionMessage('is not an authorized in-memory test database');
             IsolatedE2ESeeder::assertEnvironmentSafe();
         } finally {
             config(["database.connections.{$originalConn}.driver" => $originalDriver]);
             config(["database.connections.{$originalConn}.database" => $originalDb]);
         }
+    }
+
+    public function test_seeder_refuses_testing_mode_misuse_with_unauthorized_mysql_database(): void
+    {
+        $originalConn = config('database.default');
+        $originalDb = config("database.connections.{$originalConn}.database");
+        $originalDriver = config("database.connections.{$originalConn}.driver");
+        $originalHost = config("database.connections.{$originalConn}.host");
+
+        try {
+            config(["database.connections.{$originalConn}.driver" => 'mysql']);
+            config(["database.connections.{$originalConn}.database" => 'some_arbitrary_test_db']);
+            config(["database.connections.{$originalConn}.host" => '127.0.0.1']);
+
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage('is not an authorized disposable database identity');
+            IsolatedE2ESeeder::assertEnvironmentSafe();
+        } finally {
+            config(["database.connections.{$originalConn}.driver" => $originalDriver]);
+            config(["database.connections.{$originalConn}.database" => $originalDb]);
+            config(["database.connections.{$originalConn}.host" => $originalHost]);
+        }
+    }
+
+    public function test_seeder_refuses_missing_secret(): void
+    {
+        unset($_ENV['E2E_ADMIN_PASSWORD'], $_SERVER['E2E_ADMIN_PASSWORD']);
+        putenv('E2E_ADMIN_PASSWORD');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('E2E_ADMIN_PASSWORD is missing');
+        IsolatedE2ESeeder::validateCredentialsPreflight();
+    }
+
+    public function test_seeder_refuses_short_password(): void
+    {
+        $_ENV['E2E_ADMIN_PASSWORD'] = 'Short#1';
+        $_SERVER['E2E_ADMIN_PASSWORD'] = 'Short#1';
+        putenv('E2E_ADMIN_PASSWORD=Short#1');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('E2E_ADMIN_PASSWORD is too short. Minimum 12 characters required.');
+        IsolatedE2ESeeder::validateCredentialsPreflight();
+    }
+
+    public function test_seeder_refuses_password_lacking_complexity(): void
+    {
+        $_ENV['E2E_ADMIN_PASSWORD'] = 'alllowercasepassword123!';
+        $_SERVER['E2E_ADMIN_PASSWORD'] = 'alllowercasepassword123!';
+        putenv('E2E_ADMIN_PASSWORD=alllowercasepassword123!');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('E2E_ADMIN_PASSWORD does not meet complexity requirements');
+        IsolatedE2ESeeder::validateCredentialsPreflight();
+    }
+
+    public function test_seeder_refuses_invalid_totp_seed(): void
+    {
+        $_ENV['E2E_MFA_TOTP_SEED'] = 'not_base32_seed!';
+        $_SERVER['E2E_MFA_TOTP_SEED'] = 'not_base32_seed!';
+        putenv('E2E_MFA_TOTP_SEED=not_base32_seed!');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('E2E_MFA_TOTP_SEED has invalid Base32 format');
+        IsolatedE2ESeeder::validateCredentialsPreflight();
+    }
+
+    public function test_preflight_failure_prevents_any_database_writes(): void
+    {
+        $this->assertSame(0, School::count());
+        $this->assertSame(0, User::count());
+
+        $_ENV['E2E_ADMIN_PASSWORD'] = 'short';
+        $_SERVER['E2E_ADMIN_PASSWORD'] = 'short';
+        putenv('E2E_ADMIN_PASSWORD=short');
+
+        try {
+            $seeder = new IsolatedE2ESeeder;
+            $seeder->run();
+            $this->fail('Seeder should have thrown RuntimeException during preflight.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('E2E_ADMIN_PASSWORD is too short', $e->getMessage());
+        }
+
+        $this->assertSame(0, School::count());
+        $this->assertSame(0, User::count());
+        $this->assertSame(0, DB::table('academic_sessions')->count());
+    }
+
+    public function test_seeder_refuses_takeover_of_unrelated_school_with_same_code(): void
+    {
+        School::create([
+            'code' => 'DEVTEST01',
+            'name' => 'Unrelated Real Academy',
+            'data_stage' => 'live',
+            'access_state' => 'live_enabled',
+        ]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage("Existing school with code 'DEVTEST01' has unexpected name 'Unrelated Real Academy'");
+        $seeder = new IsolatedE2ESeeder;
+        $seeder->run();
+    }
+
+    public function test_seeder_refuses_takeover_of_user_with_platform_admin(): void
+    {
+        User::create([
+            'name' => 'Dev Admin',
+            'password' => 'SecurePass#2026!Platform',
+            'is_platform_admin' => true,
+        ]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage("Existing user 'Dev Admin' is a platform admin; refusing takeover");
+        $seeder = new IsolatedE2ESeeder;
+        $seeder->run();
+    }
+
+    public function test_seeder_refuses_takeover_of_user_with_other_school_memberships(): void
+    {
+        $otherSchool = School::create([
+            'code' => 'OTHER01',
+            'name' => 'Other Tenant Academy',
+        ]);
+        $user = User::create([
+            'name' => 'Dev Admin',
+            'password' => 'SecurePass#2026!Other',
+        ]);
+        Membership::create([
+            'school_id' => $otherSchool->id,
+            'user_id' => $user->id,
+            'role' => Role::Teacher,
+            'login_identifier' => 'other_user',
+        ]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage("Existing user 'Dev Admin' belongs to other school tenants; refusing takeover");
+        $seeder = new IsolatedE2ESeeder;
+        $seeder->run();
     }
 
     public function test_seeder_executes_successfully_and_populates_expected_cardinality(): void
@@ -289,7 +533,7 @@ class IsolatedE2ESeederTest extends TestCase
         $this->assertNotNull($credential->confirmed_at);
 
         // Ensure the stored secret is encrypted (not plain text)
-        $rawSeed = env('E2E_MFA_TOTP_SEED', 'JBSWY3DPEHPK3PXP');
+        $rawSeed = 'JBSWY3DPEHPK3PXP';
         $this->assertNotSame($rawSeed, $credential->secret_encrypted);
 
         // Decrypt and verify matching original seed
@@ -319,8 +563,8 @@ class IsolatedE2ESeederTest extends TestCase
         $adminUser = User::where('name', 'Dev Admin')->firstOrFail();
         $teacherUser = User::where('name', 'Dev Teacher')->firstOrFail();
 
-        $adminPlain = env('E2E_ADMIN_PASSWORD', 'DevAdmin#2026!Sec');
-        $teacherPlain = env('E2E_TEACHER_PASSWORD', 'DevTeach#2026!Sec');
+        $adminPlain = 'DevAdmin#2026!Sec';
+        $teacherPlain = 'DevTeach#2026!Sec';
 
         // Confirm passwords are not plaintext in DB
         $this->assertNotSame($adminPlain, $adminUser->password);
