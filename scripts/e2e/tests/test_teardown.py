@@ -1,7 +1,7 @@
 """NUVIKOZ Edu — Disposable E2E External Teardown Test Suite.
 
-Verifies the 30-point acceptance matrix (TC-01 through TC-30) using 100% mocked
-transports and zero network access.
+Verifies the 44-point acceptance and security hardening matrix (TC-01 through TC-44)
+using 100% mocked transports, deterministic injected fake time, and zero network access.
 """
 
 from __future__ import annotations
@@ -69,7 +69,7 @@ class MockHttpTransport(HttpTransportProtocol):
 
 
 class TestTeardownRunner(unittest.TestCase):
-    """30-case acceptance test suite covering TC-01 to TC-30."""
+    """44-case acceptance and security regression suite covering TC-01 to TC-44."""
 
     def setUp(self) -> None:
         self.transport = MockHttpTransport()
@@ -89,7 +89,27 @@ class TestTeardownRunner(unittest.TestCase):
             max_retries=3,
             retry_backoff_factor=0.001,  # Fast retries for testing
             sleep_fn=lambda _: None,     # No-op sleep during test
+            time_provider=lambda: self.fake_now,
         )
+        # Official DigitalOcean API v2 account and project-resources ownership routes
+        self._register_default_ownership_routes()
+
+    def _register_default_ownership_routes(self) -> None:
+        """Register official GET /v2/account and GET /v2/projects/{id}/resources mock routes."""
+        self.transport.set_route("GET", "/account", (200, {
+            "account": {
+                "uuid": "acc-nuvikoz-dev",
+                "status": "active",
+                "email_verified": True,
+            }
+        }))
+        self.transport.set_route("GET", "/projects/proj-e2e-disposable/resources", (200, {
+            "resources": [
+                {"urn": "do:droplet:droplet-1001", "status": "ok"},
+                {"urn": "do:droplet:droplet-1002", "status": "ok"},
+                {"urn": "do:volume:vol-2001", "status": "ok"},
+            ]
+        }))
 
     def _create_standard_manifest(
         self,
@@ -160,6 +180,7 @@ class TestTeardownRunner(unittest.TestCase):
             dry_run=True,
             allowlisted_resource_ids={"droplet-1001"},
             allowed_resource_types={ResourceType.DROPLET},
+            manifest_id=manifest.manifest_id,
         )
 
         report = runner.execute_teardown(auth_context)
@@ -181,6 +202,7 @@ class TestTeardownRunner(unittest.TestCase):
             dry_run=True,
             allowlisted_resource_ids={"droplet-1001"},  # Only 1001 is authorized; unlisted is absent!
             allowed_resource_types={ResourceType.DROPLET},
+            manifest_id=manifest.manifest_id,
         )
 
         report = runner.execute_teardown(auth_context)
@@ -202,6 +224,7 @@ class TestTeardownRunner(unittest.TestCase):
             dry_run=True,
             allowlisted_resource_ids={"droplet-1001"},
             allowed_resource_types={ResourceType.DROPLET},
+            manifest_id=manifest.manifest_id,
         )
 
         report = runner.execute_teardown(auth_context)
@@ -222,6 +245,7 @@ class TestTeardownRunner(unittest.TestCase):
             dry_run=True,
             allowlisted_resource_ids={"droplet-1001"},
             allowed_resource_types={ResourceType.DROPLET},
+            manifest_id=manifest.manifest_id,
         )
 
         report = runner.execute_teardown(auth_context)
@@ -242,6 +266,7 @@ class TestTeardownRunner(unittest.TestCase):
             dry_run=True,
             allowlisted_resource_ids={"droplet-1001"},
             allowed_resource_types={ResourceType.VOLUME},  # Context only authorizes VOLUME!
+            manifest_id=manifest.manifest_id,
         )
 
         report = runner.execute_teardown(auth_context)
@@ -309,6 +334,7 @@ class TestTeardownRunner(unittest.TestCase):
             dry_run=True,
             allowlisted_resource_ids={"droplet-1001"},
             allowed_resource_types={ResourceType.DROPLET},
+            manifest_id=manifest.manifest_id,
         )
 
         report = runner.execute_teardown(auth_context)
@@ -338,6 +364,7 @@ class TestTeardownRunner(unittest.TestCase):
                 dry_run=True,
                 allowlisted_resource_ids={"droplet-1001"},
                 allowed_resource_types={ResourceType.DROPLET},
+                manifest_id=recovered_manifest.manifest_id,
             )
 
             report = runner.execute_teardown(auth_context)
@@ -374,6 +401,7 @@ class TestTeardownRunner(unittest.TestCase):
             dry_run=True,
             allowlisted_resource_ids={"droplet-1001"},
             allowed_resource_types={ResourceType.DROPLET},
+            manifest_id=manifest.manifest_id,
         )
 
         report = runner.execute_teardown(auth_context)
@@ -395,6 +423,7 @@ class TestTeardownRunner(unittest.TestCase):
             dry_run=True,
             allowlisted_resource_ids={"droplet-1001"},
             allowed_resource_types={ResourceType.DROPLET},
+            manifest_id=manifest.manifest_id,
         )
 
         runner.execute_teardown(auth_context)
@@ -427,6 +456,7 @@ class TestTeardownRunner(unittest.TestCase):
             dry_run=True,
             allowlisted_resource_ids={"droplet-1001"},
             allowed_resource_types={ResourceType.DROPLET},
+            manifest_id=manifest.manifest_id,
         )
 
         report = runner.execute_teardown(auth_context)
@@ -459,6 +489,7 @@ class TestTeardownRunner(unittest.TestCase):
             dry_run=True,
             allowlisted_resource_ids={"droplet-1001", "droplet-1002"},
             allowed_resource_types={ResourceType.DROPLET},
+            manifest_id=manifest.manifest_id,
         )
 
         with self.assertRaises(RuntimeError):
@@ -479,6 +510,7 @@ class TestTeardownRunner(unittest.TestCase):
                 dry_run=True,
                 allowlisted_resource_ids={"droplet-1001"},
                 allowed_resource_types={ResourceType.DROPLET},
+                manifest_id=manifest.manifest_id,
             )
 
             runner.execute_teardown(auth_context)
@@ -534,6 +566,7 @@ class TestTeardownRunner(unittest.TestCase):
             dry_run=True,
             allowlisted_resource_ids={"droplet-1001"},
             allowed_resource_types={ResourceType.DROPLET},
+            manifest_id=manifest.manifest_id,
         )
 
         # Run 1
@@ -564,6 +597,7 @@ class TestTeardownRunner(unittest.TestCase):
             dry_run=True,
             allowlisted_resource_ids={"droplet-1001"},
             allowed_resource_types={ResourceType.DROPLET},
+            manifest_id=manifest.manifest_id,
         )
 
         report = runner.execute_teardown(auth_context)
@@ -604,6 +638,7 @@ class TestTeardownRunner(unittest.TestCase):
             dry_run=True,
             allowlisted_resource_ids={"droplet-1001", "vol-alien-200"},
             allowed_resource_types={ResourceType.DROPLET, ResourceType.VOLUME},
+            manifest_id=manifest.manifest_id,
         )
 
         report = runner.execute_teardown(auth_context)
@@ -641,6 +676,7 @@ class TestTeardownRunner(unittest.TestCase):
             dry_run=True,
             allowlisted_resource_ids={"droplet-1001", "vol-mismatched-type"},
             allowed_resource_types={ResourceType.DROPLET, ResourceType.FLOATING_IP},
+            manifest_id=manifest.manifest_id,
         )
 
         report = runner.execute_teardown(auth_context)
@@ -650,7 +686,8 @@ class TestTeardownRunner(unittest.TestCase):
 
     # TC-22: Provider response missing account or project verification fails closed.
     def test_tc22_provider_response_missing_account_or_project_verification_fails_closed(self) -> None:
-        # Mock droplet payload missing account_id (not provided by API)
+        # Clear /account endpoint AND omit payload account_id so account verification is genuinely absent
+        self.transport.routes.pop(("GET", "/account"), None)
         resp = self._mock_droplet_response()
         resp["droplet"].pop("account_id", None)
         self.transport.set_route("GET", "/droplets/droplet-1001", (200, resp))
@@ -696,6 +733,7 @@ class TestTeardownRunner(unittest.TestCase):
             dry_run=True,
             allowlisted_resource_ids={"droplet-1001"},
             allowed_resource_types={ResourceType.DROPLET},
+            manifest_id=manifest.manifest_id,
         )
 
         report = runner.execute_teardown(auth_context)
@@ -732,6 +770,7 @@ class TestTeardownRunner(unittest.TestCase):
             dry_run=True,
             allowlisted_resource_ids={"droplet-1001", "droplet-1002"},
             allowed_resource_types={ResourceType.DROPLET},
+            manifest_id=manifest.manifest_id,
         )
 
         # First run: 1 absent, 1 acknowledged (incomplete)
@@ -864,6 +903,7 @@ class TestTeardownRunner(unittest.TestCase):
             dry_run=True,
             allowlisted_resource_ids={"droplet-1001", "vol-2001"},
             allowed_resource_types={ResourceType.DROPLET, ResourceType.VOLUME},
+            manifest_id=manifest.manifest_id,
         )
 
         report = runner.execute_teardown(auth_context)
@@ -900,6 +940,7 @@ class TestTeardownRunner(unittest.TestCase):
             dry_run=True,
             allowlisted_resource_ids={"droplet-1001", "vol-2001"},
             allowed_resource_types={ResourceType.DROPLET, ResourceType.VOLUME},
+            manifest_id=manifest.manifest_id,
         )
 
         # Phase 1: Droplet is 404 absent, but Volume is still 200 active
@@ -920,6 +961,522 @@ class TestTeardownRunner(unittest.TestCase):
         self.assertEqual(report2.resources_confirmed_absent, 2)
         self.assertEqual(report2.cleanup_incomplete_count, 0)
         self.assertEqual(manifest.state, "COMPLETED")
+
+    # TC-31: UNKNOWN resource status refuses deletion.
+    def test_tc31_unknown_resource_status_refuses_deletion(self) -> None:
+        resp_unknown = self._mock_droplet_response()
+        resp_unknown["droplet"]["status"] = "weird-unrecognized-state"
+        self.transport.set_route("GET", "/droplets/droplet-1001", (200, resp_unknown))
+
+        identity = self.adapter.inspect_resource("droplet-1001", ResourceType.DROPLET)
+        self.assertEqual(identity.status, ResourceStatus.UNKNOWN)
+        self.assertFalse(identity.matches_ownership(self.ownership))
+
+        manifest = self._create_standard_manifest("droplet-1001")
+        runner = ExternalTeardownRunner(self.adapter, manifest, time_provider=lambda: self.fake_now)
+        auth_context = ExecutionAuthContext(
+            authorized_by="operator-owner",
+            authorization_timestamp=self.fake_now.isoformat(),
+            dry_run=True,
+            allowlisted_resource_ids={"droplet-1001"},
+            allowed_resource_types={ResourceType.DROPLET},
+            manifest_id=manifest.manifest_id,
+        )
+
+        report = runner.execute_teardown(auth_context)
+        self.assertEqual(report.overall_status, TeardownActionStatus.MANUAL_INTERVENTION_REQUIRED)
+        self.assertEqual(report.details[0]["status"], TeardownActionStatus.REJECTED_SECURITY_VIOLATION.value)
+        self.assertIn("UNKNOWN", report.details[0]["message"])
+        self.assertFalse(any(call["method"] == "DELETE" for call in self.transport.call_history))
+
+    # TC-32: Unsupported DELETING state cannot authorize a second deletion.
+    def test_tc32_unsupported_deleting_state_cannot_authorize_second_deletion(self) -> None:
+        resp_deleting = self._mock_droplet_response()
+        resp_deleting["droplet"]["status"] = "deleting"
+        self.transport.set_route("GET", "/droplets/droplet-1001", (200, resp_deleting))
+
+        identity = self.adapter.inspect_resource("droplet-1001", ResourceType.DROPLET)
+        self.assertEqual(identity.status, ResourceStatus.DELETING)
+        self.assertFalse(identity.matches_ownership(self.ownership))
+
+        manifest = self._create_standard_manifest("droplet-1001")
+        runner = ExternalTeardownRunner(self.adapter, manifest, time_provider=lambda: self.fake_now)
+        auth_context = ExecutionAuthContext(
+            authorized_by="operator-owner",
+            authorization_timestamp=self.fake_now.isoformat(),
+            dry_run=True,
+            allowlisted_resource_ids={"droplet-1001"},
+            allowed_resource_types={ResourceType.DROPLET},
+            manifest_id=manifest.manifest_id,
+        )
+
+        report = runner.execute_teardown(auth_context)
+        self.assertEqual(report.overall_status, TeardownActionStatus.MANUAL_INTERVENTION_REQUIRED)
+        self.assertEqual(report.details[0]["status"], TeardownActionStatus.REJECTED_SECURITY_VIOLATION.value)
+        self.assertIn("DELETING", report.details[0]["message"])
+        self.assertFalse(any(call["method"] == "DELETE" for call in self.transport.call_history))
+
+    # TC-33: Missing provider status fails closed.
+    def test_tc33_missing_provider_status_fails_closed(self) -> None:
+        # Authentic DO volume response omits status; droplet response missing status also fails closed
+        resp_droplet = self._mock_droplet_response()
+        resp_droplet["droplet"].pop("status", None)
+        self.transport.set_route("GET", "/droplets/droplet-1001", (200, resp_droplet))
+
+        ident_droplet = self.adapter.inspect_resource("droplet-1001", ResourceType.DROPLET)
+        self.assertEqual(ident_droplet.status, ResourceStatus.UNKNOWN)
+        self.assertFalse(ident_droplet.matches_ownership(self.ownership))
+
+        # Official DO volume payload without 'status' field MUST be UNKNOWN (not inferred active)
+        self.transport.set_route("GET", "/volumes/vol-2001", (200, {
+            "volume": {
+                "id": "vol-2001",
+                "name": "nuvikoz-e2e-data-vol",
+                "tags": ["env:nuvikoz-e2e-disposable"],
+                "droplet_ids": [],
+            }
+        }))
+        ident_vol = self.adapter.inspect_resource("vol-2001", ResourceType.VOLUME)
+        self.assertEqual(ident_vol.status, ResourceStatus.UNKNOWN)
+        self.assertFalse(ident_vol.matches_ownership(self.ownership))
+
+        manifest = self._create_standard_manifest("droplet-1001")
+        runner = ExternalTeardownRunner(self.adapter, manifest, time_provider=lambda: self.fake_now)
+        auth_context = ExecutionAuthContext(
+            authorized_by="operator-owner",
+            authorization_timestamp=self.fake_now.isoformat(),
+            dry_run=True,
+            allowlisted_resource_ids={"droplet-1001"},
+            allowed_resource_types={ResourceType.DROPLET},
+            manifest_id=manifest.manifest_id,
+        )
+        report = runner.execute_teardown(auth_context)
+        self.assertEqual(report.overall_status, TeardownActionStatus.MANUAL_INTERVENTION_REQUIRED)
+        self.assertFalse(any(call["method"] == "DELETE" for call in self.transport.call_history))
+
+    # TC-34: DNS record without domain identity is rejected.
+    def test_tc34_dns_record_without_domain_identity_is_rejected(self) -> None:
+        # Calling inspect_resource for DNS_RECORD with no domain fails closed
+        with self.assertRaises(TeardownSecurityError) as ctx:
+            self.adapter.inspect_resource("3352896", ResourceType.DNS_RECORD)
+        self.assertIn("domain identity is required", str(ctx.exception))
+
+        # Traversal and ambiguous identifiers are rejected cleanly
+        for bad_domain in ("", "../evil.com", "example.com/foo", "a%2fb.com", "bad?q=1"):
+            with self.assertRaises(TeardownSecurityError):
+                self.adapter.build_dns_record_path(bad_domain, "3352896")
+
+        for bad_id in ("", "abc", "3352896/../../droplets/1", "3352896%2f1", "-5"):
+            with self.assertRaises(TeardownSecurityError):
+                self.adapter.build_dns_record_path("e2e.nuvikoz-test.invalid", bad_id)
+
+        # Manifest execution for DNS record without domain binding rejects without DELETE calls
+        manifest = self._create_standard_manifest("3352896", ResourceType.DNS_RECORD)
+        runner = ExternalTeardownRunner(self.adapter, manifest, time_provider=lambda: self.fake_now)
+        auth_context = ExecutionAuthContext(
+            authorized_by="operator-owner",
+            authorization_timestamp=self.fake_now.isoformat(),
+            dry_run=True,
+            allowlisted_resource_ids={"3352896"},
+            allowed_resource_types={ResourceType.DNS_RECORD},
+            manifest_id=manifest.manifest_id,
+        )
+        report = runner.execute_teardown(auth_context)
+        self.assertEqual(report.overall_status, TeardownActionStatus.MANUAL_INTERVENTION_REQUIRED)
+        self.assertEqual(report.details[0]["status"], TeardownActionStatus.REJECTED_SECURITY_VIOLATION.value)
+        self.assertFalse(any(call["method"] == "DELETE" for call in self.transport.call_history))
+
+    # TC-35: DNS route construction uses validated domain and record identity.
+    def test_tc35_dns_route_construction_uses_validated_domain_and_record_identity(self) -> None:
+        safe_path = self.adapter.build_dns_record_path("e2e.nuvikoz-test.invalid", "3352896")
+        self.assertEqual(safe_path, "/domains/e2e.nuvikoz-test.invalid/records/3352896")
+
+        self.transport.set_route("GET", safe_path, (200, {
+            "domain_record": {
+                "id": 3352896,
+                "type": "A",
+                "name": "nuvikoz-e2e-host",
+                "data": "198.51.100.10",
+                "ttl": 1800,
+            }
+        }))
+
+        ident = self.adapter.inspect_resource("3352896", ResourceType.DNS_RECORD, domain_name="e2e.nuvikoz-test.invalid")
+        self.assertEqual(ident.resource_id, "3352896")
+        self.assertEqual(ident.name, "nuvikoz-e2e-host")
+        self.assertEqual(ident.project_id, "")
+        self.assertEqual(ident.status, ResourceStatus.UNKNOWN)
+        self.assertTrue(any(c["url"] == "https://api.digitalocean.com/v2/domains/e2e.nuvikoz-test.invalid/records/3352896" for c in self.transport.call_history))
+
+        # Automated DNS deletion remains unsupported fail-closed even if record name starts with prefix
+        manifest = self._create_standard_manifest("3352896", ResourceType.DNS_RECORD)
+        manifest.dns_record_domains = {"3352896": "e2e.nuvikoz-test.invalid"}
+        runner = ExternalTeardownRunner(self.adapter, manifest, time_provider=lambda: self.fake_now)
+        auth_context = ExecutionAuthContext(
+            authorized_by="operator-owner",
+            authorization_timestamp=self.fake_now.isoformat(),
+            dry_run=True,
+            allowlisted_resource_ids={"3352896"},
+            allowed_resource_types={ResourceType.DNS_RECORD},
+            manifest_id=manifest.manifest_id,
+        )
+        report = runner.execute_teardown(auth_context)
+        self.assertEqual(report.overall_status, TeardownActionStatus.MANUAL_INTERVENTION_REQUIRED)
+        self.assertEqual(report.details[0]["status"], TeardownActionStatus.REJECTED_SECURITY_VIOLATION.value)
+        self.assertFalse(any(call["method"] == "DELETE" for call in self.transport.call_history))
+
+    # TC-36: Missing account/project ownership evidence is rejected.
+    def test_tc36_missing_account_or_project_ownership_evidence_is_rejected(self) -> None:
+        # Pure official DO droplet response (NO test-only account_id or project_id fields)
+        official_droplet_payload = {
+            "droplet": {
+                "id": 1001,
+                "name": "nuvikoz-e2e-vps",
+                "status": "active",
+                "volume_ids": [],
+                "tags": ["env:nuvikoz-e2e-disposable"],
+            }
+        }
+        self.transport.set_route("GET", "/droplets/1001", (200, official_droplet_payload))
+
+        # 1. Missing /account proof fails closed even when project URN is registered
+        self.transport.routes.pop(("GET", "/account"), None)
+        self.transport.set_route("GET", "/projects/proj-e2e-disposable/resources", (200, {
+            "resources": [{"urn": "do:droplet:1001", "status": "ok"}]
+        }))
+        ident_no_acct = self.adapter.inspect_resource("1001", ResourceType.DROPLET)
+        self.assertEqual(ident_no_acct.account_id, "")
+        self.assertFalse(ident_no_acct.matches_ownership(self.ownership))
+
+        # 2. Active /account present, but droplet URN missing from /projects/{id}/resources fails closed
+        self._register_default_ownership_routes()
+        self.transport.set_route("GET", "/projects/proj-e2e-disposable/resources", (200, {"resources": []}))
+        ident_no_proj = self.adapter.inspect_resource("1001", ResourceType.DROPLET)
+        self.assertEqual(ident_no_proj.account_id, "acc-nuvikoz-dev")
+        self.assertEqual(ident_no_proj.project_id, "")
+        self.assertFalse(ident_no_proj.matches_ownership(self.ownership))
+
+        # 3. With BOTH /account and /projects/{id}/resources proving ownership, official payload succeeds dry-run
+        self.transport.set_route("GET", "/projects/proj-e2e-disposable/resources", (200, {
+            "resources": [{"urn": "do:droplet:1001", "status": "ok"}]
+        }))
+        ident_valid = self.adapter.inspect_resource("1001", ResourceType.DROPLET)
+        self.assertTrue(ident_valid.matches_ownership(self.ownership))
+
+    # TC-37: Client-provided tags alone cannot establish ownership.
+    def test_tc37_client_provided_tags_alone_cannot_establish_ownership(self) -> None:
+        # Droplet has matching tag and name prefix, and active status, but lacks account & project proof
+        self.transport.routes.pop(("GET", "/account"), None)
+        self.transport.routes.pop(("GET", "/projects/proj-e2e-disposable/resources"), None)
+        self.transport.set_route("GET", "/droplets/droplet-1001", (200, {
+            "droplet": {
+                "id": "droplet-1001",
+                "name": "nuvikoz-e2e-vps",
+                "status": "active",
+                "volume_ids": [],
+                "tags": ["env:nuvikoz-e2e-disposable"],
+            }
+        }))
+
+        manifest = self._create_standard_manifest("droplet-1001")
+        runner = ExternalTeardownRunner(self.adapter, manifest, time_provider=lambda: self.fake_now)
+        auth_context = ExecutionAuthContext(
+            authorized_by="operator-owner",
+            authorization_timestamp=self.fake_now.isoformat(),
+            dry_run=True,
+            allowlisted_resource_ids={"droplet-1001"},
+            allowed_resource_types={ResourceType.DROPLET},
+            manifest_id=manifest.manifest_id,
+        )
+
+        report = runner.execute_teardown(auth_context)
+        self.assertEqual(report.overall_status, TeardownActionStatus.MANUAL_INTERVENTION_REQUIRED)
+        self.assertEqual(report.details[0]["status"], TeardownActionStatus.REJECTED_SECURITY_VIOLATION.value)
+        self.assertFalse(any(call["method"] == "DELETE" for call in self.transport.call_history))
+
+    # TC-38: Invalid, expired or future authorization timestamp is rejected.
+    def test_tc38_invalid_expired_or_future_authorization_timestamp_is_rejected(self) -> None:
+        self.transport.set_route("GET", "/droplets/droplet-1001", (200, self._mock_droplet_response()))
+        manifest = self._create_standard_manifest("droplet-1001")
+        runner = ExternalTeardownRunner(self.adapter, manifest, time_provider=lambda: self.fake_now)
+
+        bad_timestamps = [
+            "not-a-valid-timestamp",
+            "2026-11-22T12:00:00",  # Missing timezone offset
+            (self.fake_now + timedelta(minutes=5)).isoformat(),  # Future outside 60s skew
+            (self.fake_now - timedelta(hours=2)).isoformat(),    # Stale/expired beyond 3600s TTL
+        ]
+
+        for bad_ts in bad_timestamps:
+            auth_ctx = ExecutionAuthContext(
+                authorized_by="operator-owner",
+                authorization_timestamp=bad_ts,
+                dry_run=True,
+                allowlisted_resource_ids={"droplet-1001"},
+                allowed_resource_types={ResourceType.DROPLET},
+                manifest_id=manifest.manifest_id,
+            )
+            with self.assertRaises(TeardownSecurityError):
+                runner.execute_teardown(auth_ctx)
+
+        # Empty authorized_by must also fail closed
+        blank_actor_ctx = ExecutionAuthContext(
+            authorized_by="   ",
+            authorization_timestamp=self.fake_now.isoformat(),
+            dry_run=True,
+            allowlisted_resource_ids={"droplet-1001"},
+            allowed_resource_types={ResourceType.DROPLET},
+            manifest_id=manifest.manifest_id,
+        )
+        with self.assertRaises(TeardownSecurityError):
+            runner.execute_teardown(blank_actor_ctx)
+
+        self.assertFalse(any(call["method"] == "DELETE" for call in self.transport.call_history))
+
+    # TC-39: Authorization for a different manifest cannot be reused.
+    def test_tc39_authorization_for_different_manifest_cannot_be_reused(self) -> None:
+        self.transport.set_route("GET", "/droplets/droplet-1001", (200, self._mock_droplet_response()))
+        manifest = self._create_standard_manifest("droplet-1001")
+        runner = ExternalTeardownRunner(self.adapter, manifest, time_provider=lambda: self.fake_now)
+
+        # Wrong manifest_id
+        other_manifest_ctx = ExecutionAuthContext(
+            authorized_by="operator-owner",
+            authorization_timestamp=self.fake_now.isoformat(),
+            dry_run=True,
+            allowlisted_resource_ids={"droplet-1001"},
+            allowed_resource_types={ResourceType.DROPLET},
+            manifest_id="manifest-unrelated-999",
+        )
+        with self.assertRaises(TeardownSecurityError) as ctx1:
+            runner.execute_teardown(other_manifest_ctx)
+        self.assertIn("cannot be reused", str(ctx1.exception))
+        self.assertEqual(manifest.state, "PENDING")
+
+        # Unbound manifest_id (None)
+        unbound_ctx = ExecutionAuthContext(
+            authorized_by="operator-owner",
+            authorization_timestamp=self.fake_now.isoformat(),
+            dry_run=True,
+            allowlisted_resource_ids={"droplet-1001"},
+            allowed_resource_types={ResourceType.DROPLET},
+            manifest_id=None,
+        )
+        with self.assertRaises(TeardownSecurityError) as ctx2:
+            runner.execute_teardown(unbound_ctx)
+        self.assertIn("must be explicitly bound to a manifest_id", str(ctx2.exception))
+
+        # Ambiguous extra ID in auth_context blocks execution
+        ambiguous_ctx = ExecutionAuthContext(
+            authorized_by="operator-owner",
+            authorization_timestamp=self.fake_now.isoformat(),
+            dry_run=True,
+            allowlisted_resource_ids={"droplet-1001", "droplet-unexpected"},
+            allowed_resource_types={ResourceType.DROPLET},
+            manifest_id=manifest.manifest_id,
+        )
+        report = runner.execute_teardown(ambiguous_ctx)
+        self.assertEqual(report.overall_status, TeardownActionStatus.MANUAL_INTERVENTION_REQUIRED)
+        self.assertEqual(report.details[0]["status"], TeardownActionStatus.REJECTED_SECURITY_VIOLATION.value)
+        self.assertIn("unexpected resource IDs", report.details[0]["message"])
+
+    # TC-40: Associated-resource inspection or enumeration failure blocks parent deletion.
+    def test_tc40_associated_resource_inspection_or_enumeration_failure_blocks_parent_deletion(self) -> None:
+        # Case A: Parent droplet enumerates attached vol-2001 whose inspection fails -> parent halts immediately
+        vol_attempts = 0
+
+        def flaky_vol_handler():
+            nonlocal vol_attempts
+            vol_attempts += 1
+            if vol_attempts <= 4:  # Exhaust initial attempt + 3 retries during parent enumeration
+                return 500, {"message": "Storage API unavailable"}
+            return 200, self._mock_volume_response("vol-2001")
+
+        self.transport.set_route("GET", "/droplets/droplet-1001", (200, self._mock_droplet_response(volume_ids=["vol-2001"])))
+        self.transport.set_route("GET", "/volumes/vol-2001", flaky_vol_handler)
+
+        created_at = self.fake_now.isoformat()
+        deadline = (self.fake_now + timedelta(hours=4)).isoformat()
+        manifest = TeardownManifest(
+            manifest_id="manifest-tc40",
+            created_at_utc=created_at,
+            deadline_at_utc=deadline,
+            ownership=self.ownership,
+            allowlisted_resources={
+                "droplet-1001": ResourceType.DROPLET.value,
+                "vol-2001": ResourceType.VOLUME.value,
+            },
+        )
+        runner = ExternalTeardownRunner(self.adapter, manifest, time_provider=lambda: self.fake_now)
+        auth_context = ExecutionAuthContext(
+            authorized_by="operator-owner",
+            authorization_timestamp=self.fake_now.isoformat(),
+            dry_run=True,
+            allowlisted_resource_ids={"droplet-1001", "vol-2001"},
+            allowed_resource_types={ResourceType.DROPLET, ResourceType.VOLUME},
+            manifest_id=manifest.manifest_id,
+        )
+
+        # Associated vol-2001 failure produces UNKNOWN identity -> halts parent droplet-1001 with MANUAL_INTERVENTION_REQUIRED
+        report = runner.execute_teardown(auth_context)
+        self.assertEqual(report.overall_status, TeardownActionStatus.MANUAL_INTERVENTION_REQUIRED)
+        droplet_detail = next(d for d in report.details if d["resource_id"] == "droplet-1001")
+        self.assertEqual(droplet_detail["status"], TeardownActionStatus.MANUAL_INTERVENTION_REQUIRED.value)
+        self.assertIn("vol-2001", report.sanitized_summary["unapproved_associated_orphans"])
+        self.assertFalse(any(call["method"] == "DELETE" for call in self.transport.call_history))
+
+        # Case B: Malformed non-list volume_ids fails enumeration before any deletion
+        bad_payload = self._mock_droplet_response()
+        bad_payload["droplet"]["volume_ids"] = "vol-2001"  # Malformed string instead of list
+        self.transport.set_route("GET", "/droplets/droplet-1001", (200, bad_payload))
+        with self.assertRaises(TeardownSecurityError):
+            runner.execute_teardown(auth_context)
+        self.assertFalse(any(call["method"] == "DELETE" for call in self.transport.call_history))
+
+    # TC-41: Manifest TZ, state, creation mutation, and ownership conflict protections.
+    def test_tc41_manifest_timezone_state_sliding_window_and_ownership_conflicts_fail_closed(self) -> None:
+        # 1. Missing timezone offset in manifest timestamp
+        bad_tz = self._create_standard_manifest("droplet-1001")
+        bad_tz.created_at_utc = "2026-11-22T12:00:00"  # naive timestamp
+        with self.assertRaises(TeardownStateCorruptedError):
+            bad_tz.validate_state(self.fake_now)
+
+        # 2. Unexpected state value
+        bad_state = self._create_standard_manifest("droplet-1001")
+        bad_state.state = "ARBITRARY_FORGED_STATE"
+        with self.assertRaises(TeardownStateCorruptedError):
+            bad_state.validate_state(self.fake_now)
+
+        # 3. Manifest creation timestamp bumped forward past earlier audit event
+        slid_manifest = self._create_standard_manifest("droplet-1001")
+        slid_manifest.audit_events.append({
+            "event": "TEARDOWN_STARTED",
+            "timestamp": (self.fake_now - timedelta(hours=1)).isoformat(),
+            "details": {},
+        })
+        slid_manifest.created_at_utc = self.fake_now.isoformat()
+        with self.assertRaises(TeardownStateCorruptedError):
+            slid_manifest.validate_state(self.fake_now)
+
+        # 4. Ownership conflict between manifest and adapter fails closed
+        conflicting_ownership = OwnershipContract(
+            expected_account_id="acc-other-tenant",
+            expected_project_id="proj-e2e-disposable",
+            required_tag="env:nuvikoz-e2e-disposable",
+            expected_name_prefix="nuvikoz-e2e-",
+        )
+        conflict_manifest = TeardownManifest(
+            manifest_id="manifest-conflict",
+            created_at_utc=self.fake_now.isoformat(),
+            deadline_at_utc=(self.fake_now + timedelta(hours=4)).isoformat(),
+            ownership=conflicting_ownership,
+            allowlisted_resources={"droplet-1001": ResourceType.DROPLET.value},
+        )
+        runner = ExternalTeardownRunner(self.adapter, conflict_manifest, time_provider=lambda: self.fake_now)
+        auth_context = ExecutionAuthContext(
+            authorized_by="operator-owner",
+            authorization_timestamp=self.fake_now.isoformat(),
+            dry_run=True,
+            allowlisted_resource_ids={"droplet-1001"},
+            allowed_resource_types={ResourceType.DROPLET},
+            manifest_id=conflict_manifest.manifest_id,
+        )
+        with self.assertRaises(TeardownSecurityError) as ctx:
+            runner.execute_teardown(auth_context)
+        self.assertIn("conflicts with provider adapter", str(ctx.exception))
+
+    # TC-42: Official Reserved IP endpoint validation and non-synthesis.
+    def test_tc42_reserved_ip_validation_and_non_synthesis(self) -> None:
+        # Invalid IP rejected prior to HTTP call
+        with self.assertRaises(TeardownSecurityError):
+            self.adapter.inspect_resource("not-an-ip/../droplets/1", ResourceType.RESERVED_IP)
+
+        # Authentic DO /v2/reserved_ips/{ip} omits name, tags, and status -> MUST NOT synthesize
+        self.transport.set_route("GET", "/projects/proj-e2e-disposable/resources", (200, {
+            "resources": [{"urn": "do:floatingip:198.51.100.42", "status": "ok"}]
+        }))
+        self.transport.set_route("GET", "/reserved_ips/198.51.100.42", (200, {
+            "reserved_ip": {
+                "ip": "198.51.100.42",
+                "locked": False,
+                "droplet": None,
+                "project_id": "proj-e2e-disposable",
+            }
+        }))
+
+        ident = self.adapter.inspect_resource("198.51.100.42", ResourceType.RESERVED_IP)
+        self.assertEqual(ident.name, "")
+        self.assertEqual(ident.tags, [])
+        self.assertEqual(ident.status, ResourceStatus.UNKNOWN)
+        self.assertEqual(ident.project_id, "proj-e2e-disposable")
+        self.assertFalse(ident.matches_ownership(self.ownership))
+
+    # TC-43: Resource remaining ACTIVE after deletion acknowledgement stays INCOMPLETE.
+    def test_tc43_resource_remaining_active_after_delete_acknowledgment_remains_incomplete(self) -> None:
+        self.transport.set_route("GET", "/droplets/droplet-1001", (200, self._mock_droplet_response()))
+        manifest = self._create_standard_manifest("droplet-1001")
+        runner = ExternalTeardownRunner(self.adapter, manifest, time_provider=lambda: self.fake_now)
+
+        auth_context = ExecutionAuthContext(
+            authorized_by="operator-owner",
+            authorization_timestamp=self.fake_now.isoformat(),
+            dry_run=True,
+            allowlisted_resource_ids={"droplet-1001"},
+            allowed_resource_types={ResourceType.DROPLET},
+            manifest_id=manifest.manifest_id,
+        )
+
+        # Two consecutive polls where droplet remains 200 ACTIVE after deletion acknowledgement
+        report1 = runner.execute_teardown(auth_context)
+        self.assertEqual(report1.overall_status, TeardownActionStatus.CLEANUP_INCOMPLETE)
+        self.assertEqual(manifest.state, "INCOMPLETE")
+
+        report2 = runner.execute_teardown(auth_context)
+        self.assertEqual(report2.overall_status, TeardownActionStatus.CLEANUP_INCOMPLETE)
+        self.assertEqual(report2.resources_confirmed_absent, 0)
+        self.assertEqual(manifest.state, "INCOMPLETE")
+
+        # Only after independent 404 confirmation does manifest become COMPLETED
+        self.transport.set_route("GET", "/droplets/droplet-1001", (404, {"message": "Not found"}))
+        report3 = runner.execute_teardown(auth_context)
+        self.assertEqual(report3.overall_status, TeardownActionStatus.RESOURCE_ABSENCE_CONFIRMED)
+        self.assertEqual(manifest.state, "COMPLETED")
+
+    # TC-44: Team account context and paginated project resources URN verification.
+    def test_tc44_team_account_context_and_paginated_project_resources(self) -> None:
+        self.transport.set_route("GET", "/account", (200, {
+            "account": {
+                "uuid": "user-uuid-ignored-in-team-context",
+                "status": "active",
+                "team": {"uuid": "acc-nuvikoz-dev", "name": "NUVIKOZ E2E Team"},
+            }
+        }))
+        self.transport.set_route("GET", "/projects/proj-e2e-disposable/resources", (200, {
+            "resources": [{"urn": "do:droplet:other-resource", "status": "ok"}],
+            "links": {
+                "pages": {
+                    "next": "https://api.digitalocean.com/v2/projects/proj-e2e-disposable/resources?page=2"
+                }
+            },
+        }))
+        self.transport.set_route("GET", "/projects/proj-e2e-disposable/resources?page=2", (200, {
+            "resources": [{"urn": "do:droplet:1001", "status": "ok"}],
+            "links": {"pages": {}},
+        }))
+        self.transport.set_route("GET", "/droplets/1001", (200, {
+            "droplet": {
+                "id": 1001,
+                "name": "nuvikoz-e2e-vps",
+                "status": "active",
+                "volume_ids": [],
+                "tags": ["env:nuvikoz-e2e-disposable"],
+            }
+        }))
+
+        ident = self.adapter.inspect_resource("1001", ResourceType.DROPLET)
+        self.assertEqual(ident.account_id, "acc-nuvikoz-dev")
+        self.assertEqual(ident.project_id, "proj-e2e-disposable")
+        self.assertTrue(ident.matches_ownership(self.ownership))
 
 
 if __name__ == "__main__":
