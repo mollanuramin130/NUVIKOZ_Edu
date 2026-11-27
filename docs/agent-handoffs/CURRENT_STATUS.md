@@ -1,3 +1,11 @@
+# Local web preview calendar repair
+
+2026-11-27 (Asia/Kolkata). Owner authorized repository fixes and commits for the local web preview. Branch `fix/local-web-preview-bootstrap` starts from F019-A `c3e8fbfb17918ac52d326eb82849468065e7950a`. Commit `ebe29cef0a665bdafe04734a306ebecfa74965c7` adds `apps/edu-api/app/Console/Commands/PrepareLocalPreview.php`.
+
+The existing synthetic DEMO001 school was created with null settings. Academic session creation correctly denies a missing IANA timezone; no entitlement or authorization bypass is needed. From apps/edu-api, run `php artisan edu:prepare-local-preview` against the existing loopback mysql edu_local database in APP_ENV=local. This command checks the synthetic school name and code, preserves other settings and valid existing timezones, and sets Asia/Kolkata only if missing. No schema changes, credentials, role changes, platform login changes, or deployment. The operator must run the command on their own local database. No production or staging use is authorized.
+
+Verification: source contract and existing missing-timezone regression reviewed. PHP runtime, Pint and new-commit CI NOT RUN from the repository connector; local command execution and browser session creation remain unverified. NEXT SAFE TASK: pull the preview branch, run the command, refresh Sessions and create the future sample academic year through the existing MFA-protected UI. Platform first-factor remains synthetic testing only.
+
 # Phase 02 F019-A staff profile foundation
 
 WORK-P02-019 on `feature/f019-staff-profile-foundation`, direct parent `8e1b17a4327510ddab72f68efb48d0227c7e074c` (Draft PR #34). School Admins can search and register staff profiles for existing activated Principal and Teacher memberships through `/staff`. This is a browser-only contract. Existing Academic and Android contracts require no consumer changes. Demo and expired schools have authorized reads, with registration gated by current enabled Live entitlement. Staff links, registration receipts and audit history are retained. [API contract](../api/F019A_STAFF_PROFILE_CONTRACT.md) · [OpenAPI](../../packages/contracts/f019a-staff.openapi.json)
